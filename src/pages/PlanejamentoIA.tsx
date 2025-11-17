@@ -28,13 +28,16 @@ const PlanejamentoIA = () => {
     const savedKey = localStorage.getItem("openai_api_key");
     if (savedKey) {
       setApiKey(savedKey);
-    }
-
-    // Load form data and generate initial diagnosis
-    const formDataStr = localStorage.getItem("planejamentoFormData");
-    if (formDataStr) {
-      const formData = JSON.parse(formDataStr);
-      generateInitialDiagnosis(formData);
+      
+      // Load form data and generate initial diagnosis only if we have API key
+      const formDataStr = localStorage.getItem("planejamentoFormData");
+      if (formDataStr) {
+        const formData = JSON.parse(formDataStr);
+        generateInitialDiagnosis(formData, savedKey);
+      }
+    } else {
+      // No API key, show settings dialog
+      setShowSettings(true);
     }
   }, []);
 
@@ -50,10 +53,18 @@ const PlanejamentoIA = () => {
     localStorage.setItem("openai_api_key", apiKey);
     setShowSettings(false);
     toast.success("Chave de API salva com sucesso");
+    
+    // Generate initial diagnosis after saving API key
+    const formDataStr = localStorage.getItem("planejamentoFormData");
+    if (formDataStr) {
+      const formData = JSON.parse(formDataStr);
+      generateInitialDiagnosis(formData, apiKey);
+    }
   };
 
-  const generateInitialDiagnosis = async (formData: any) => {
-    if (!apiKey) {
+  const generateInitialDiagnosis = async (formData: any, key?: string) => {
+    const currentApiKey = key || apiKey;
+    if (!currentApiKey) {
       toast.error("Por favor, configure sua chave de API da OpenAI");
       setShowSettings(true);
       return;
@@ -132,7 +143,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${currentApiKey}`,
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
@@ -284,7 +295,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
             <Card className="bg-muted/50">
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  Aguardando geração do diagnóstico inicial...
+                  {!apiKey ? "Configure sua chave de API para começar" : "Aguardando geração do diagnóstico inicial..."}
                 </p>
               </CardContent>
             </Card>
