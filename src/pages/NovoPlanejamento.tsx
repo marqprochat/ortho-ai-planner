@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Upload, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,25 @@ const NovoPlanejamento = () => {
     cro: "",
   });
 
+  // Carregar dados salvos do localStorage quando o componente montar
+  useEffect(() => {
+    const savedData = localStorage.getItem("planejamentoFormData");
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setFormData(parsedData);
+        toast.success("Dados do formulário carregados com sucesso!");
+      } catch (error) {
+        console.error("Erro ao carregar dados do formulário:", error);
+      }
+    }
+  }, []);
+
+  // Salvar dados no localStorage sempre que o formData mudar
+  useEffect(() => {
+    localStorage.setItem("planejamentoFormDataTemp", JSON.stringify(formData));
+  }, [formData]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
@@ -102,17 +121,74 @@ const NovoPlanejamento = () => {
     }
   };
 
+  const handleClearStorage = () => {
+    localStorage.removeItem("planejamentoFormData");
+    localStorage.removeItem("planejamentoFormDataTemp");
+    localStorage.removeItem("planejamentoImages");
+    setFormData({
+      // Dados do Paciente
+      nomePaciente: "",
+      dataNascimento: "",
+      telefone: "",
+      carteirinha: "",
+      
+      // Queixas
+      queixas: "",
+      objetivoTratamento: "",
+      
+      // Exame Extraoral
+      perfilFacial: "",
+      labios: "",
+      
+      // Exame Intraoral
+      denticaoAtual: "",
+      relacaoMolarDireita: [],
+      relacaoMolarEsquerda: [],
+      relacaoCaninaDireita: [],
+      relacaoCaninaEsquerda: [],
+      linhaMedia: [],
+      sobressaliencia: "",
+      sobremordida: "",
+      achados: [],
+      
+      // Radiografias
+      examesSolicitados: [],
+      
+      // Diagnóstico
+      diagnostico: "",
+      etiologia: "",
+      tipoTratamento: "",
+      aparelhoIndicado: "",
+      aparelhoSelecionado: "",
+      tempoEstimado: "",
+      colaboracao: "",
+      consideracoes: "",
+      
+      // Ortodontista
+      nomeOrtodontista: "",
+      cro: "",
+    });
+    setImages([]);
+    toast.success("Dados do formulário limpos com sucesso!");
+  };
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-5xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate("/")} className="mb-6">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar ao Dashboard
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="ghost" onClick={() => navigate("/")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar ao Dashboard
+          </Button>
+          <Button variant="outline" onClick={handleClearStorage} className="text-destructive hover:text-destructive">
+            Limpar Dados Salvos
+          </Button>
+        </div>
 
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Novo Planejamento</h1>
           <p className="text-muted-foreground">Preencha os dados para gerar um planejamento ortodôntico com IA</p>
+          <p className="text-sm text-primary mt-2">Os dados são salvos automaticamente enquanto você digita</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
