@@ -148,13 +148,13 @@ Por favor, forneça uma análise completa seguindo o formato especificado. Anali
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-5-nano",
+          model: "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessageContent },
           ],
           temperature: 0.7,
-          max_tokens: 2000,
+          max_completion_tokens: 2000,
         }),
       });
 
@@ -199,7 +199,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado. Anali
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-5-nano-2025-08-07",
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
@@ -213,7 +213,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado. Anali
             userMessage,
           ],
           temperature: 0.7,
-          max_tokens: 1500,
+          max_completion_tokens: 1500,
         }),
       });
 
