@@ -1,72 +1,45 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
+const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
 const PlanejamentoIA = () => {
   const navigate = useNavigate();
-  const [apiKey, setApiKey] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load API key from localStorage
-    const savedKey = localStorage.getItem("openai_api_key");
-    if (savedKey) {
-      setApiKey(savedKey);
-      
-      // Load form data and generate initial diagnosis only if we have API key
+    if (apiKey) {
       const formDataStr = localStorage.getItem("planejamentoFormData");
       if (formDataStr) {
         const formData = JSON.parse(formDataStr);
-        generateInitialDiagnosis(formData, savedKey);
+        generateInitialDiagnosis(formData);
       }
     } else {
-      // No API key, show settings dialog
-      setShowSettings(true);
+      toast.error("A chave de API da OpenAI não está configurada nas variáveis de ambiente (VITE_OPENAI_API_KEY).");
+      navigate("/");
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const saveApiKey = () => {
-    if (!apiKey.trim()) {
-      toast.error("Por favor, insira uma chave de API válida");
-      return;
-    }
-    localStorage.setItem("openai_api_key", apiKey);
-    setShowSettings(false);
-    toast.success("Chave de API salva com sucesso");
-    
-    // Generate initial diagnosis after saving API key
-    const formDataStr = localStorage.getItem("planejamentoFormData");
-    if (formDataStr) {
-      const formData = JSON.parse(formDataStr);
-      generateInitialDiagnosis(formData, apiKey);
-    }
-  };
-
-  const generateInitialDiagnosis = async (formData: any, key?: string) => {
-    const currentApiKey = key || apiKey;
-    if (!currentApiKey) {
-      toast.error("Por favor, configure sua chave de API da OpenAI");
-      setShowSettings(true);
+  const generateInitialDiagnosis = async (formData: any) => {
+    if (!apiKey) {
+      toast.error("A chave de API da OpenAI não está configurada.");
       return;
     }
 
@@ -152,7 +125,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${currentApiKey}`,
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: "gpt-4o-mini",
@@ -180,7 +153,6 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
     } catch (error: any) {
       console.error("Error:", error);
       toast.error(error.message || "Erro ao gerar diagnóstico. Verifique sua chave de API.");
-      setShowSettings(true);
     } finally {
       setIsLoading(false);
     }
@@ -190,8 +162,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
     if (!inputMessage.trim() || isLoading) return;
 
     if (!apiKey) {
-      toast.error("Por favor, configure sua chave de API da OpenAI");
-      setShowSettings(true);
+      toast.error("A chave de API da OpenAI não está configurada.");
       return;
     }
 
@@ -261,40 +232,6 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
               <p className="text-sm text-muted-foreground">Diagnóstico e análise inicial</p>
             </div>
           </div>
-          
-          <Dialog open={showSettings} onOpenChange={setShowSettings}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Configurações da API OpenAI</DialogTitle>
-                <DialogDescription>
-                  Insira sua chave de API da OpenAI para usar o planejamento com IA
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="apiKey">Chave de API OpenAI</Label>
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder="sk-..."
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Sua chave será armazenada localmente no navegador
-                  </p>
-                </div>
-                <Button onClick={saveApiKey} className="w-full">
-                  Salvar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -304,7 +241,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
             <Card className="bg-muted/50">
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
-                  {!apiKey ? "Configure sua chave de API para começar" : "Aguardando geração do diagnóstico inicial..."}
+                  Aguardando geração do diagnóstico inicial...
                 </p>
               </CardContent>
             </Card>
