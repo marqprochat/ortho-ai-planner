@@ -64,7 +64,7 @@ const NovoPlanejamento = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.nomePaciente) {
@@ -72,11 +72,34 @@ const NovoPlanejamento = () => {
       return;
     }
 
-    // Store form data in localStorage to pass to chat page
-    localStorage.setItem("planejamentoFormData", JSON.stringify(formData));
-    localStorage.setItem("planejamentoImages", JSON.stringify(images.map(f => f.name)));
-    
-    navigate("/planejamento-ia");
+    // Convert images to Base64 to store and send them
+    const imagePromises = images.map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve({ name: file.name, type: file.type, data: reader.result });
+        reader.onerror = error => reject(error);
+      });
+    });
+
+    try {
+      const imagePayloads = await Promise.all(imagePromises);
+      
+      // Check localStorage limit (approx 5MB)
+      const payloadSize = JSON.stringify(imagePayloads).length;
+      if (payloadSize > 5 * 1024 * 1024) {
+        toast.error("O tamanho total das imagens excede o limite de 5MB. Por favor, selecione menos imagens ou imagens menores.");
+        return;
+      }
+
+      localStorage.setItem("planejamentoFormData", JSON.stringify(formData));
+      localStorage.setItem("planejamentoImages", JSON.stringify(imagePayloads));
+      
+      navigate("/planejamento-ia");
+    } catch (error) {
+      console.error("Error converting images:", error);
+      toast.error("Ocorreu um erro ao processar as imagens.");
+    }
   };
 
   return (

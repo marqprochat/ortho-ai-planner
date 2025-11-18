@@ -8,7 +8,13 @@ import { toast } from "sonner";
 
 interface Message {
   role: "user" | "assistant";
-  content: string;
+  content: string | any[]; // Can be string or array for multimodal input
+}
+
+interface ImagePayload {
+  name: string;
+  type: string;
+  data: string; // Base64 data URL
 }
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -23,9 +29,12 @@ const PlanejamentoIA = () => {
   useEffect(() => {
     if (apiKey) {
       const formDataStr = localStorage.getItem("planejamentoFormData");
+      const imagesStr = localStorage.getItem("planejamentoImages");
+      
       if (formDataStr) {
         const formData = JSON.parse(formDataStr);
-        generateInitialDiagnosis(formData);
+        const images = imagesStr ? JSON.parse(imagesStr) : [];
+        generateInitialDiagnosis(formData, images);
       }
     } else {
       toast.error("A chave de API da OpenAI não está configurada nas variáveis de ambiente (VITE_OPENAI_API_KEY).");
@@ -37,7 +46,7 @@ const PlanejamentoIA = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const generateInitialDiagnosis = async (formData: any) => {
+  const generateInitialDiagnosis = async (formData: any, images: ImagePayload[]) => {
     if (!apiKey) {
       toast.error("A chave de API da OpenAI não está configurada.");
       return;
@@ -47,6 +56,7 @@ const PlanejamentoIA = () => {
 
 INSTRUÇÕES IMPORTANTES:
 - Seja RESUMIDO e DIRETO em todas as seções
+- Analise as imagens fornecidas para complementar seu diagnóstico.
 - NÃO descreva quais dentes estão presentes na radiografia panorâmica
 - NÃO mencione ou indique Twin Block em nenhuma circunstância
 - SEMPRE ofereça alinhadores transparentes como opção alternativa para:
@@ -90,7 +100,7 @@ Analise os dados do paciente e forneça um diagnóstico inicial estruturado segu
 
 Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
 
-    const userPrompt = `Paciente: ${formData.nomePaciente}
+    const userPromptText = `Paciente: ${formData.nomePaciente}
 Data de nascimento: ${formData.dataNascimento || "Não informada"}
 
 QUEIXAS E OBJETIVOS:
@@ -116,9 +126,19 @@ DIAGNÓSTICO PRELIMINAR:
 CONSIDERAÇÕES ADICIONAIS:
 ${formData.consideracoes || "Nenhuma"}
 
-Por favor, forneça uma análise completa seguindo o formato especificado.`;
+Por favor, forneça uma análise completa seguindo o formato especificado. Analise também as imagens em anexo para complementar o diagnóstico.`;
 
     setIsLoading(true);
+
+    const userMessageContent: any[] = [{ type: "text", text: userPromptText }];
+    images
+      .filter(img => img.type.startsWith("image/"))
+      .forEach(img => {
+        userMessageContent.push({
+          type: "image_url",
+          image_url: { url: img.data },
+        });
+      });
     
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -131,7 +151,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
           model: "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
+            { role: "user", content: userMessageContent },
           ],
           temperature: 0.7,
           max_tokens: 2000,
@@ -147,12 +167,12 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
       const aiResponse = data.choices[0].message.content;
 
       setMessages([
-        { role: "user", content: "Gerar diagnóstico inicial" },
+        { role: "user", content: "Gerar diagnóstico inicial com base nos dados e imagens." },
         { role: "assistant", content: aiResponse },
       ]);
     } catch (error: any) {
       console.error("Error:", error);
-      toast.error(error.message || "Erro ao gerar diagnóstico. Verifique sua chave de API.");
+      toast.error(error.message || "Erro ao gerar diagnóstico. Verifique sua chave de API e as imagens enviadas.");
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +205,11 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
               role: "system",
               content: "Você é um dentista sênior especializado em ortodontia. Continue a conversa de forma profissional e baseada em evidências científicas.",
             },
-            ...messages,
+            ...messages.map(msg => ({
+              ...msg,
+              // Ensure content is in the correct format for the API history
+              content: typeof msg.content === 'string' ? msg.content : [{ type: 'text', text: 'Análise anterior baseada em imagens e texto.' }]
+            })),
             userMessage,
           ],
           temperature: 0.7,
@@ -211,10 +235,12 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
 
   const createPlanejamento = () => {
     const lastAssistantMessage = messages.filter(m => m.role === "assistant").pop();
-    if (lastAssistantMessage) {
+    if (lastAssistantMessage && typeof lastAssistantMessage.content === 'string') {
       localStorage.setItem("planejamentoFinal", lastAssistantMessage.content);
       toast.success("Planejamento criado com sucesso!");
       navigate("/");
+    } else {
+      toast.error("Não foi possível salvar o planejamento. A última resposta não é um texto válido.");
     }
   };
 
@@ -254,7 +280,9 @@ Por favor, forneça uma análise completa seguindo o formato especificado.`;
             >
               <Card className={`max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
                 <CardContent className="p-4">
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="whitespace-pre-wrap">
+                    {typeof message.content === 'string' ? message.content : (message.content[0] as any).text}
+                  </div>
                 </CardContent>
               </Card>
             </div>
