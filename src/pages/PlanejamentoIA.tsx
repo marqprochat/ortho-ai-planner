@@ -148,7 +148,7 @@ Por favor, forneça uma análise completa seguindo o formato especificado. Anali
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gpt-5-nano",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessageContent },
