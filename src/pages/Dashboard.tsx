@@ -34,10 +34,10 @@ const Dashboard = () => {
             <span>Pacientes</span>
           </button>
           
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
+          <Link to="/novo-planejamento" className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
             <Brain className="h-5 w-5" />
             <span>Planejamento IA</span>
-          </button>
+          </Link>
         </nav>
       </aside>
 

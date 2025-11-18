@@ -4,8 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
-import NovoPlanejamento from "./pages/NovoPlanejamento";
-import PlanejamentoIA from "./pages/PlanejamentoIA";
+import NovoPlanejamentoIA from "./pages/NovoPlanejamentoIA";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,8 +17,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/novo-planejamento" element={<NovoPlanejamento />} />
-          <Route path="/planejamento-ia" element={<PlanejamentoIA />} />
+          <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
