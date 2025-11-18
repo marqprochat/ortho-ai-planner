@@ -399,6 +399,7 @@ const NovoPlanejamento = () => {
                           <SelectItem value="preventivo">Preventivo</SelectItem>
                           <SelectItem value="interceptativo">Interceptativo</SelectItem>
                           <SelectItem value="corretivo">Corretivo</SelectItem>
+                          <SelectItem value="orto-cirurgico">Orto-cirúrgico</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
