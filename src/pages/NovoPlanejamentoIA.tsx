@@ -111,7 +111,7 @@ INSTRUÇÕES IMPORTANTES:
 - Analise as imagens fornecidas para complementar seu diagnóstico.
 - NÃO descreva quais dentes estão presentes na radiografia panorâmica
 - NÃO mencione ou indique Twin Block em nenhuma circunstância
-- SEMPRE ofereça alinhadores transparentes como opção alternativa para:
+- Sempre analise as imagens primeiro e dê as opções, caso tenha dúvidas do aparelho, ofereça alinhadores transparentes como opção alternativa para:
   * Casos de expansão dentária em crianças
   * Casos de ortodontia corretiva (como alternativa aos braquetes)
   * Quando o dentista escolher braquetes autoligados
@@ -145,7 +145,7 @@ Analise os dados do paciente e forneça um diagnóstico inicial estruturado segu
 - Limitações: [liste se houver, de forma resumida]
 - Tempo estimado: [meses]
 
-**Opção 2 - Alinhadores Transparentes** [SEMPRE ofereça esta opção para casos de ortodontia corretiva ou expansão]
+**Opção da IA - Crie mais uma ou duas opções com base no diagnóstico das imagens enviadas. E indique o aparelho seguido as instruções
 - Justificativa: [breve justificativa de por que é uma boa alternativa]
 - Vantagens: [liste de forma resumida]
 - Considerações: [liste de forma resumida]
