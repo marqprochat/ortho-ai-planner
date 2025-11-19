@@ -109,9 +109,10 @@ const NovoPlanejamentoIA = () => {
 INSTRUÇÕES IMPORTANTES:
 - Seja RESUMIDO e DIRETO em todas as seções
 - Analise as imagens fornecidas para complementar seu diagnóstico.
+- Sugira um planejamento baseado apenas nas evidências. Não quero trabalhar com possibilidades remotas
 - NÃO descreva quais dentes estão presentes na radiografia panorâmica
 - NÃO mencione ou indique Twin Block em nenhuma circunstância
-- Sempre analise as imagens primeiro e dê as opções, caso tenha dúvidas do aparelho, ofereça alinhadores transparentes como opção alternativa para:
+- Sempre analise as imagens primeiro e dê até duas opções conforme seja necessário, caso tenha dúvidas do aparelho, ofereça alinhadores transparentes como opção alternativa para:
   * Casos de expansão dentária em crianças
   * Casos de ortodontia corretiva (como alternativa aos braquetes)
   * Quando o dentista escolher braquetes autoligados
