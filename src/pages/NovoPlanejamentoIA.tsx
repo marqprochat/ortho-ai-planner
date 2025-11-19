@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, Brain, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Brain, Send, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ const NovoPlanejamentoIA = () => {
 
   // Estado do Formulário
   const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => {
     const savedData = localStorage.getItem("planejamentoFormData");
     return savedData ? JSON.parse(savedData) : {
@@ -51,6 +52,21 @@ const NovoPlanejamentoIA = () => {
     localStorage.setItem("planejamentoFormData", JSON.stringify(formData));
   }, [formData]);
 
+  // Sincroniza as pré-visualizações com os arquivos e gerencia as Object URLs
+  useEffect(() => {
+    if (images.length === 0) {
+      setImagePreviews([]);
+      return;
+    }
+    const newObjectUrls = images.map(file => URL.createObjectURL(file));
+    setImagePreviews(newObjectUrls);
+
+    // Função de limpeza para revogar as URLs e evitar vazamentos de memória
+    return () => {
+      newObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [images]);
+
   // Efeitos do Chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,8 +75,16 @@ const NovoPlanejamentoIA = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
+      if (images.length + newFiles.length > 10) {
+        toast.error("O limite total é de 10 imagens.");
+        return;
+      }
       setImages(prev => [...prev, ...newFiles]);
     }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setImages(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
   };
 
   const handleClearStorage = () => {
@@ -104,8 +128,38 @@ const NovoPlanejamentoIA = () => {
     try {
       const imagePayloads = await convertFilesToBase64(images);
       
-      const systemPrompt = `Você é um dentista sênior especializado em ortodontia e ortopedia funcional dos maxilares, com domínio de aparelhos móveis, fixos (Roth metálico/estético), autoligados e alinhadores transparentes.
+      const systemPrompt = `Você é um Ortodontista Sênior com mais de 20 anos de experiência, especialista em Ortopedia Funcional dos Maxilares, Ortodontia Interceptativa e Ortodontia Fixa (Roth metálico/estético), Autoligados e Alinhadores.
 
+Sua função é analisar exames e radiografias enviados pelo usuário, interpretar informações clínicas estruturadas e retornar somente diagnósticos e planos de tratamento realistas, embasados e seguros.
+
+REGRAS GERAIS
+
+Nunca invente informações.
+Se algo não estiver visível ou não for possível avaliar, diga claramente:
+“Não é possível avaliar X com as imagens fornecidas.”
+
+Use linguagem simples, objetiva e didática, acessível para dentistas generalistas e estudantes.
+
+Evite jargões técnicos desnecessários.
+Utilize termos clássicos, porém com explicação curta quando necessário.
+
+Sempre entregue no máximo 3 planos de tratamento, bem estruturados.
+
+Jamais faça diagnósticos médicos fora da odontologia.
+
+Sempre considere todas as imagens recebidas:
+
+radiografia panorâmica
+
+telerradiografia lateral
+
+fotografias intrabucais
+
+fotografias extrabucais
+
+documentação ortodôntica digital
+
+modelos 3D (se enviados)
 INSTRUÇÕES IMPORTANTES:
 - Seja RESUMIDO e DIRETO em todas as seções
 - Analise as imagens fornecidas para complementar seu diagnóstico.
@@ -122,9 +176,9 @@ Analise os dados do paciente e forneça um diagnóstico inicial estruturado segu
 
 **1. FASE DE DESENVOLVIMENTO**
 - Dentição: [decídua/mista/permanente]
-- Achados radiográficos: [mencione APENAS se houver dentes inclusos, em formação, cistos, etc. NÃO liste dentes presentes]
+- Achados radiográficos: [mencione APENAS se houver dentes inclusos, em formação, cisos, etc. NÃO liste dentes presentes. SE NÃO ENCONTRAR NADA, DIGA "Não identifiquei nada a se citar."]
 
-**2. MÁ-OCLUSão**
+**2. MÁ-OCLUSÃO**
 - Perfil facial: [breve descrição]
 - Relação molar: [breve descrição]
 - Relação canina: [breve descrição]
@@ -140,11 +194,13 @@ Analise os dados do paciente e forneça um diagnóstico inicial estruturado segu
 
 **5. OPÇÕES DE TRATAMENTO**
 
-**Opção 1 - Plano do Dentista Responsável**
+**Opção 1 - Plano do Dentista Responsável [Replique somente o que o dentista escolheu. caso não receba, informe e pule para opção 2]**
 - Aparelho: [nome]
-- Vantagens: [liste de forma resumida]
-- Limitações: [liste se houver, de forma resumida]
+- Vantagens: [analise o planejamento escolhido pelo dentista e liste as vantagens]
+- Limitações: [analise o planejamento escolhido pelo dentista e liste de forma resumida]
 - Tempo estimado: [meses]
+
+- Considerações da IA: [analise o planejamento escolhido pelo dentista e se achar necessário ou não concordar, justifique de forma breve. Não mostre caso não tenha considerações relevantes]
 
 **Opção da IA - Crie mais uma ou duas opções com base no diagnóstico das imagens enviadas. E indique o aparelho seguido as instruções
 - Justificativa: [breve justificativa de por que é uma boa alternativa]
@@ -360,6 +416,31 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                 <Input id="images" type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
                 <p className="text-sm text-muted-foreground mt-2">{images.length} arquivo(s) selecionado(s)</p>
               </div>
+              {imagePreviews.length > 0 && (
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {imagePreviews.map((previewUrl, index) => (
+                    <div key={previewUrl} className="relative group aspect-square">
+                      <img
+                        src={previewUrl}
+                        alt={`Preview ${images[index]?.name || index}`}
+                        className="w-full h-full object-cover rounded-lg border"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRemoveImage(index)}
+                        >
+                          <X className="h-4 w-4" />
+                          <span className="sr-only">Remover imagem</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           <div className="flex justify-end">
