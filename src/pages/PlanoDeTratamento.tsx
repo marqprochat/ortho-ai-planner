@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 // Interfaces
 interface Message {
@@ -60,7 +59,7 @@ ${chatHistory}
 
 Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown para formatação:
 
-**PLANO DE TRATAMENTO ORTODÔNTICO**
+**PLANO DE TRATamento ORTODÔNTICO**
 
 **1. OPÇÃO ESCOLHIDA**
 - [Replique aqui o nome e a descrição da opção escolhida pelo dentista]
@@ -130,67 +129,46 @@ Seja claro, objetivo e use uma linguagem profissional.`;
       return;
     }
     setIsExporting(true);
+
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = '180mm'; // Largura A4 menos margens
+    tempContainer.style.boxSizing = 'border-box';
+    tempContainer.style.background = 'white';
+    tempContainer.style.color = 'black';
+    tempContainer.style.fontFamily = "'Helvetica', 'Arial', sans-serif";
+    tempContainer.style.fontSize = '12pt';
+    tempContainer.style.lineHeight = '1.6';
+
+    const formattedContent = plan
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^- (.*)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
+      .replace(/\n/g, '<br />');
+    
+    tempContainer.innerHTML = `<div style="white-space: pre-wrap;">${formattedContent}</div>`;
+    document.body.appendChild(tempContainer);
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
     try {
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.width = '210mm';
-      tempContainer.style.padding = '15mm';
-      tempContainer.style.boxSizing = 'border-box';
-      tempContainer.style.background = 'white';
-      tempContainer.style.lineHeight = '1.6';
-      tempContainer.style.fontSize = '12pt';
-      
-      const formattedContent = plan
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^- (.*)$/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
-        .replace(/\n/g, '<br />');
-      
-      tempContainer.innerHTML = `<div style="white-space: pre-wrap; font-family: 'Helvetica', 'Arial', sans-serif;">${formattedContent}</div>`;
-      document.body.appendChild(tempContainer);
-
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      await pdf.html(tempContainer, {
+        callback: function (doc) {
+          doc.save('plano-de-tratamento.pdf');
+          document.body.removeChild(tempContainer);
+          toast.success("PDF exportado com sucesso!");
+          setIsExporting(false);
+        },
+        margin: [15, 15, 15, 15],
+        autoPaging: 'text',
+        width: 180, // Largura da página A4 (210mm) - margem esq (15mm) - margem dir (15mm)
         windowWidth: tempContainer.scrollWidth,
-        windowHeight: tempContainer.scrollHeight,
       });
-      
-      document.body.removeChild(tempContainer);
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgProps = pdf.getImageProperties(imgData);
-      const ratio = imgProps.height / imgProps.width;
-      
-      const pdfImageWidth = pdfWidth;
-      const pdfImageHeight = pdfImageWidth * ratio;
-
-      let heightLeft = pdfImageHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfImageWidth, pdfImageHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position -= pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfImageWidth, pdfImageHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save("plano-de-tratamento.pdf");
-      toast.success("PDF exportado com sucesso!");
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Ocorreu um erro ao exportar o PDF.");
-    } finally {
+      document.body.removeChild(tempContainer);
       setIsExporting(false);
     }
   };
