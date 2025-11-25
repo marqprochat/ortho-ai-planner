@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ArrowLeft, FileDown, Loader2 } from "lucide-react";
@@ -21,7 +21,6 @@ const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const PlanoDeTratamento = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const planContentRef = useRef<HTMLDivElement>(null);
 
   const [plan, setPlan] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +65,7 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 **1. OPÇÃO ESCOLHIDA**
 - [Replique aqui o nome e a descrição da opção escolhida pelo dentista]
 
-**2. APARELHOS E ACESSÓRIOS**
+**2. APARELHOS E ACESSÓrios**
 - [Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]
 
 **3. TEMPO ESTIMADO DE TRATAMENTO**
@@ -126,61 +125,66 @@ Seja claro, objetivo e use uma linguagem profissional.`;
   }, [messages, selectedOption, selectedModel, navigate]);
 
   const handleExportPDF = async () => {
-    if (!planContentRef.current) return;
+    if (!plan) {
+      toast.error("Não há conteúdo para exportar.");
+      return;
+    }
     setIsExporting(true);
     try {
-      // Criar um elemento temporário para renderizar o conteúdo formatado
       const tempContainer = document.createElement('div');
       tempContainer.style.position = 'absolute';
       tempContainer.style.left = '-9999px';
-      tempContainer.style.width = '210mm'; // Largura de uma página A4
-      tempContainer.style.padding = '20px';
+      tempContainer.style.width = '210mm';
+      tempContainer.style.padding = '15mm';
+      tempContainer.style.boxSizing = 'border-box';
       tempContainer.style.background = 'white';
       tempContainer.style.lineHeight = '1.6';
+      tempContainer.style.fontSize = '12pt';
       
-      // Converter o conteúdo markdown em HTML básico
       const formattedContent = plan
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
-        .replace(/^- (.*)$/gm, '<li>$1</li>') // Itens de lista
-        .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>') // Agrupar itens em listas
-        .replace(/\n\n/g, '</p><p>') // Parágrafos
-        .replace(/<p><(ul|li|strong)/g, '<$1') // Corrigir parágrafos antes de elementos
-        .replace(/<\/(ul|li|strong)><\/p>/g, '</$1>');
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^- (.*)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>')
+        .replace(/\n/g, '<br />');
       
-      tempContainer.innerHTML = `<div style="white-space: pre-wrap;">${formattedContent}</div>`;
+      tempContainer.innerHTML = `<div style="white-space: pre-wrap; font-family: 'Helvetica', 'Arial', sans-serif;">${formattedContent}</div>`;
       document.body.appendChild(tempContainer);
 
       const canvas = await html2canvas(tempContainer, {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        windowWidth: tempContainer.scrollWidth,
+        windowHeight: tempContainer.scrollHeight,
       });
       
+      document.body.removeChild(tempContainer);
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
+      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = imgWidth / imgHeight;
-      const widthInPdf = pdfWidth - 20; // with margin
-      const heightInPdf = widthInPdf / ratio;
       
-      let heightLeft = heightInPdf;
-      let position = 10; // top margin
+      const imgProps = pdf.getImageProperties(imgData);
+      const ratio = imgProps.height / imgProps.width;
+      
+      const pdfImageWidth = pdfWidth;
+      const pdfImageHeight = pdfImageWidth * ratio;
 
-      pdf.addImage(imgData, 'PNG', 10, position, widthInPdf, heightInPdf);
-      heightLeft -= (pdfHeight - 20);
+      let heightLeft = pdfImageHeight;
+      let position = 0;
 
-      // Adicionar páginas adicionais se necessário
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfImageWidth, pdfImageHeight);
+      heightLeft -= pdfHeight;
+
       while (heightLeft > 0) {
-        position = heightLeft - heightInPdf + 10;
+        position -= pdfHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, widthInPdf, heightInPdf);
-        heightLeft -= (pdfHeight - 20);
+        pdf.addImage(imgData, 'PNG', 0, position, pdfImageWidth, pdfImageHeight);
+        heightLeft -= pdfHeight;
       }
 
-      document.body.removeChild(tempContainer);
       pdf.save("plano-de-tratamento.pdf");
       toast.success("PDF exportado com sucesso!");
     } catch (error) {
@@ -224,9 +228,6 @@ Seja claro, objetivo e use uma linguagem profissional.`;
             ) : (
               <div className="border rounded-md bg-muted/20">
                 <Textarea
-                  ref={(el) => {
-                    if (el) planContentRef.current = el;
-                  }}
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
                   className="min-h-[600px] w-full resize-y border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-4"
