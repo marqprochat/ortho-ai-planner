@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ArrowLeft, Upload, Brain, Send, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // Interfaces para o Chat com IA
@@ -22,10 +24,12 @@ interface ImagePayload {
 }
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const NovoPlanejamentoIA = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<'form' | 'chat'>('form');
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
 
   // Estado do Formulário
   const [images, setImages] = useState<File[]>([]);
@@ -46,6 +50,10 @@ const NovoPlanejamentoIA = () => {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Estado do Diálogo de Opções
+  const [isOptionDialogOpen, setIsOptionDialogOpen] = useState(false);
+  const [treatmentOptions, setTreatmentOptions] = useState<string[]>([]);
 
   // Efeitos do Formulário
   useEffect(() => {
@@ -117,8 +125,14 @@ const NovoPlanejamentoIA = () => {
       toast.error("Por favor, preencha o nome do paciente");
       return;
     }
-    if (!apiKey) {
+
+    if (selectedModel.startsWith('gpt') && !apiKey) {
       toast.error("A chave de API da OpenAI não está configurada.");
+      return;
+    }
+
+    if (selectedModel.startsWith('gemini') && !geminiKey) {
+      toast.error("A chave de API do Gemini não está configurada.");
       return;
     }
 
@@ -127,7 +141,7 @@ const NovoPlanejamentoIA = () => {
 
     try {
       const imagePayloads = await convertFilesToBase64(images);
-      
+
       const systemPrompt = `Você é um Ortodontista Sênior com mais de 20 anos de experiência, especialista em Ortopedia Funcional dos Maxilares, Ortodontia Interceptativa e Ortodontia Fixa (Roth metálico/estético), Autoligados e Alinhadores.
 
 Sua função é analisar exames e radiografias enviados pelo usuário, interpretar informações clínicas estruturadas e retornar somente diagnósticos e planos de tratamento realistas, embasados e seguros.
@@ -221,32 +235,58 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
           });
         });
 
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessageContent },
-          ],
-          temperature: 0.7,
-          max_completion_tokens: 2000,
-        }),
-      });
+      if (selectedModel.startsWith('gpt')) {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userMessageContent },
+            ],
+            temperature: 0.7,
+            max_completion_tokens: 2000,
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || "Erro na API da OpenAI");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error?.message || "Erro na API da OpenAI");
+        }
+
+        const data = await response.json();
+        const aiResponse = data.choices[0].message.content;
+
+        setMessages([
+          { role: "user", content: "Gerar diagnóstico inicial com base nos dados e imagens." },
+          { role: "assistant", content: aiResponse },
+        ]);
+      } else {
+        // Gemini Implementation
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const model = genAI.getGenerativeModel({ model: selectedModel });
+
+        const prompt = `${systemPrompt}\n\n${userPromptText}`;
+
+        const imageParts = imagePayloads
+          .filter(img => img.type.startsWith("image/"))
+          .map(img => ({
+            inlineData: {
+              data: img.data.split(',')[1],
+              mimeType: img.type
+            }
+          }));
+
+        const result = await model.generateContent([prompt, ...imageParts]);
+        const response = await result.response;
+        const aiResponse = response.text();
+
+        setMessages([
+          { role: "user", content: "Gerar diagnóstico inicial com base nos dados e imagens." },
+          { role: "assistant", content: aiResponse },
+        ]);
       }
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-
-      setMessages([
-        { role: "user", content: "Gerar diagnóstico inicial com base nos dados e imagens." },
-        { role: "assistant", content: aiResponse },
-      ]);
     } catch (error: any) {
       console.error("Error:", error);
       toast.error(error.message || "Erro ao gerar diagnóstico.");
@@ -265,28 +305,48 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Você é um dentista sênior especializado em ortodontia. Continue a conversa de forma profissional e baseada em evidências científicas." },
-            ...messages.map(msg => ({
-              ...msg,
-              content: typeof msg.content === 'string' ? msg.content : [{ type: 'text', text: 'Análise anterior baseada em imagens e texto.' }]
-            })),
-            userMessage,
-          ],
-          temperature: 0.7,
-          max_completion_tokens: 1500,
-        }),
-      });
+      let aiResponse = "";
 
-      if (!response.ok) throw new Error("Erro na API da OpenAI");
+      if (selectedModel.startsWith('gpt')) {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              { role: "system", content: "Você é um dentista sênior especializado em ortodontia. Continue a conversa de forma profissional e baseada em evidências científicas." },
+              ...messages.map(msg => ({
+                ...msg,
+                content: typeof msg.content === 'string' ? msg.content : [{ type: 'text', text: 'Análise anterior baseada em imagens e texto.' }]
+              })),
+              userMessage,
+            ],
+            temperature: 0.7,
+            max_completion_tokens: 1500,
+          }),
+        });
 
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
+        if (!response.ok) throw new Error("Erro na API da OpenAI");
+
+        const data = await response.json();
+        aiResponse = data.choices[0].message.content;
+      } else {
+        // Gemini Chat Implementation
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const model = genAI.getGenerativeModel({ model: selectedModel });
+
+        const chat = model.startChat({
+          history: messages.map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: typeof msg.content === 'string' ? msg.content : 'Análise anterior baseada em imagens e texto.' }]
+          }))
+        });
+
+        const result = await chat.sendMessage(inputMessage);
+        const response = await result.response;
+        aiResponse = response.text();
+      }
+
       setMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
     } catch (error) {
       console.error("Error:", error);
@@ -296,63 +356,106 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
     }
   };
 
-  const createPlanejamento = () => {
+  const openCreatePlanejamentoDialog = () => {
     const lastAssistantMessage = messages.filter(m => m.role === "assistant").pop();
     if (lastAssistantMessage && typeof lastAssistantMessage.content === 'string') {
-      localStorage.setItem("planejamentoFinal", lastAssistantMessage.content);
-      toast.success("Planejamento criado com sucesso!");
-      navigate("/");
+      const options = lastAssistantMessage.content.split(/(?=\*\*Opção)/g).filter(opt => opt.trim().startsWith('**Opção'));
+      if (options.length > 0) {
+        setTreatmentOptions(options);
+        setIsOptionDialogOpen(true);
+      } else {
+        toast.error("Nenhuma opção de tratamento encontrada na resposta da IA para criar um plano.");
+      }
     } else {
-      toast.error("Não foi possível salvar o planejamento.");
+      toast.error("Não há uma resposta da IA para criar o planejamento.");
     }
+  };
+
+  const handleSelectOption = (option: string) => {
+    setIsOptionDialogOpen(false);
+    navigate("/plano-de-tratamento", {
+      state: {
+        messages,
+        selectedOption: option,
+        selectedModel,
+      },
+    });
   };
 
   if (view === 'chat') {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="border-b border-border p-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" onClick={() => setView('form')}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar ao Formulário
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Planejamento com IA</h1>
-                <p className="text-sm text-muted-foreground">Diagnóstico e análise inicial</p>
+      <>
+        <Dialog open={isOptionDialogOpen} onOpenChange={setIsOptionDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Escolha uma Opção</DialogTitle>
+              <DialogDescription>
+                Selecione uma das opções de tratamento geradas pela IA para criar um plano detalhado.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-4 max-h-[60vh] overflow-y-auto">
+              {treatmentOptions.map((option, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="w-full h-auto text-left justify-start p-4"
+                  onClick={() => handleSelectOption(option)}
+                >
+                  {option.split('\n')[0].replace(/\*\*/g, '')}
+                </Button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setIsOptionDialogOpen(false)}>Cancelar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="min-h-screen bg-background flex flex-col">
+          <div className="border-b border-border p-4">
+            <div className="max-w-5xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" onClick={() => setView('form')}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar ao Formulário
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">Planejamento com IA</h1>
+                  <p className="text-sm text-muted-foreground">Diagnóstico e análise inicial</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-5xl mx-auto space-y-4">
-            {messages.map((message, index) => (
-              <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <Card className={`max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
-                  <CardContent className="p-4"><div className="whitespace-pre-wrap">{typeof message.content === 'string' ? message.content : (message.content[0] as any).text}</div></CardContent>
-                </Card>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex justify-start">
-                <Card className="max-w-[80%]"><CardContent className="p-4 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-muted-foreground">Analisando...</span></CardContent></Card>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-        <div className="border-t border-border p-4 bg-background">
-          <div className="max-w-5xl mx-auto space-y-4">
-            <div className="flex gap-2">
-              <Textarea placeholder="Refine o diagnóstico..." value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} className="min-h-[60px]" />
-              <Button onClick={sendMessage} disabled={isLoading || !inputMessage.trim()} size="icon" className="h-[60px] w-[60px]">{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="max-w-5xl mx-auto space-y-4">
+              {messages.map((message, index) => (
+                <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <Card className={`max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
+                    <CardContent className="p-4"><div className="whitespace-pre-wrap">{typeof message.content === 'string' ? message.content : (message.content[0] as any).text}</div></CardContent>
+                  </Card>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <Card className="max-w-[80%]"><CardContent className="p-4 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-muted-foreground">Analisando...</span></CardContent></Card>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
-            {messages.filter(m => m.role === "assistant").length > 0 && (
-              <div className="flex justify-end"><Button onClick={createPlanejamento} size="lg" className="bg-success hover:bg-success/90">Criar Planejamento</Button></div>
-            )}
+          </div>
+          <div className="border-t border-border p-4 bg-background">
+            <div className="max-w-5xl mx-auto space-y-4">
+              <div className="flex gap-2">
+                <Textarea placeholder="Refine o diagnóstico..." value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} className="min-h-[60px]" />
+                <Button onClick={sendMessage} disabled={isLoading || !inputMessage.trim()} size="icon" className="h-[60px] w-[60px]">{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+              </div>
+              {messages.filter(m => m.role === "assistant").length > 0 && (
+                <div className="flex justify-end"><Button onClick={openCreatePlanejamentoDialog} size="lg" className="bg-success hover:bg-success/90">Criar Planejamento</Button></div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -441,6 +544,29 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuração da IA</CardTitle>
+              <CardDescription>Selecione o modelo de inteligência artificial para a análise</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label>Modelo de IA</Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gpt-4o-mini">OpenAI (GPT-4o-mini)</SelectItem>
+                    <SelectItem value="gpt-4o">OpenAI (GPT-4o)</SelectItem>
+                    <SelectItem value="gemini-2.5-flash">Google Gemini (Flash 2.5)</SelectItem>
+                    <SelectItem value="gemini-2.5-pro">Google Gemini (Pro 2.5)</SelectItem>
+                    <SelectItem value="gemini-3-pro-preview">Google Gemini (Pro 3 Preview)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
           <div className="flex justify-end">
