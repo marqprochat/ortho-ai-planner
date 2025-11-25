@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 // Interfaces
 interface Message {
@@ -131,115 +130,58 @@ Seja claro, objetivo e use uma linguagem profissional.`;
     }
     setIsExporting(true);
 
-    try {
-      // Criar um elemento temporário para renderizar o conteúdo formatado
-      const tempContainer = document.createElement('div');
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.width = '210mm'; // Largura de uma página A4
-      tempContainer.style.minHeight = '297mm'; // Altura de uma página A4
-      tempContainer.style.padding = '20mm'; // Margens de 20mm
-      tempContainer.style.boxSizing = 'border-box';
-      tempContainer.style.background = 'white';
-      tempContainer.style.fontFamily = "'Helvetica', 'Arial', sans-serif";
-      tempContainer.style.fontSize = '12pt';
-      tempContainer.style.lineHeight = '1.6';
-      tempContainer.style.color = 'black';
-      tempContainer.style.wordWrap = 'break-word';
-      tempContainer.style.whiteSpace = 'pre-wrap';
-      
-      // Converter o conteúdo markdown em HTML básico
-      const formattedContent = plan
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
-        .replace(/^- (.*)$/gm, '<li style="margin: 5pt 0;">$1</li>') // Itens de lista
-        .replace(/(<li.*<\/li>)+/gs, '<ul style="margin: 10pt 0; padding-left: 20pt;">$&</ul>') // Agrupar itens em listas
-        .replace(/\n\n/g, '</p><p style="margin: 10pt 0;">') // Parágrafos
-        .replace(/<p><(ul|li|strong)/g, '<$1') // Corrigir parágrafos antes de elementos
-        .replace(/<\/(ul|li|strong)><\/p>/g, '</$1>');
-      
-      tempContainer.innerHTML = `<div>${formattedContent}</div>`;
-      document.body.appendChild(tempContainer);
+    // Criar um elemento temporário para renderizar o conteúdo formatado
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = '170mm'; // Largura A4 com margens de 20mm
+    tempContainer.style.minHeight = '100px';
+    tempContainer.style.padding = '0';
+    tempContainer.style.boxSizing = 'border-box';
+    tempContainer.style.background = 'white';
+    tempContainer.style.fontFamily = "'Helvetica', 'Arial', sans-serif";
+    tempContainer.style.fontSize = '12pt';
+    tempContainer.style.lineHeight = '1.6';
+    tempContainer.style.color = 'black';
+    
+    // Converter o conteúdo markdown em HTML básico
+    const formattedContent = plan
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
+      .replace(/^- (.*)$/gm, '<li>$1</li>') // Itens de lista
+      .replace(/(<li>.*<\/li>)+/gs, '<ul style="margin: 10pt 0; padding-left: 20pt;">$&</ul>') // Agrupar itens em listas
+      .replace(/\n/g, '<br />'); // Quebras de linha
+    
+    tempContainer.innerHTML = `<div style="white-space: pre-wrap;">${formattedContent}</div>`;
+    document.body.appendChild(tempContainer);
 
-      // Usar html2canvas para capturar o conteúdo
-      const canvas = await html2canvas(tempContainer, {
-        scale: 2, // Alta resolução
-        useCORS: true,
-        logging: false,
-        width: tempContainer.scrollWidth,
-        height: tempContainer.scrollHeight,
-        windowWidth: tempContainer.scrollWidth,
-        windowHeight: tempContainer.scrollHeight,
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    try {
+      // Usar a funcionalidade html do jsPDF
+      await pdf.html(tempContainer, {
+        callback: function (doc) {
+          // Salvar o PDF
+          doc.save("plano-de-tratamento.pdf");
+          
+          // Remover o elemento temporário
+          document.body.removeChild(tempContainer);
+          
+          toast.success("PDF exportado com sucesso!");
+          setIsExporting(false);
+        },
+        margin: [20, 20, 20, 20],
+        autoPaging: 'text',
+        x: 20,
+        y: 20,
+        width: 170, // Largura A4 (210mm) - margem esq (20mm) - margem dir (20mm)
+        windowWidth: 794 // Largura em pixels para 170mm a 96 DPI
       });
-      
-      const imgData = canvas.toDataURL('image/png');
-      
-      // Criar o PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Dimensões da página A4 em mm
-      const pageWidth = 210;
-      const pageHeight = 297;
-      
-      // Margens em mm
-      const marginLeft = 20;
-      const marginTop = 20;
-      const marginRight = 20;
-      const marginBottom = 20;
-      
-      // Área útil da página
-      const contentWidth = pageWidth - marginLeft - marginRight;
-      const contentHeight = pageHeight - marginTop - marginBottom;
-      
-      // Dimensões da imagem
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      // Converter dimensões da imagem para mm (considerando 96 DPI)
-      const imgWidthMm = (imgWidth / 96) * 25.4;
-      const imgHeightMm = (imgHeight / 96) * 25.4;
-      
-      // Calcular a proporção para caber na largura da página
-      const ratio = contentWidth / imgWidthMm;
-      const displayWidth = contentWidth;
-      const displayHeight = imgHeightMm * ratio;
-      
-      // Dividir a imagem em páginas
-      let position = 0;
-      let isFirstPage = true;
-      
-      while (position < displayHeight) {
-        if (!isFirstPage) {
-          pdf.addPage();
-        }
-        
-        // Calcular a parte da imagem a ser exibida nesta página
-        const sourceY = (position / displayHeight) * imgHeight;
-        const sourceHeight = (contentHeight / displayHeight) * imgHeight;
-        
-        // Adicionar imagem à página
-        pdf.addImage(
-          imgData,
-          'PNG',
-          marginLeft,
-          marginTop - (position * (contentHeight / displayHeight)),
-          displayWidth,
-          displayHeight
-        );
-        
-        position += contentHeight;
-        isFirstPage = false;
-      }
-      
-      // Remover o elemento temporário
-      document.body.removeChild(tempContainer);
-      
-      // Salvar o PDF
-      pdf.save("plano-de-tratamento.pdf");
-      toast.success("PDF exportado com sucesso!");
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Ocorreu um erro ao exportar o PDF.");
-    } finally {
+      
+      // Remover o elemento temporário em caso de erro
+      document.body.removeChild(tempContainer);
       setIsExporting(false);
     }
   };
