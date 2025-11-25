@@ -129,7 +129,33 @@ Seja claro, objetivo e use uma linguagem profissional.`;
     if (!planContentRef.current) return;
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(planContentRef.current, { scale: 2 });
+      // Criar um elemento temporário para renderizar o conteúdo formatado
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.width = '210mm'; // Largura de uma página A4
+      tempContainer.style.padding = '20px';
+      tempContainer.style.background = 'white';
+      tempContainer.style.lineHeight = '1.6';
+      
+      // Converter o conteúdo markdown em HTML básico
+      const formattedContent = plan
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
+        .replace(/^- (.*)$/gm, '<li>$1</li>') // Itens de lista
+        .replace(/(<li>.*<\/li>)+/gs, '<ul>$&</ul>') // Agrupar itens em listas
+        .replace(/\n\n/g, '</p><p>') // Parágrafos
+        .replace(/<p><(ul|li|strong)/g, '<$1') // Corrigir parágrafos antes de elementos
+        .replace(/<\/(ul|li|strong)><\/p>/g, '</$1>');
+      
+      tempContainer.innerHTML = `<div style="white-space: pre-wrap;">${formattedContent}</div>`;
+      document.body.appendChild(tempContainer);
+
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -146,19 +172,20 @@ Seja claro, objetivo e use uma linguagem profissional.`;
       pdf.addImage(imgData, 'PNG', 10, position, widthInPdf, heightInPdf);
       heightLeft -= (pdfHeight - 20);
 
+      // Adicionar páginas adicionais se necessário
       while (heightLeft > 0) {
-        position = heightLeft - heightInPdf + 10; // reset position
+        position = heightLeft - heightInPdf + 10;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 10, position, widthInPdf, heightInPdf);
         heightLeft -= (pdfHeight - 20);
       }
 
+      document.body.removeChild(tempContainer);
       pdf.save("plano-de-tratamento.pdf");
       toast.success("PDF exportado com sucesso!");
-    } catch (error) { {
+    } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Ocorreu um erro ao exportar o PDF.");
-    }
     } finally {
       setIsExporting(false);
     }
@@ -195,11 +222,14 @@ Seja claro, objetivo e use uma linguagem profissional.`;
                 <p className="ml-4 text-muted-foreground">Gerando plano detalhado...</p>
               </div>
             ) : (
-              <div ref={planContentRef} className="p-4 border rounded-md bg-muted/20">
+              <div className="border rounded-md bg-muted/20">
                 <Textarea
+                  ref={(el) => {
+                    if (el) planContentRef.current = el;
+                  }}
                   value={plan}
                   onChange={(e) => setPlan(e.target.value)}
-                  className="min-h-[600px] w-full resize-y border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                  className="min-h-[600px] w-full resize-y border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-4"
                   placeholder="O plano de tratamento aparecerá aqui..."
                 />
               </div>
