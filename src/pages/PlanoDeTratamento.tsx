@@ -123,65 +123,47 @@ Seja claro, objetivo e use uma linguagem profissional.`;
     generatePhasedPlan();
   }, [messages, selectedOption, selectedModel, navigate]);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!plan) {
       toast.error("Não há conteúdo para exportar.");
       return;
     }
     setIsExporting(true);
 
-    // Criar um elemento temporário para renderizar o conteúdo formatado
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.width = '170mm'; // Largura A4 com margens de 20mm
-    tempContainer.style.minHeight = '100px';
-    tempContainer.style.padding = '0';
-    tempContainer.style.boxSizing = 'border-box';
-    tempContainer.style.background = 'white';
-    tempContainer.style.fontFamily = "'Helvetica', 'Arial', sans-serif";
-    tempContainer.style.fontSize = '12pt';
-    tempContainer.style.lineHeight = '1.6';
-    tempContainer.style.color = 'black';
-    
-    // Converter o conteúdo markdown em HTML básico
-    const formattedContent = plan
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrito
-      .replace(/^- (.*)$/gm, '<li>$1</li>') // Itens de lista
-      .replace(/(<li>.*<\/li>)+/gs, '<ul style="margin: 10pt 0; padding-left: 20pt;">$&</ul>') // Agrupar itens em listas
-      .replace(/\n/g, '<br />'); // Quebras de linha
-    
-    tempContainer.innerHTML = `<div style="white-space: pre-wrap;">${formattedContent}</div>`;
-    document.body.appendChild(tempContainer);
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    
     try {
-      // Usar a funcionalidade html do jsPDF
-      await pdf.html(tempContainer, {
-        callback: function (doc) {
-          // Salvar o PDF
-          doc.save("plano-de-tratamento.pdf");
-          
-          // Remover o elemento temporário
-          document.body.removeChild(tempContainer);
-          
-          toast.success("PDF exportado com sucesso!");
-          setIsExporting(false);
-        },
-        margin: [20, 20, 20, 20],
-        autoPaging: 'text',
-        x: 20,
-        y: 20,
-        width: 170, // Largura A4 (210mm) - margem esq (20mm) - margem dir (20mm)
-        windowWidth: 794 // Largura em pixels para 170mm a 96 DPI
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Configurações da página e da fonte
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      const contentWidth = pageWidth - margin * 2;
+      const fontSize = 12;
+      const lineHeight = 7; // em mm
+      
+      pdf.setFontSize(fontSize);
+      
+      // Divide o texto em linhas que cabem na largura da página
+      const lines = pdf.splitTextToSize(plan, contentWidth);
+      
+      let cursorY = margin;
+
+      lines.forEach((line: string) => {
+        // Verifica se a próxima linha cabe na página atual
+        if (cursorY + lineHeight > pdf.internal.pageSize.getHeight() - margin) {
+          pdf.addPage();
+          cursorY = margin; // Reinicia o cursor no topo da nova página
+        }
+        
+        pdf.text(line, margin, cursorY);
+        cursorY += lineHeight;
       });
+
+      pdf.save("plano-de-tratamento.pdf");
+      toast.success("PDF exportado com sucesso!");
     } catch (error) {
       console.error("Error exporting PDF:", error);
       toast.error("Ocorreu um erro ao exportar o PDF.");
-      
-      // Remover o elemento temporário em caso de erro
-      document.body.removeChild(tempContainer);
+    } finally {
       setIsExporting(false);
     }
   };
