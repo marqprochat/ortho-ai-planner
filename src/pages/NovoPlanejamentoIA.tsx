@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -26,6 +26,35 @@ interface ImagePayload {
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
+const initialFormData = {
+  nomePaciente: "",
+  dataNascimento: "",
+  telefone: "",
+  nCarteirinha: "",
+  queixas: "",
+  perfilFacial: "",
+  labios: "",
+  denticaoAtual: "",
+  relacaoMolar: [] as string[],
+  relacaoCanina: [] as string[],
+  linhaMedia: [] as string[],
+  sobressaliencia: "",
+  sobremordida: "",
+  exameClinicoIntraoral: [] as string[],
+  examesComplementares: [] as string[],
+  diagnostico: "",
+  etiologia: "",
+  tipoTratamento: "",
+  aparelhoIndicado: "",
+  aparelhoSelecionado: "",
+  tempoEstimado: "",
+  colaboracao: "",
+  consideracoes: "",
+  nomeOrtodontista: "",
+  croOrtodontista: "",
+  dataPlanejamento: "",
+};
+
 const NovoPlanejamentoIA = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<'form' | 'chat'>('form');
@@ -36,13 +65,7 @@ const NovoPlanejamentoIA = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => {
     const savedData = localStorage.getItem("planejamentoFormData");
-    return savedData ? JSON.parse(savedData) : {
-      nomePaciente: "", dataNascimento: "", telefone: "", carteirinha: "",
-      queixas: "", objetivoTratamento: "", perfilFacial: "", labios: "",
-      denticaoAtual: "", sobressaliencia: "", sobremordida: "",
-      diagnostico: "", etiologia: "", tipoTratamento: "", aparelhoSelecionado: "",
-      tempoEstimado: "", colaboracao: "", consideracoes: "",
-    };
+    return savedData ? JSON.parse(savedData) : initialFormData;
   });
 
   // Estado do Chat
@@ -97,15 +120,34 @@ const NovoPlanejamentoIA = () => {
 
   const handleClearStorage = () => {
     localStorage.removeItem("planejamentoFormData");
-    setFormData({
-      nomePaciente: "", dataNascimento: "", telefone: "", carteirinha: "",
-      queixas: "", objetivoTratamento: "", perfilFacial: "", labios: "",
-      denticaoAtual: "", sobressaliencia: "", sobremordida: "",
-      diagnostico: "", etiologia: "", tipoTratamento: "", aparelhoSelecionado: "",
-      tempoEstimado: "", colaboracao: "", consideracoes: "",
-    });
+    setFormData(initialFormData);
     setImages([]);
     toast.success("Dados do formulário limpos com sucesso!");
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 11) value = value.substring(0, 11);
+    if (value.length > 10) {
+      value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (value.length > 5) {
+      value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (value.length > 2) {
+      value = value.replace(/^(\d{2})(\d*)/, "($1) $2");
+    } else {
+      value = value.replace(/^(\d*)/, "($1");
+    }
+    setFormData({ ...formData, telefone: value });
+  };
+
+  const handleMultiSelectChange = (field: keyof typeof initialFormData, value: string) => {
+    setFormData(prev => {
+      const currentValues = (prev[field] as string[]) || [];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(item => item !== value)
+        : [...currentValues, value];
+      return { ...prev, [field]: newValues };
+    });
   };
 
   const convertFilesToBase64 = (files: File[]): Promise<ImagePayload[]> => {
@@ -223,7 +265,46 @@ Analise os dados do paciente e forneça um diagnóstico inicial estruturado segu
 
 Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
 
-      const userPromptText = `Analise os dados do paciente e as imagens em anexo. Paciente: ${formData.nomePaciente}, Data de nascimento: ${formData.dataNascimento || "Não informada"}. Queixas: ${formData.queixas || "Não informadas"}. Objetivo: ${formData.objetivoTratamento || "Não informado"}. Perfil: ${formData.perfilFacial || "Não informado"}. Lábios: ${formData.labios || "Não informado"}. Dentição: ${formData.denticaoAtual || "Não informada"}. Sobressaliência: ${formData.sobressaliencia || "Não informada"} mm. Sobremordida: ${formData.sobremordida || "Não informada"} mm. Diagnóstico: ${formData.diagnostico || "Não informado"}. Etiologia: ${formData.etiologia || "Não informada"}. Tratamento: ${formData.tipoTratamento || "Não informado"}. Aparelho: ${formData.aparelhoSelecionado || "Não informado"}. Tempo: ${formData.tempoEstimado || "Não informado"} meses. Colaboração: ${formData.colaboracao || "Não informada"}. Considerações: ${formData.consideracoes || "Nenhuma"}.`;
+      const userPromptText = `
+      **Dados do Paciente:**
+      - Nome: ${formData.nomePaciente}
+      - Data de Nascimento: ${formData.dataNascimento}
+      - Telefone: ${formData.telefone}
+      - Nº Carteirinha: ${formData.nCarteirinha || "N/A"}
+      - Queixas: ${formData.queixas}
+
+      **Exame Clínico Extraoral:**
+      - Perfil Facial: ${formData.perfilFacial}
+      - Lábios: ${formData.labios}
+
+      **Exame Clínico Intraoral:**
+      - Dentição: ${formData.denticaoAtual}
+      - Relação Molar: ${formData.relacaoMolar.join(', ') || "N/A"}
+      - Relação Canina: ${formData.relacaoCanina.join(', ') || "N/A"}
+      - Linha Média: ${formData.linhaMedia.join(', ') || "N/A"}
+      - Sobressaliência: ${formData.sobressaliencia} mm
+      - Sobremordida: ${formData.sobremordida} mm
+      - Outros achados: ${formData.exameClinicoIntraoral.join(', ') || "N/A"}
+
+      **Exames Complementares Solicitados:**
+      - ${formData.examesComplementares.join(', ')}
+
+      **Diagnóstico e Tratamento:**
+      - Diagnóstico (Má Oclusão): ${formData.diagnostico}
+      - Etiologia: ${formData.etiologia}
+      - Tipo de Tratamento: ${formData.tipoTratamento}
+      - Aparelho Indicado: ${formData.aparelhoIndicado === 'Outro' ? formData.aparelhoSelecionado : formData.aparelhoIndicado}
+      - Tempo Estimado: ${formData.tempoEstimado} meses
+      - Colaboração Esperada: ${formData.colaboracao}
+      - Considerações Adicionais: ${formData.consideracoes || "Nenhuma"}
+
+      **Responsável Técnico:**
+      - Ortodontista: ${formData.nomeOrtodontista}
+      - CRO: ${formData.croOrtodontista}
+      - Data: ${formData.dataPlanejamento}
+
+      Analise os dados acima e as imagens em anexo para gerar o diagnóstico e plano de tratamento.
+      `;
 
       const userMessageContent: any[] = [{ type: "text", text: userPromptText }];
       imagePayloads
@@ -472,44 +553,98 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
           <p className="text-sm text-primary mt-2">Os dados do formulário são salvos automaticamente</p>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); generateInitialDiagnosis(); }} className="space-y-6">
+          {/* Dados do Paciente */}
           <Card>
-            <CardHeader><CardTitle>Dados do Paciente</CardTitle><CardDescription>Informações básicas do paciente</CardDescription></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardHeader><CardTitle>Dados do Paciente</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2"><Label htmlFor="nomePaciente">Nome do paciente *</Label><Input id="nomePaciente" required value={formData.nomePaciente} onChange={(e) => setFormData({ ...formData, nomePaciente: e.target.value })} /></div>
-              <div className="space-y-2"><Label htmlFor="dataNascimento">Data de nascimento</Label><Input id="dataNascimento" type="date" value={formData.dataNascimento} onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="dataNascimento">Data de nascimento *</Label><Input id="dataNascimento" type="date" required value={formData.dataNascimento} onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="telefone">Telefone *</Label><Input id="telefone" required value={formData.telefone} onChange={handlePhoneChange} placeholder="(XX) XXXXX-XXXX" /></div>
+              <div className="space-y-2"><Label htmlFor="nCarteirinha">Nº da carteirinha/convênio</Label><Input id="nCarteirinha" value={formData.nCarteirinha} onChange={(e) => setFormData({ ...formData, nCarteirinha: e.target.value })} /></div>
+              <div className="md:col-span-2 space-y-2"><Label htmlFor="queixas">Queixas do paciente *</Label><Textarea id="queixas" required value={formData.queixas} onChange={(e) => setFormData({ ...formData, queixas: e.target.value })} /></div>
             </CardContent>
           </Card>
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger className="w-full"><CardHeader><CardTitle className="text-left">Detalhes Clínicos (Opcional)</CardTitle></CardHeader></CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2"><Label htmlFor="queixas">Queixas do paciente</Label><Textarea id="queixas" value={formData.queixas} onChange={(e) => setFormData({ ...formData, queixas: e.target.value })} /></div>
-                  <div className="space-y-2"><Label htmlFor="objetivoTratamento">Objetivo do tratamento</Label><Textarea id="objetivoTratamento" value={formData.objetivoTratamento} onChange={(e) => setFormData({ ...formData, objetivoTratamento: e.target.value })} /></div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Perfil facial</Label><Select value={formData.perfilFacial} onValueChange={(v) => setFormData({ ...formData, perfilFacial: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="reto">Reto</SelectItem><SelectItem value="convexo">Convexo</SelectItem><SelectItem value="concavo">Côncavo</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-2"><Label>Dentição atual</Label><Select value={formData.denticaoAtual} onValueChange={(v) => setFormData({ ...formData, denticaoAtual: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="decidua">Decídua</SelectItem><SelectItem value="mista">Mista</SelectItem><SelectItem value="permanente">Permanente</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-2"><Label>Sobressaliência (mm)</Label><Input type="number" value={formData.sobressaliencia} onChange={(e) => setFormData({ ...formData, sobressaliencia: e.target.value })} /></div>
-                    <div className="space-y-2"><Label>Sobremordida (mm)</Label><Input type="number" value={formData.sobremordida} onChange={(e) => setFormData({ ...formData, sobremordida: e.target.value })} /></div>
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger className="w-full"><CardHeader><CardTitle className="text-left">Diagnóstico e Tratamento (Opcional)</CardTitle></CardHeader></CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2"><Label htmlFor="diagnostico">Diagnóstico - Tipo de má oclusão</Label><Input id="diagnostico" value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} /></div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2"><Label>Tipo de tratamento</Label><Select value={formData.tipoTratamento} onValueChange={(v) => setFormData({ ...formData, tipoTratamento: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="preventivo">Preventivo</SelectItem><SelectItem value="interceptativo">Interceptativo</SelectItem><SelectItem value="corretivo">Corretivo</SelectItem><SelectItem value="orto-cirurgico">Orto-cirúrgico</SelectItem></SelectContent></Select></div>
-                    <div className="space-y-2"><Label>Aparelho selecionado</Label><Input value={formData.aparelhoSelecionado} onChange={(e) => setFormData({ ...formData, aparelhoSelecionado: e.target.value })} placeholder="Ex: Fixo metálico" /></div>
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+
+          {/* Exame Clínico Extraoral */}
+          <Card>
+            <CardHeader><CardTitle>Exame Clínico Extraoral</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2"><Label>Perfil facial *</Label><Select required value={formData.perfilFacial} onValueChange={(v) => setFormData({ ...formData, perfilFacial: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Braquicefálico">Braquicefálico</SelectItem><SelectItem value="Mesocefálico">Mesocefálico</SelectItem><SelectItem value="Dolicocefálico">Dolicocefálico</SelectItem></SelectContent></Select></div>
+              <div className="space-y-2"><Label>Lábios *</Label><Select required value={formData.labios} onValueChange={(v) => setFormData({ ...formData, labios: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Competentes">Competentes</SelectItem><SelectItem value="Incompetentes">Incompetentes</SelectItem></SelectContent></Select></div>
+            </CardContent>
+          </Card>
+
+          {/* Exame Clínico Intraoral */}
+          <Card>
+            <CardHeader><CardTitle>Exame Clínico Intraoral</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2"><Label>Dentição atual *</Label><Select required value={formData.denticaoAtual} onValueChange={(v) => setFormData({ ...formData, denticaoAtual: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Decídua">Decídua</SelectItem><SelectItem value="Mista">Mista</SelectItem><SelectItem value="Permanente">Permanente</SelectItem></SelectContent></Select></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label>Relação molar</Label><div className="space-y-2">
+                  {["Direita: Classe I", "Direita: Classe II", "Direita: Classe III", "Esquerda: Classe I", "Esquerda: Classe II", "Esquerda: Classe III"].map(item => (
+                    <div key={item} className="flex items-center space-x-2"><Checkbox id={`relacaoMolar-${item}`} checked={formData.relacaoMolar.includes(item)} onCheckedChange={() => handleMultiSelectChange('relacaoMolar', item)} /><label htmlFor={`relacaoMolar-${item}`}>{item}</label></div>
+                  ))}</div></div>
+                <div className="space-y-2"><Label>Relação canina</Label><div className="space-y-2">
+                  {["Direita: Classe I", "Direita: Classe II", "Direita: Classe III", "Esquerda: Classe I", "Esquerda: Classe II", "Esquerda: Classe III"].map(item => (
+                    <div key={item} className="flex items-center space-x-2"><Checkbox id={`relacaoCanina-${item}`} checked={formData.relacaoCanina.includes(item)} onCheckedChange={() => handleMultiSelectChange('relacaoCanina', item)} /><label htmlFor={`relacaoCanina-${item}`}>{item}</label></div>
+                  ))}</div></div>
+              </div>
+              <div className="space-y-2"><Label>Linha média dentária</Label><div className="flex flex-wrap gap-4">
+                {["Coincidentes", "Desviado para a direita (superior)", "Desviado para a esquerda (superior)", "Desviado para a direita (inferior)", "Desviado para a esquerda (inferior)"].map(item => (
+                  <div key={item} className="flex items-center space-x-2"><Checkbox id={`linhaMedia-${item}`} checked={formData.linhaMedia.includes(item)} onCheckedChange={() => handleMultiSelectChange('linhaMedia', item)} /><label htmlFor={`linhaMedia-${item}`}>{item}</label></div>
+                ))}</div></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label>Sobressaliência em mm *</Label><Input type="number" required value={formData.sobressaliencia} onChange={(e) => setFormData({ ...formData, sobressaliencia: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Sobremordida em mm *</Label><Input type="number" required value={formData.sobremordida} onChange={(e) => setFormData({ ...formData, sobremordida: e.target.value })} /></div>
+              </div>
+              <div className="space-y-2"><Label>Exame clínco intraoral (outros)</Label><div className="flex flex-wrap gap-4">
+                {["Mordida aberta", "Mordida profunda", "Mordida cruzada anterior", "Mordida cruzada posterior", "Unilateral", "Bilateral"].map(item => (
+                  <div key={item} className="flex items-center space-x-2"><Checkbox id={`exameClinico-${item}`} checked={formData.exameClinicoIntraoral.includes(item)} onCheckedChange={() => handleMultiSelectChange('exameClinicoIntraoral', item)} /><label htmlFor={`exameClinico-${item}`}>{item}</label></div>
+                ))}</div></div>
+            </CardContent>
+          </Card>
+
+          {/* Exames Complementares */}
+          <Card>
+            <CardHeader><CardTitle>Radiografias e exames complementares solicitados *</CardTitle></CardHeader>
+            <CardContent><div className="flex flex-wrap gap-4">
+              {["Telerradiografia em norma lateral", "Radiografia panorâmica", "Tomografia", "Fotografias intra e extraorais", "Modelos ou escaneamento digital"].map(item => (
+                <div key={item} className="flex items-center space-x-2"><Checkbox id={`exames-${item}`} checked={formData.examesComplementares.includes(item)} onCheckedChange={() => handleMultiSelectChange('examesComplementares', item)} /><label htmlFor={`exames-${item}`}>{item}</label></div>
+              ))}</div></CardContent>
+          </Card>
+
+          {/* Diagnóstico e Tratamento */}
+          <Card>
+            <CardHeader><CardTitle>Diagnóstico e Tratamento</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2"><Label htmlFor="diagnostico">Diagnóstico - Tipo de má oclusão *</Label><Input id="diagnostico" required value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label>Etiologia *</Label><Select required value={formData.etiologia} onValueChange={(v) => setFormData({ ...formData, etiologia: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Dentária">Dentária</SelectItem><SelectItem value="Esquelética">Esquelética</SelectItem><SelectItem value="Hábito">Hábito</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Tipo de tratamento *</Label><Select required value={formData.tipoTratamento} onValueChange={(v) => setFormData({ ...formData, tipoTratamento: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Ortodôntico">Ortodôntico</SelectItem><SelectItem value="Ortopédico funcional dos maxilares">Ortopédico funcional dos maxilares</SelectItem><SelectItem value="Interceptativos">Interceptativos</SelectItem><SelectItem value="Ortodôntico/preparo para cirurgia ortognática">Ortodôntico/preparo para cirurgia ortognática</SelectItem></SelectContent></Select></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label>Aparelho indicado *</Label><Select required value={formData.aparelhoIndicado} onValueChange={(v) => setFormData({ ...formData, aparelhoIndicado: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Fixo convencional">Fixo convencional</SelectItem><SelectItem value="Fixo autoligado">Fixo autoligado</SelectItem><SelectItem value="Fixo estético">Fixo estético</SelectItem><SelectItem value="Contenção ortodôntica">Contenção ortodôntica</SelectItem><SelectItem value="Alinhadores">Alinhadores</SelectItem><SelectItem value="Ortopedia funcional">Ortopedia funcional</SelectItem><SelectItem value="Outro">Outro</SelectItem></SelectContent></Select></div>
+                {formData.aparelhoIndicado === 'Outro' && (<div className="space-y-2"><Label htmlFor="aparelhoSelecionado">Aparelho selecionado para o tratamento *</Label><Input id="aparelhoSelecionado" required value={formData.aparelhoSelecionado} onChange={(e) => setFormData({ ...formData, aparelhoSelecionado: e.target.value })} /></div>)}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label htmlFor="tempoEstimado">Tempo estimado de tratamento em meses *</Label><Input id="tempoEstimado" required type="number" value={formData.tempoEstimado} onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Colaboração esperada *</Label><Select required value={formData.colaboracao} onValueChange={(v) => setFormData({ ...formData, colaboracao: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Boa">Boa</SelectItem><SelectItem value="Regular">Regular</SelectItem><SelectItem value="Difícil">Difícil</SelectItem></SelectContent></Select></div>
+              </div>
+              <div className="space-y-2"><Label htmlFor="consideracoes">Considerações adicionais (lesões, agenesias, etc)</Label><Textarea id="consideracoes" value={formData.consideracoes} onChange={(e) => setFormData({ ...formData, consideracoes: e.target.value })} /></div>
+            </CardContent>
+          </Card>
+
+          {/* Responsável Técnico */}
+          <Card>
+            <CardHeader><CardTitle>Responsável Técnico</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2"><Label htmlFor="nomeOrtodontista">Nome do ortodontista *</Label><Input id="nomeOrtodontista" required value={formData.nomeOrtodontista} onChange={(e) => setFormData({ ...formData, nomeOrtodontista: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="croOrtodontista">CRO do ortodontista *</Label><Input id="croOrtodontista" required value={formData.croOrtodontista} onChange={(e) => setFormData({ ...formData, croOrtodontista: e.target.value })} /></div>
+              <div className="space-y-2"><Label htmlFor="dataPlanejamento">Data *</Label><Input id="dataPlanejamento" type="date" required value={formData.dataPlanejamento} onChange={(e) => setFormData({ ...formData, dataPlanejamento: e.target.value })} /></div>
+            </CardContent>
+          </Card>
+
+          {/* Upload de Imagens */}
           <Card>
             <CardHeader><CardTitle>Upload de Imagens</CardTitle><CardDescription>Faça upload das radiografias e fotos clínicas (máx. 10)</CardDescription></CardHeader>
             <CardContent>
@@ -523,22 +658,9 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                 <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {imagePreviews.map((previewUrl, index) => (
                     <div key={previewUrl} className="relative group aspect-square">
-                      <img
-                        src={previewUrl}
-                        alt={`Preview ${images[index]?.name || index}`}
-                        className="w-full h-full object-cover rounded-lg border"
-                      />
+                      <img src={previewUrl} alt={`Preview ${images[index]?.name || index}`} className="w-full h-full object-cover rounded-lg border" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleRemoveImage(index)}
-                        >
-                          <X className="h-4 w-4" />
-                          <span className="sr-only">Remover imagem</span>
-                        </Button>
+                        <Button type="button" variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleRemoveImage(index)}><X className="h-4 w-4" /><span className="sr-only">Remover imagem</span></Button>
                       </div>
                     </div>
                   ))}
@@ -546,29 +668,15 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
               )}
             </CardContent>
           </Card>
+
+          {/* Configuração da IA */}
           <Card>
-            <CardHeader>
-              <CardTitle>Configuração da IA</CardTitle>
-              <CardDescription>Selecione o modelo de inteligência artificial para a análise</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>Configuração da IA</CardTitle><CardDescription>Selecione o modelo de inteligência artificial para a análise</CardDescription></CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <Label>Modelo de IA</Label>
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o modelo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gpt-4o-mini">OpenAI (GPT-4o-mini)</SelectItem>
-                    <SelectItem value="gpt-4o">OpenAI (GPT-4o)</SelectItem>
-                    <SelectItem value="gemini-2.5-flash">Google Gemini (Flash 2.5)</SelectItem>
-                    <SelectItem value="gemini-2.5-pro">Google Gemini (Pro 2.5)</SelectItem>
-                    <SelectItem value="gemini-3-pro-preview">Google Gemini (Pro 3 Preview)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="space-y-2"><Label>Modelo de IA</Label><Select value={selectedModel} onValueChange={setSelectedModel}><SelectTrigger><SelectValue placeholder="Selecione o modelo" /></SelectTrigger><SelectContent><SelectItem value="gpt-4o-mini">OpenAI (GPT-4o-mini)</SelectItem><SelectItem value="gpt-4o">OpenAI (GPT-4o)</SelectItem><SelectItem value="gemini-2.5-flash">Google Gemini (Flash 2.5)</SelectItem><SelectItem value="gemini-2.5-pro">Google Gemini (Pro 2.5)</SelectItem><SelectItem value="gemini-3-pro-preview">Google Gemini (Pro 3 Preview)</SelectItem></SelectContent></Select></div>
             </CardContent>
           </Card>
+
           <div className="flex justify-end">
             <Button type="submit" size="lg" className="gap-2" disabled={isLoading}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}Gerar Planejamento com IA</Button>
           </div>
