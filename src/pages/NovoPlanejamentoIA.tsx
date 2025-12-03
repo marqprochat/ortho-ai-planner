@@ -65,7 +65,21 @@ const NovoPlanejamentoIA = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [formData, setFormData] = useState(() => {
     const savedData = localStorage.getItem("planejamentoFormData");
-    return savedData ? JSON.parse(savedData) : initialFormData;
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      // Merge with initialFormData to ensure all array fields are initialized
+      return {
+        ...initialFormData,
+        ...parsed,
+        // Ensure arrays are always arrays
+        relacaoMolar: Array.isArray(parsed.relacaoMolar) ? parsed.relacaoMolar : [],
+        relacaoCanina: Array.isArray(parsed.relacaoCanina) ? parsed.relacaoCanina : [],
+        linhaMedia: Array.isArray(parsed.linhaMedia) ? parsed.linhaMedia : [],
+        exameClinicoIntraoral: Array.isArray(parsed.exameClinicoIntraoral) ? parsed.exameClinicoIntraoral : [],
+        examesComplementares: Array.isArray(parsed.examesComplementares) ? parsed.examesComplementares : [],
+      };
+    }
+    return initialFormData;
   });
 
   // Estado do Chat
