@@ -509,6 +509,20 @@ Gere APENAS o resumo, sem introduções ou explicações adicionais.`;
             )}
           </CardContent>
         </Card>
+
+        {/* Botão para Gerar Contrato */}
+        {!isLoading && (
+          <div className="mt-6 flex justify-end">
+            <Button
+              size="lg"
+              onClick={() => navigate("/termo-de-compromisso")}
+              className="bg-success hover:bg-success/90"
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              Gerar Contrato
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

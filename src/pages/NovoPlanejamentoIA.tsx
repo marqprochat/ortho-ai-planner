@@ -49,6 +49,7 @@ const initialFormData = {
   aparelhoSelecionado: "",
   tempoEstimado: "",
   colaboracao: "",
+  objetivoTratamento: "",
   consideracoes: "",
   nomeOrtodontista: "",
   croOrtodontista: "",
@@ -644,6 +645,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                 <div className="space-y-2"><Label htmlFor="tempoEstimado">Tempo estimado de tratamento em meses *</Label><Input id="tempoEstimado" required type="number" value={formData.tempoEstimado} onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Colaboração esperada *</Label><Select required value={formData.colaboracao} onValueChange={(v) => setFormData({ ...formData, colaboracao: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Boa">Boa</SelectItem><SelectItem value="Regular">Regular</SelectItem><SelectItem value="Difícil">Difícil</SelectItem></SelectContent></Select></div>
               </div>
+              <div className="space-y-2"><Label htmlFor="objetivoTratamento">Objetivo do tratamento *</Label><Textarea id="objetivoTratamento" required value={formData.objetivoTratamento} onChange={(e) => setFormData({ ...formData, objetivoTratamento: e.target.value })} placeholder="Ex: Paciente removeu o disjuntor, após radiografia oclusal. Damos continuidade no tratamento com aparelhos móveis." /></div>
               <div className="space-y-2"><Label htmlFor="consideracoes">Considerações adicionais (lesões, agenesias, etc)</Label><Textarea id="consideracoes" value={formData.consideracoes} onChange={(e) => setFormData({ ...formData, consideracoes: e.target.value })} /></div>
             </CardContent>
           </Card>
