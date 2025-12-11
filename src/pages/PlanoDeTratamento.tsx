@@ -78,9 +78,8 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 - **[Adicione quantas fases forem necessárias]**
 
 **5. FASE DE CONTENÇÃO**
-- **Contenção Superior:** [Descreva o tipo de contenção, ex: Placa de Hawley de uso noturno]
-- **Contenção Inferior:** [Descreva o tipo de contenção, ex: Contenção fixa higiênica 3x3]
-- **Protocolo de Uso:** [Descreva o protocolo, ex: Uso contínuo por 1 ano, seguido de uso noturno por tempo indeterminado]
+- [SEMPRE sugira Alinhadores Transparentes, inclusive em casos tratados com aparelhos fixos (bráquetes).]
+
 
 Seja claro, objetivo e use uma linguagem profissional.`;
 
