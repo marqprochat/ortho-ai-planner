@@ -237,6 +237,7 @@ INSTRUÇÕES IMPORTANTES:
 - Sugira um planejamento baseado apenas nas evidências. Não quero trabalhar com possibilidades remotas
 - NÃO descreva quais dentes estão presentes na radiografia panorâmica
 - NÃO mencione ou indique Twin Block em nenhuma circunstância
+- Na etapa de contenção, SEMPRE sugira Alinhadores Transparentes, inclusive em casos tratados com aparelhos fixos (bráquetes).
 - Sempre analise as imagens primeiro e dê até duas opções conforme seja necessário, caso tenha dúvidas do aparelho, ofereça alinhadores transparentes como opção alternativa para:
   * Casos de expansão dentária em crianças
   * Casos de ortodontia corretiva (como alternativa aos braquetes)
