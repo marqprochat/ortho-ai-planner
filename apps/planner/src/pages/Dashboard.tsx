@@ -2,47 +2,15 @@ import { Link } from "react-router-dom";
 import { Plus, Users, FileText, Brain, FolderOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import Sidebar from "@/components/Sidebar";
 
 const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-sidebar p-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-sidebar-foreground">OrtoPlan</h1>
-          <p className="text-sm text-sidebar-foreground/70">Dashboard</p>
-        </div>
-        
-        <nav className="space-y-2">
-          <Link to="/" className="flex items-center gap-3 rounded-lg bg-sidebar-primary px-4 py-3 text-sidebar-primary-foreground transition-colors">
-            <FolderOpen className="h-5 w-5" />
-            <span className="font-medium">Dashboard</span>
-          </Link>
-          
-          <Link to="/novo-planejamento" className="flex items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-            <Plus className="h-5 w-5" />
-            <span>Novo Planejamento</span>
-          </Link>
-          
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-            <FileText className="h-5 w-5" />
-            <span>Casos Ativos</span>
-          </button>
-          
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-            <Users className="h-5 w-5" />
-            <span>Pacientes</span>
-          </button>
-          
-          <Link to="/novo-planejamento" className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-colors">
-            <Brain className="h-5 w-5" />
-            <span>Planejamento IA</span>
-          </Link>
-        </nav>
-      </aside>
+      <Sidebar />
 
       {/* Main Content */}
-      <main className="ml-64 p-8">
+      <main className="ml-20 p-8 transition-all duration-300">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">Bem-vindo</h2>
           <p className="text-muted-foreground">Aqui está um resumo dos seus casos e atividades</p>
@@ -111,14 +79,16 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </Link>
-            
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-primary text-primary-foreground">
-              <CardContent className="p-8 text-center">
-                <Users className="h-12 w-12 mx-auto mb-3" />
-                <h4 className="font-semibold text-lg">Gerenciar Pacientes</h4>
-              </CardContent>
-            </Card>
-            
+
+            <Link to="/patients">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-primary text-primary-foreground">
+                <CardContent className="p-8 text-center">
+                  <Users className="h-12 w-12 mx-auto mb-3" />
+                  <h4 className="font-semibold text-lg">Gerenciar Pacientes</h4>
+                </CardContent>
+              </Card>
+            </Link>
+
             <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-accent text-accent-foreground">
               <CardContent className="p-8 text-center">
                 <FileText className="h-12 w-12 mx-auto mb-3" />

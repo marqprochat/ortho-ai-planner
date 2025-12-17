@@ -29,10 +29,11 @@ app.post('/api/auth/login', login);
 app.get('/api/auth/me', authMiddleware, getMe);
 
 // Patient Routes
-import { getPatients, createPatient, getPatient } from './controllers/patientController';
+import { getPatients, createPatient, getPatient, updatePatient } from './controllers/patientController';
 app.get('/api/patients', authMiddleware, getPatients);
 app.post('/api/patients', authMiddleware, createPatient);
 app.get('/api/patients/:id', authMiddleware, getPatient);
+app.put('/api/patients/:id', authMiddleware, updatePatient);
 
 // Planning Routes
 import { getPlannings, createPlanning, updatePlanning } from './controllers/planningController';

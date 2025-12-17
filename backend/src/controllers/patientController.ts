@@ -3,13 +3,19 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Get all patients for the user's tenant
+// Get all patients for the logged-in dentist
 export const getPatients = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
         const patients = await prisma.patient.findMany({
             where: {
-                tenantId: user.tenantId
+                tenantId: user.tenantId,
+                userId: user.id // Filter by dentist
+            },
+            include: {
+                _count: {
+                    select: { plannings: true, contracts: true }
+                }
             },
             orderBy: {
                 createdAt: 'desc'
@@ -17,6 +23,7 @@ export const getPatients = async (req: Request, res: Response) => {
         });
         res.json(patients);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Erro ao buscar pacientes' });
     }
 };
@@ -24,7 +31,7 @@ export const getPatients = async (req: Request, res: Response) => {
 // Create a new patient
 export const createPatient = async (req: Request, res: Response) => {
     try {
-        const { name, email, phone, birthDate } = req.body;
+        const { name, email, phone, birthDate, clinicId } = req.body;
         const user = (req as any).user;
 
         const patient = await prisma.patient.create({
@@ -33,7 +40,9 @@ export const createPatient = async (req: Request, res: Response) => {
                 email,
                 phone,
                 birthDate: birthDate ? new Date(birthDate) : null,
-                tenantId: user.tenantId
+                tenantId: user.tenantId,
+                userId: user.id, // Assign to logged-in dentist
+                clinicId: clinicId || null
             }
         });
 
@@ -53,10 +62,16 @@ export const getPatient = async (req: Request, res: Response) => {
         const patient = await prisma.patient.findFirst({
             where: {
                 id,
-                tenantId: user.tenantId
+                tenantId: user.tenantId,
+                userId: user.id // Ensure dentist can only see own patients
             },
             include: {
-                plannings: true
+                plannings: {
+                    orderBy: { createdAt: 'desc' }
+                },
+                contracts: {
+                    orderBy: { createdAt: 'desc' }
+                }
             }
         });
 
@@ -67,5 +82,39 @@ export const getPatient = async (req: Request, res: Response) => {
         res.json(patient);
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar paciente' });
+    }
+};
+
+// Update a patient
+export const updatePatient = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, email, phone, birthDate, clinicId } = req.body;
+        const user = (req as any).user;
+
+        // Verify ownership
+        const existing = await prisma.patient.findFirst({
+            where: { id, userId: user.id }
+        });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Paciente não encontrado' });
+        }
+
+        const patient = await prisma.patient.update({
+            where: { id },
+            data: {
+                name,
+                email,
+                phone,
+                birthDate: birthDate ? new Date(birthDate) : null,
+                clinicId: clinicId || null
+            }
+        });
+
+        res.json(patient);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao atualizar paciente' });
     }
 };

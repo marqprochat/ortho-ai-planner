@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
+import Sidebar from "@/components/Sidebar";
 
 // Interfaces
 interface Message {
@@ -383,8 +384,10 @@ Gere APENAS o resumo, sem introduções ou explicações adicionais.`;
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Sidebar />
+      <main className="ml-20 p-8 transition-all duration-300">
+        <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -535,6 +538,7 @@ Gere APENAS o resumo, sem introduções ou explicações adicionais.`;
           </div>
         )}
       </div>
+      </main>
     </div>
   );
 };

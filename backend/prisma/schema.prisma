@@ -26,8 +26,7 @@ model Clinic {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // Relations to domain specific data would be here or in separate schemas, 
-  // but for the portal access we focus on hierarchy.
+  patients    Patient[]
 }
 
 model User {
@@ -41,6 +40,7 @@ model User {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   
   appAccess   UserAppAccess[]
+  patients    Patient[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -94,7 +94,14 @@ model Patient {
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   
+  userId      String   // Dentist responsible
+  user        User     @relation(fields: [userId], references: [id])
+  
+  clinicId    String?  // Optional clinic
+  clinic      Clinic?  @relation(fields: [clinicId], references: [id])
+  
   plannings   Planning[]
+  contracts   Contract[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -111,6 +118,18 @@ model Planning {
   originalReport String? // The input text/report
   aiResponse     String? // The raw AI response
   structuredPlan Json?   // The parsed plan structure
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Contract {
+  id          String   @id @default(uuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  
+  content     String   // The generated contract text
+  logoUrl     String?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

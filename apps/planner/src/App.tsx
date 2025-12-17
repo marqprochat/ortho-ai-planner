@@ -7,6 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import NovoPlanejamentoIA from "./pages/NovoPlanejamentoIA";
 import PlanoDeTratamento from "./pages/PlanoDeTratamento";
 import TermoDeCompromisso from "./pages/TermoDeCompromisso";
+import Patients from "./pages/Patients";
+import PatientDetail from "./pages/PatientDetail";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -26,6 +28,8 @@ const App = () => (
 
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/patients" element={<Patients />} />
+              <Route path="/patients/:id" element={<PatientDetail />} />
               <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
               <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
               <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />

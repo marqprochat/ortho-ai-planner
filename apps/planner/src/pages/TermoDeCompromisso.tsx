@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
+import Sidebar from "@/components/Sidebar";
 
 interface ContractData {
     // Logo
@@ -336,348 +337,354 @@ CRO: ${croDentista}`;
 
     if (view === 'preview') {
         return (
-            <div className="min-h-screen bg-background p-8">
-                <div className="max-w-4xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <Button variant="ghost" onClick={() => setView('form')}>
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Voltar ao Formulário
-                        </Button>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsEditing(!isEditing)}
-                            >
-                                {isEditing ? <Eye className="mr-2 h-4 w-4" /> : <Edit3 className="mr-2 h-4 w-4" />}
-                                {isEditing ? "Visualizar" : "Editar"}
+            <div className="min-h-screen bg-background">
+                <Sidebar />
+                <main className="ml-20 p-8 transition-all duration-300">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex justify-between items-center mb-6">
+                            <Button variant="ghost" onClick={() => setView('form')}>
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Voltar ao Formulário
                             </Button>
-                            <Button onClick={handleExportPDF} disabled={isExporting}>
-                                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                Exportar PDF
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsEditing(!isEditing)}
+                                >
+                                    {isEditing ? <Eye className="mr-2 h-4 w-4" /> : <Edit3 className="mr-2 h-4 w-4" />}
+                                    {isEditing ? "Visualizar" : "Editar"}
+                                </Button>
+                                <Button onClick={handleExportPDF} disabled={isExporting}>
+                                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                    Exportar PDF
+                                </Button>
+                            </div>
                         </div>
-                    </div>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Termo de Compromisso</CardTitle>
-                            <CardDescription>
-                                {isEditing ? "Edite o contrato conforme necessário" : "Visualize o contrato antes de exportar"}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {contractData.logoPreview && (
-                                <div className="flex justify-center mb-6">
-                                    <img
-                                        src={contractData.logoPreview}
-                                        alt="Logo da empresa"
-                                        className="max-h-20 object-contain"
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Termo de Compromisso</CardTitle>
+                                <CardDescription>
+                                    {isEditing ? "Edite o contrato conforme necessário" : "Visualize o contrato antes de exportar"}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {contractData.logoPreview && (
+                                    <div className="flex justify-center mb-6">
+                                        <img
+                                            src={contractData.logoPreview}
+                                            alt="Logo da empresa"
+                                            className="max-h-20 object-contain"
+                                        />
+                                    </div>
+                                )}
+
+                                {isEditing ? (
+                                    <Textarea
+                                        value={editableContract}
+                                        onChange={(e) => setEditableContract(e.target.value)}
+                                        className="min-h-[600px] font-mono text-sm"
                                     />
-                                </div>
-                            )}
-
-                            {isEditing ? (
-                                <Textarea
-                                    value={editableContract}
-                                    onChange={(e) => setEditableContract(e.target.value)}
-                                    className="min-h-[600px] font-mono text-sm"
-                                />
-                            ) : (
-                                <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed border rounded-lg p-6 bg-white dark:bg-gray-900">
-                                    {editableContract}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                                ) : (
+                                    <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed border rounded-lg p-6 bg-white dark:bg-gray-900">
+                                        {editableContract}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </main>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background p-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <Button variant="ghost" onClick={() => navigate(-1)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Voltar
-                    </Button>
-                </div>
-
-                <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-foreground mb-2">Termo de Compromisso</h1>
-                    <p className="text-muted-foreground">Preencha os dados para gerar o contrato de tratamento ortodôntico</p>
-                </div>
-
-                <div className="space-y-6">
-                    {/* Logo da Empresa */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Logo/Emblema da Empresa</CardTitle>
-                            <CardDescription>Faça upload do logo para aparecer no cabeçalho do contrato</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {contractData.logoPreview ? (
-                                <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        <img
-                                            src={contractData.logoPreview}
-                                            alt="Preview do logo"
-                                            className="h-20 object-contain border rounded-lg p-2"
-                                        />
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
-                                            size="icon"
-                                            className="absolute -top-2 -right-2 h-6 w-6"
-                                            onClick={handleRemoveLogo}
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">{logoFile?.name}</p>
-                                </div>
-                            ) : (
-                                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                                    <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                                    <Label htmlFor="logo" className="cursor-pointer">
-                                        <span className="text-primary hover:text-primary/80">Clique para fazer upload</span>
-                                        <span className="text-muted-foreground"> ou arraste a imagem</span>
-                                    </Label>
-                                    <Input
-                                        id="logo"
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        onChange={handleLogoUpload}
-                                    />
-                                    <p className="text-sm text-muted-foreground mt-2">PNG, JPG ou SVG (máx. 2MB)</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Dados do Paciente */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Dados do Paciente</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nomePaciente">Nome do Paciente *</Label>
-                                    <Input
-                                        id="nomePaciente"
-                                        value={contractData.nomePaciente}
-                                        onChange={(e) => handleInputChange('nomePaciente', e.target.value)}
-                                        placeholder="Nome completo do paciente"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="responsavel">Responsável</Label>
-                                    <Input
-                                        id="responsavel"
-                                        value={contractData.responsavel}
-                                        onChange={(e) => handleInputChange('responsavel', e.target.value)}
-                                        placeholder="Nome do responsável (se menor)"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="endereco">Endereço</Label>
-                                <Input
-                                    id="endereco"
-                                    value={contractData.endereco}
-                                    onChange={(e) => handleInputChange('endereco', e.target.value)}
-                                    placeholder="Rua, número, bairro, cidade - Estado"
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="cep">CEP</Label>
-                                    <Input
-                                        id="cep"
-                                        value={contractData.cep}
-                                        onChange={handleCepChange}
-                                        placeholder="00000-000"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="cpf">CPF do Responsável</Label>
-                                    <Input
-                                        id="cpf"
-                                        value={contractData.cpf}
-                                        onChange={handleCpfChange}
-                                        placeholder="000.000.000-00"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Dados da Clínica */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Dados da Clínica</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nomeClinica">Nome da Clínica *</Label>
-                                    <Input
-                                        id="nomeClinica"
-                                        value={contractData.nomeClinica}
-                                        onChange={(e) => handleInputChange('nomeClinica', e.target.value)}
-                                        placeholder="Ex: DentalKids"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="croClinica">CRO da Clínica</Label>
-                                    <Input
-                                        id="croClinica"
-                                        value={contractData.croClinica}
-                                        onChange={(e) => handleInputChange('croClinica', e.target.value)}
-                                        placeholder="Ex: 9382"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="naturezaServico">Natureza do Serviço</Label>
-                                <Input
-                                    id="naturezaServico"
-                                    value={contractData.naturezaServico}
-                                    onChange={(e) => handleInputChange('naturezaServico', e.target.value)}
-                                />
-                            </div>
-                            <Separator />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nomeDentista">Nome do Dentista</Label>
-                                    <Input
-                                        id="nomeDentista"
-                                        value={contractData.nomeDentista}
-                                        onChange={(e) => handleInputChange('nomeDentista', e.target.value)}
-                                        placeholder="Auto-preenchido do formulário"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="croDentista">CRO do Dentista</Label>
-                                    <Input
-                                        id="croDentista"
-                                        value={contractData.croDentista}
-                                        onChange={(e) => handleInputChange('croDentista', e.target.value)}
-                                        placeholder="Auto-preenchido do formulário"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Tratamento */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Detalhes do Tratamento</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="tempoEstimado">Tempo Estimado (meses)</Label>
-                                <Input
-                                    id="tempoEstimado"
-                                    type="number"
-                                    value={contractData.tempoEstimado}
-                                    onChange={(e) => handleInputChange('tempoEstimado', e.target.value)}
-                                    placeholder="Auto-preenchido do formulário"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="objetivo">Objetivo do Tratamento (Fase Atual)</Label>
-                                <Textarea
-                                    id="objetivo"
-                                    value={contractData.objetivo}
-                                    onChange={(e) => handleInputChange('objetivo', e.target.value)}
-                                    placeholder="Ex: Paciente removeu o disjuntor, após radiografia oclusal. Damos a continuidade no tratamento com aparelhos móveis."
-                                    className="min-h-[100px]"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Valores */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Valores do Tratamento</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="valorAparelhos">Valor dos Aparelhos (R$)</Label>
-                                    <Input
-                                        id="valorAparelhos"
-                                        value={contractData.valorAparelhos}
-                                        onChange={handleCurrencyChange('valorAparelhos')}
-                                        placeholder="0,00"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="valorMensalidade">Mensalidade (R$)</Label>
-                                    <Input
-                                        id="valorMensalidade"
-                                        value={contractData.valorMensalidade}
-                                        onChange={handleCurrencyChange('valorMensalidade')}
-                                        placeholder="0,00"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="valorQuebraDanos">Quebra/Danos (R$)</Label>
-                                    <Input
-                                        id="valorQuebraDanos"
-                                        value={contractData.valorQuebraDanos}
-                                        onChange={handleCurrencyChange('valorQuebraDanos')}
-                                        placeholder="0,00"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Local e Data */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Local e Data</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="cidade">Cidade</Label>
-                                    <Input
-                                        id="cidade"
-                                        value={contractData.cidade}
-                                        onChange={(e) => handleInputChange('cidade', e.target.value)}
-                                        placeholder="Campinas"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="dataContrato">Data</Label>
-                                    <Input
-                                        id="dataContrato"
-                                        value={contractData.dataContrato}
-                                        onChange={(e) => handleInputChange('dataContrato', e.target.value)}
-                                        placeholder="Auto-preenchido com a data atual"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Botão Gerar Preview */}
-                    <div className="flex justify-end">
-                        <Button size="lg" onClick={handleGeneratePreview}>
-                            <Eye className="mr-2 h-5 w-5" />
-                            Gerar Preview do Contrato
+        <div className="min-h-screen bg-background">
+            <Sidebar />
+            <main className="ml-20 p-8 transition-all duration-300">
+                <div className="max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-6">
+                        <Button variant="ghost" onClick={() => navigate(-1)}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Voltar
                         </Button>
                     </div>
+
+                    <div className="mb-8">
+                        <h1 className="text-4xl font-bold text-foreground mb-2">Termo de Compromisso</h1>
+                        <p className="text-muted-foreground">Preencha os dados para gerar o contrato de tratamento ortodôntico</p>
+                    </div>
+
+                    <div className="space-y-6">
+                        {/* Logo da Empresa */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Logo/Emblema da Empresa</CardTitle>
+                                <CardDescription>Faça upload do logo para aparecer no cabeçalho do contrato</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {contractData.logoPreview ? (
+                                    <div className="flex items-center gap-4">
+                                        <div className="relative">
+                                            <img
+                                                src={contractData.logoPreview}
+                                                alt="Preview do logo"
+                                                className="h-20 object-contain border rounded-lg p-2"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 h-6 w-6"
+                                                onClick={handleRemoveLogo}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">{logoFile?.name}</p>
+                                    </div>
+                                ) : (
+                                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                                        <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                        <Label htmlFor="logo" className="cursor-pointer">
+                                            <span className="text-primary hover:text-primary/80">Clique para fazer upload</span>
+                                            <span className="text-muted-foreground"> ou arraste a imagem</span>
+                                        </Label>
+                                        <Input
+                                            id="logo"
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleLogoUpload}
+                                        />
+                                        <p className="text-sm text-muted-foreground mt-2">PNG, JPG ou SVG (máx. 2MB)</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Dados do Paciente */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dados do Paciente</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nomePaciente">Nome do Paciente *</Label>
+                                        <Input
+                                            id="nomePaciente"
+                                            value={contractData.nomePaciente}
+                                            onChange={(e) => handleInputChange('nomePaciente', e.target.value)}
+                                            placeholder="Nome completo do paciente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="responsavel">Responsável</Label>
+                                        <Input
+                                            id="responsavel"
+                                            value={contractData.responsavel}
+                                            onChange={(e) => handleInputChange('responsavel', e.target.value)}
+                                            placeholder="Nome do responsável (se menor)"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="endereco">Endereço</Label>
+                                    <Input
+                                        id="endereco"
+                                        value={contractData.endereco}
+                                        onChange={(e) => handleInputChange('endereco', e.target.value)}
+                                        placeholder="Rua, número, bairro, cidade - Estado"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cep">CEP</Label>
+                                        <Input
+                                            id="cep"
+                                            value={contractData.cep}
+                                            onChange={handleCepChange}
+                                            placeholder="00000-000"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cpf">CPF do Responsável</Label>
+                                        <Input
+                                            id="cpf"
+                                            value={contractData.cpf}
+                                            onChange={handleCpfChange}
+                                            placeholder="000.000.000-00"
+                                        />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Dados da Clínica */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dados da Clínica</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nomeClinica">Nome da Clínica *</Label>
+                                        <Input
+                                            id="nomeClinica"
+                                            value={contractData.nomeClinica}
+                                            onChange={(e) => handleInputChange('nomeClinica', e.target.value)}
+                                            placeholder="Ex: DentalKids"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="croClinica">CRO da Clínica</Label>
+                                        <Input
+                                            id="croClinica"
+                                            value={contractData.croClinica}
+                                            onChange={(e) => handleInputChange('croClinica', e.target.value)}
+                                            placeholder="Ex: 9382"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="naturezaServico">Natureza do Serviço</Label>
+                                    <Input
+                                        id="naturezaServico"
+                                        value={contractData.naturezaServico}
+                                        onChange={(e) => handleInputChange('naturezaServico', e.target.value)}
+                                    />
+                                </div>
+                                <Separator />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nomeDentista">Nome do Dentista</Label>
+                                        <Input
+                                            id="nomeDentista"
+                                            value={contractData.nomeDentista}
+                                            onChange={(e) => handleInputChange('nomeDentista', e.target.value)}
+                                            placeholder="Auto-preenchido do formulário"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="croDentista">CRO do Dentista</Label>
+                                        <Input
+                                            id="croDentista"
+                                            value={contractData.croDentista}
+                                            onChange={(e) => handleInputChange('croDentista', e.target.value)}
+                                            placeholder="Auto-preenchido do formulário"
+                                        />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Tratamento */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Detalhes do Tratamento</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="tempoEstimado">Tempo Estimado (meses)</Label>
+                                    <Input
+                                        id="tempoEstimado"
+                                        type="number"
+                                        value={contractData.tempoEstimado}
+                                        onChange={(e) => handleInputChange('tempoEstimado', e.target.value)}
+                                        placeholder="Auto-preenchido do formulário"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="objetivo">Objetivo do Tratamento (Fase Atual)</Label>
+                                    <Textarea
+                                        id="objetivo"
+                                        value={contractData.objetivo}
+                                        onChange={(e) => handleInputChange('objetivo', e.target.value)}
+                                        placeholder="Ex: Paciente removeu o disjuntor, após radiografia oclusal. Damos a continuidade no tratamento com aparelhos móveis."
+                                        className="min-h-[100px]"
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Valores */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Valores do Tratamento</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="valorAparelhos">Valor dos Aparelhos (R$)</Label>
+                                        <Input
+                                            id="valorAparelhos"
+                                            value={contractData.valorAparelhos}
+                                            onChange={handleCurrencyChange('valorAparelhos')}
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="valorMensalidade">Mensalidade (R$)</Label>
+                                        <Input
+                                            id="valorMensalidade"
+                                            value={contractData.valorMensalidade}
+                                            onChange={handleCurrencyChange('valorMensalidade')}
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="valorQuebraDanos">Quebra/Danos (R$)</Label>
+                                        <Input
+                                            id="valorQuebraDanos"
+                                            value={contractData.valorQuebraDanos}
+                                            onChange={handleCurrencyChange('valorQuebraDanos')}
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Local e Data */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Local e Data</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cidade">Cidade</Label>
+                                        <Input
+                                            id="cidade"
+                                            value={contractData.cidade}
+                                            onChange={(e) => handleInputChange('cidade', e.target.value)}
+                                            placeholder="Campinas"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="dataContrato">Data</Label>
+                                        <Input
+                                            id="dataContrato"
+                                            value={contractData.dataContrato}
+                                            onChange={(e) => handleInputChange('dataContrato', e.target.value)}
+                                            placeholder="Auto-preenchido com a data atual"
+                                        />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Botão Gerar Preview */}
+                        <div className="flex justify-end">
+                            <Button size="lg" onClick={handleGeneratePreview}>
+                                <Eye className="mr-2 h-5 w-5" />
+                                Gerar Preview do Contrato
+                            </Button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
