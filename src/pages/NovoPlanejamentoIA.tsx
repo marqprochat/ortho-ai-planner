@@ -475,6 +475,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         messages,
         selectedOption: option,
         selectedModel,
+        objetivoTratamento: formData.objetivoTratamento,
       },
     });
   };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ArrowLeft, FileDown, FileText, Loader2, CheckCircle2, Wrench, Clock, ListChecks, Shield, Edit3 } from "lucide-react";
+import { ArrowLeft, FileDown, FileText, Loader2, CheckCircle2, Wrench, Clock, ListChecks, Shield, Edit3, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,10 +25,11 @@ const PlanoDeTratamento = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
-  const { messages, selectedOption, selectedModel } = (location.state || {}) as {
+  const { messages, selectedOption, selectedModel, objetivoTratamento } = (location.state || {}) as {
     messages: Message[];
     selectedOption: string;
     selectedModel: string;
+    objetivoTratamento: string;
   };
 
   useEffect(() => {
@@ -57,6 +58,11 @@ O histórico da conversa e dados do paciente são:
 ${chatHistory}
 ---
 
+O objetivo do tratamento definido pelo dentista responsável é:
+---
+${objetivoTratamento}
+---
+
 Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown para formatação:
 
 **PLANO DE TRATamento ORTODÔNTICO**
@@ -64,20 +70,23 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 **1. OPÇÃO ESCOLHIDA**
 - [Replique aqui o nome e a descrição da opção escolhida pelo dentista]
 
-**2. APARELHOS E ACESSÓrios**
+**2. OBJETIVO DO TRATAMENTO**
+- [Refine e descreva o objetivo do tratamento com base no que foi informado pelo dentista: "${objetivoTratamento}"]
+
+**3. APARELHOS E ACESSÓRIOS**
 - [Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]
 
-**3. TEMPO ESTIMADO DE TRATAMENTO**
+**4. TEMPO ESTIMADO DE TRATAMENTO**
 - [Informe o tempo total estimado em meses ou anos]
 
-**4. FASES DO TRATAMENTO**
+**5. FASES DO TRATAMENTO**
 - **Fase 1 - [Nome da Fase, ex: Alinhamento e Nivelamento] (Duração: X meses)**
   - [Descrição detalhada dos procedimentos e objetivos desta fase]
 - **Fase 2 - [Nome da Fase, ex: Correção da Sobremordida e Relação de Molares] (Duração: Y meses)**
   - [Descrição detalhada dos procedimentos e objetivos desta fase]
 - **[Adicione quantas fases forem necessárias]**
 
-**5. FASE DE CONTENÇÃO**
+**6. FASE DE CONTENÇÃO**
 - [SEMPRE sugira Alinhadores Transparentes, inclusive em casos tratados com aparelhos fixos (bráquetes).]
 
 
@@ -442,6 +451,9 @@ Gere APENAS o resumo, sem introduções ou explicações adicionais.`;
                     if (section.includes('OPÇÃO ESCOLHIDA') || section.includes('OPÇÃO')) {
                       Icon = CheckCircle2;
                       iconColor = "text-green-500";
+                    } else if (section.includes('OBJETIVO')) {
+                      Icon = Target;
+                      iconColor = "text-red-500";
                     } else if (section.includes('APARELHOS') || section.includes('ACESSÓRIOS')) {
                       Icon = Wrench;
                       iconColor = "text-orange-500";
