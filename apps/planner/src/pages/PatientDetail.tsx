@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { patientService, Patient, Planning, Contract } from "../services/patientService";
 import Sidebar from "@/components/Sidebar";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { PlanningViewer } from "@/components/PlanningViewer";
 
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-500",
@@ -27,6 +29,8 @@ const PatientDetail = () => {
     const { id } = useParams<{ id: string }>();
     const [patient, setPatient] = useState<Patient | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedPlanning, setSelectedPlanning] = useState<Planning | null>(null);
+    const [isViewerOpen, setIsViewerOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -158,7 +162,8 @@ const PatientDetail = () => {
                                         className="cursor-pointer hover:shadow-lg transition-shadow"
                                         onClick={() => {
                                             // Navigate to planning detail (if implemented)
-                                            toast.info("Visualização de planejamento em desenvolvimento");
+                                            setSelectedPlanning(planning);
+                                            setIsViewerOpen(true);
                                         }}
                                     >
                                         <CardHeader className="pb-2">
@@ -237,7 +242,48 @@ const PatientDetail = () => {
                     </div>
                 </div>
             </main>
-        </div>
+
+
+            <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
+                <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0">
+                    <div className="flex-1 overflow-hidden">
+                        {selectedPlanning && (
+                            <PlanningViewer
+                                initialPlan={selectedPlanning.aiResponse || selectedPlanning.originalReport || "Sem conteúdo"}
+                                patientName={patient?.name}
+                                onSave={async (newPlan) => {
+                                    try {
+                                        await patientService.updatePlanning(selectedPlanning.id, { aiResponse: newPlan });
+                                        // Update local state to avoid full reload flickering
+                                        setPatient(prev => prev ? ({
+                                            ...prev,
+                                            plannings: prev.plannings?.map(p =>
+                                                p.id === selectedPlanning.id ? { ...p, aiResponse: newPlan } : p
+                                            )
+                                        }) : null);
+                                    } catch (error) {
+                                        console.error(error);
+                                        throw error; // Re-throw to be caught by PlanningViewer
+                                    }
+                                }}
+                                onClose={() => setIsViewerOpen(false)}
+                                showGenerateContract={true}
+                                onGenerateContract={() => {
+                                    setIsViewerOpen(false);
+                                    navigate("/termo-de-compromisso", {
+                                        state: {
+                                            patientId: patient?.id,
+                                            planningId: selectedPlanning.id,
+                                            patientName: patient?.name
+                                        }
+                                    });
+                                }}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 };
 
