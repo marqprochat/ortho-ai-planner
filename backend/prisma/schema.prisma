@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  clinics     Clinic[]
+  patients    Patient[]
+}
+
+model Clinic {
+  id          String   @id @default(uuid())
+  name        String
+  address     String?
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations to domain specific data would be here or in separate schemas, 
+  // but for the portal access we focus on hierarchy.
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  avatarUrl   String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  appAccess   UserAppAccess[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Application {
+  id          String   @id @default(uuid())
+  name        String   @unique // Internal ID name: 'planner', 'portal'
+  displayName String
+  description String?
+  icon        String?
+  url         String?  // URL to redirect for this app if external/subdomain
+  
+  userAccess  UserAppAccess[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // 'ADMIN', 'DENTIST', 'AUXILIARY', 'VIEWER'
+  description String?
+  
+  userAccess  UserAppAccess[]
+}
+
+model UserAppAccess {
+  id            String      @id @default(uuid())
+  userId        String
+  applicationId String
+  roleId        String
+  
+  user          User        @relation(fields: [userId], references: [id])
+  application   Application @relation(fields: [applicationId], references: [id])
+  role          Role        @relation(fields: [roleId], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([userId, applicationId])
+}
+
+model Patient {
+  id          String   @id @default(uuid())
+  name        String
+  birthDate   DateTime?
+  email       String?
+  phone       String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  plannings   Planning[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Planning {
+  id          String   @id @default(uuid())
+  title       String
+  status      String   @default("DRAFT") // DRAFT, GENERATING, COMPLETED, REVIEWED
+  
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+
+  originalReport String? // The input text/report
+  aiResponse     String? // The raw AI response
+  structuredPlan Json?   // The parsed plan structure
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
