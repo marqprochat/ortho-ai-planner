@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
+import { patientService } from "@/services/patientService";
 
 // Interfaces para o Chat com IA
 interface Message {
@@ -32,6 +33,7 @@ const initialFormData = {
   dataNascimento: "",
   telefone: "",
   nCarteirinha: "",
+  numeroPaciente: "",  // External ID from another application
   queixas: "",
   perfilFacial: "",
   labios: "",
@@ -93,6 +95,9 @@ const NovoPlanejamentoIA = () => {
   // Estado do Diálogo de Opções
   const [isOptionDialogOpen, setIsOptionDialogOpen] = useState(false);
   const [treatmentOptions, setTreatmentOptions] = useState<string[]>([]);
+
+  // Patient ID for persistence
+  const [patientId, setPatientId] = useState<string | null>(null);
 
   // Efeitos do Formulário
   useEffect(() => {
@@ -198,6 +203,22 @@ const NovoPlanejamentoIA = () => {
     setIsLoading(true);
 
     try {
+      // Save or find patient first
+      const patientResult = await patientService.findOrCreatePatient({
+        name: formData.nomePaciente,
+        phone: formData.telefone || undefined,
+        birthDate: formData.dataNascimento || undefined,
+        externalId: formData.numeroPaciente || undefined,
+      });
+
+      setPatientId(patientResult.patient.id);
+
+      if (patientResult.isNew) {
+        toast.success("Paciente cadastrado com sucesso!");
+      } else {
+        toast.info("Paciente existente encontrado. Continuando com o planejamento.");
+      }
+
       const imagePayloads = await convertFilesToBase64(images);
 
       const systemPrompt = `Você é um Ortodontista Sênior com mais de 20 anos de experiência, especialista em Ortopedia Funcional dos Maxilares, Ortodontia Interceptativa e Ortodontia Fixa (Roth metálico/estético), Autoligados e Alinhadores.
@@ -477,6 +498,8 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         selectedOption: option,
         selectedModel,
         objetivoTratamento: formData.objetivoTratamento,
+        patientId,
+        patientName: formData.nomePaciente,
       },
     });
   };
@@ -581,6 +604,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                 <div className="space-y-2"><Label htmlFor="dataNascimento">Data de nascimento *</Label><Input id="dataNascimento" type="date" required value={formData.dataNascimento} onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="telefone">Telefone *</Label><Input id="telefone" required value={formData.telefone} onChange={handlePhoneChange} placeholder="(XX) XXXXX-XXXX" /></div>
                 <div className="space-y-2"><Label htmlFor="nCarteirinha">Nº da carteirinha/convênio</Label><Input id="nCarteirinha" value={formData.nCarteirinha} onChange={(e) => setFormData({ ...formData, nCarteirinha: e.target.value })} /></div>
+                <div className="space-y-2"><Label htmlFor="numeroPaciente">Número do Paciente (ID externo)</Label><Input id="numeroPaciente" value={formData.numeroPaciente} onChange={(e) => setFormData({ ...formData, numeroPaciente: e.target.value })} placeholder="Número de outro sistema" /></div>
                 <div className="md:col-span-2 space-y-2"><Label htmlFor="queixas">Queixas do paciente *</Label><Textarea id="queixas" required value={formData.queixas} onChange={(e) => setFormData({ ...formData, queixas: e.target.value })} /></div>
               </CardContent>
             </Card>

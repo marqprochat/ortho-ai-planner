@@ -7,11 +7,11 @@ const prisma = new PrismaClient();
 export const getPlannings = async (req: Request, res: Response) => {
     try {
         const { patientId } = req.params;
-        const user = (req as any).user;
+        const { tenantId } = req as any;
 
         // Verify patient belongs to tenant
         const patient = await prisma.patient.findFirst({
-            where: { id: patientId, tenantId: user.tenantId }
+            where: { id: patientId, tenantId }
         });
 
         if (!patient) {
@@ -33,11 +33,11 @@ export const getPlannings = async (req: Request, res: Response) => {
 export const createPlanning = async (req: Request, res: Response) => {
     try {
         const { patientId, title, originalReport } = req.body;
-        const user = (req as any).user;
+        const { tenantId } = req as any;
 
         // Verify patient belongs to tenant
         const patient = await prisma.patient.findFirst({
-            where: { id: patientId, tenantId: user.tenantId }
+            where: { id: patientId, tenantId }
         });
 
         if (!patient) {
@@ -65,13 +65,13 @@ export const updatePlanning = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { status, aiResponse, structuredPlan } = req.body;
-        const user = (req as any).user;
+        const { tenantId } = req as any;
 
         // Verify ownership via patient->tenant
         const planning = await prisma.planning.findFirst({
             where: {
                 id,
-                patient: { tenantId: user.tenantId }
+                patient: { tenantId }
             }
         });
 

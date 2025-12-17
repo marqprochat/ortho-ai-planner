@@ -29,9 +29,10 @@ app.post('/api/auth/login', login);
 app.get('/api/auth/me', authMiddleware, getMe);
 
 // Patient Routes
-import { getPatients, createPatient, getPatient, updatePatient } from './controllers/patientController';
+import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient } from './controllers/patientController';
 app.get('/api/patients', authMiddleware, getPatients);
 app.post('/api/patients', authMiddleware, createPatient);
+app.post('/api/patients/find-or-create', authMiddleware, findOrCreatePatient);
 app.get('/api/patients/:id', authMiddleware, getPatient);
 app.put('/api/patients/:id', authMiddleware, updatePatient);
 
@@ -40,6 +41,12 @@ import { getPlannings, createPlanning, updatePlanning } from './controllers/plan
 app.get('/api/patients/:patientId/plannings', authMiddleware, getPlannings);
 app.post('/api/plannings', authMiddleware, createPlanning);
 app.put('/api/plannings/:id', authMiddleware, updatePlanning);
+
+// Contract Routes
+import { createContract, getPatientContracts, getContract } from './controllers/contractController';
+app.post('/api/contracts', authMiddleware, createContract);
+app.get('/api/patients/:patientId/contracts', authMiddleware, getPatientContracts);
+app.get('/api/contracts/:id', authMiddleware, getContract);
 
 // Start Server
 app.listen(PORT, async () => {

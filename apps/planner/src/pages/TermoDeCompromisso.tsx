@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, FileDown, Edit3, Eye, X, Loader2, ImageIcon } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, Upload, FileDown, Edit3, Eye, X, Loader2, ImageIcon, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import Sidebar from "@/components/Sidebar";
+import { patientService } from "@/services/patientService";
 
 interface ContractData {
     // Logo
@@ -62,12 +63,21 @@ const initialContractData: ContractData = {
 
 const TermoDeCompromisso = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [view, setView] = useState<'form' | 'preview'>('form');
     const [isEditing, setIsEditing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [contractData, setContractData] = useState<ContractData>(initialContractData);
     const [editableContract, setEditableContract] = useState("");
     const [logoFile, setLogoFile] = useState<File | null>(null);
+
+    // Get patientId from navigation state
+    const { patientId, planningId, patientName } = (location.state || {}) as {
+        patientId?: string;
+        planningId?: string;
+        patientName?: string;
+    };
 
     // Auto-preencher dados do localStorage
     useEffect(() => {
@@ -248,6 +258,29 @@ CRO: ${croDentista}`;
         setView('preview');
     };
 
+    const handleSaveContract = async () => {
+        if (!patientId) {
+            toast.error("ID do paciente não encontrado.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const contractContent = isEditing ? editableContract : generateContractText();
+            await patientService.createContract({
+                patientId,
+                content: contractContent,
+                logoUrl: contractData.logoPreview || undefined,
+            });
+            toast.success("Contrato salvo com sucesso!");
+        } catch (error) {
+            console.error("Error saving contract:", error);
+            toast.error("Erro ao salvar contrato.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleExportPDF = async () => {
         setIsExporting(true);
         try {
@@ -354,6 +387,16 @@ CRO: ${croDentista}`;
                                     {isEditing ? <Eye className="mr-2 h-4 w-4" /> : <Edit3 className="mr-2 h-4 w-4" />}
                                     {isEditing ? "Visualizar" : "Editar"}
                                 </Button>
+                                {patientId && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={handleSaveContract}
+                                        disabled={isSaving}
+                                    >
+                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        Salvar Contrato
+                                    </Button>
+                                )}
                                 <Button onClick={handleExportPDF} disabled={isExporting}>
                                     {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                                     Exportar PDF

@@ -6,11 +6,11 @@ const prisma = new PrismaClient();
 // Get all patients for the logged-in dentist
 export const getPatients = async (req: Request, res: Response) => {
     try {
-        const user = (req as any).user;
+        const { userId, tenantId } = req as any;
         const patients = await prisma.patient.findMany({
             where: {
-                tenantId: user.tenantId,
-                userId: user.id // Filter by dentist
+                tenantId,
+                userId // Filter by dentist
             },
             include: {
                 _count: {
@@ -31,17 +31,18 @@ export const getPatients = async (req: Request, res: Response) => {
 // Create a new patient
 export const createPatient = async (req: Request, res: Response) => {
     try {
-        const { name, email, phone, birthDate, clinicId } = req.body;
-        const user = (req as any).user;
+        const { name, email, phone, birthDate, clinicId, externalId } = req.body;
+        const { userId, tenantId } = req as any;
 
         const patient = await prisma.patient.create({
             data: {
                 name,
                 email,
                 phone,
+                externalId,
                 birthDate: birthDate ? new Date(birthDate) : null,
-                tenantId: user.tenantId,
-                userId: user.id, // Assign to logged-in dentist
+                tenantId,
+                userId, // Assign to logged-in dentist
                 clinicId: clinicId || null
             }
         });
@@ -53,17 +54,75 @@ export const createPatient = async (req: Request, res: Response) => {
     }
 };
 
+// Find existing patient or create new one (prevents duplicates)
+export const findOrCreatePatient = async (req: Request, res: Response) => {
+    try {
+        const { name, email, phone, birthDate, clinicId, externalId } = req.body;
+        const { userId, tenantId } = req as any;
+
+        if (!name) {
+            return res.status(400).json({ error: 'Nome do paciente é obrigatório' });
+        }
+
+        // Build search criteria - match by name and optionally phone/birthDate
+        const whereClause: any = {
+            tenantId,
+            userId,
+            name: name.trim()
+        };
+
+        // Add phone to search criteria if provided
+        if (phone) {
+            whereClause.phone = phone;
+        }
+
+        // Add birthDate to search criteria if provided
+        if (birthDate) {
+            whereClause.birthDate = new Date(birthDate);
+        }
+
+        // Search for existing patient
+        const existing = await prisma.patient.findFirst({
+            where: whereClause
+        });
+
+        if (existing) {
+            return res.json({ patient: existing, isNew: false });
+        }
+
+        // Create new patient
+        const patient = await prisma.patient.create({
+            data: {
+                name: name.trim(),
+                email,
+                phone,
+                externalId,
+                birthDate: birthDate ? new Date(birthDate) : null,
+                tenantId,
+                userId,
+                clinicId: clinicId || null
+            }
+        });
+
+        res.status(201).json({ patient, isNew: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao buscar/criar paciente' });
+    }
+};
+
+
 // Get a single patient
 export const getPatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const user = (req as any).user;
+        const { userId, tenantId } = req as any;
 
         const patient = await prisma.patient.findFirst({
             where: {
                 id,
-                tenantId: user.tenantId,
-                userId: user.id // Ensure dentist can only see own patients
+                tenantId,
+                userId // Ensure dentist can only see own patients
             },
             include: {
                 plannings: {
@@ -90,11 +149,11 @@ export const updatePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, email, phone, birthDate, clinicId } = req.body;
-        const user = (req as any).user;
+        const { userId, tenantId } = req as any;
 
         // Verify ownership
         const existing = await prisma.patient.findFirst({
-            where: { id, userId: user.id }
+            where: { id, userId }
         });
 
         if (!existing) {

@@ -8,6 +8,7 @@ export interface Patient {
     email?: string;
     phone?: string;
     birthDate?: string;
+    externalId?: string;  // External patient number from another application
     tenantId: string;
     userId: string;
     clinicId?: string;
@@ -75,7 +76,7 @@ export const patientService = {
         return response.json();
     },
 
-    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string }): Promise<Patient> {
+    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -89,7 +90,21 @@ export const patientService = {
         return response.json();
     },
 
-    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string }): Promise<Patient> {
+    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<{ patient: Patient; isNew: boolean }> {
+        const response = await fetch(`${API_URL}/patients/find-or-create`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar/criar paciente');
+        }
+
+        return response.json();
+    },
+
+    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -130,4 +145,31 @@ export const patientService = {
 
         return response.json();
     },
+
+    async createContract(data: { patientId: string; content: string; logoUrl?: string }): Promise<Contract> {
+        const response = await fetch(`${API_URL}/contracts`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao criar contrato');
+        }
+
+        return response.json();
+    },
+
+    async getPatientContracts(patientId: string): Promise<Contract[]> {
+        const response = await fetch(`${API_URL}/patients/${patientId}/contracts`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar contratos');
+        }
+
+        return response.json();
+    },
 };
+

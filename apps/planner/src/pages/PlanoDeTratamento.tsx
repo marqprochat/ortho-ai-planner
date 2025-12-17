@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import Sidebar from "@/components/Sidebar";
+import { patientService } from "@/services/patientService";
 
 // Interfaces
 interface Message {
@@ -25,12 +26,15 @@ const PlanoDeTratamento = () => {
   const [plan, setPlan] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [planningId, setPlanningId] = useState<string | null>(null);
 
-  const { messages, selectedOption, selectedModel, objetivoTratamento } = (location.state || {}) as {
+  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName } = (location.state || {}) as {
     messages: Message[];
     selectedOption: string;
     selectedModel: string;
     objetivoTratamento: string;
+    patientId: string;
+    patientName: string;
   };
 
   useEffect(() => {
@@ -120,6 +124,29 @@ Seja claro, objetivo e use uma linguagem profissional.`;
           aiResponse = response.text();
         }
         setPlan(aiResponse);
+
+        // Save the planning to the database
+        if (patientId) {
+          try {
+            const planning = await patientService.createPlanning({
+              patientId,
+              title: `Planejamento - ${patientName || 'Paciente'}`,
+              originalReport: selectedOption,
+            });
+
+            // Update with AI response
+            await patientService.updatePlanning(planning.id, {
+              status: 'COMPLETED',
+              aiResponse,
+            });
+
+            setPlanningId(planning.id);
+            toast.success("Planejamento salvo com sucesso!");
+          } catch (saveError) {
+            console.error("Error saving planning:", saveError);
+            toast.error("Planejamento gerado, mas houve erro ao salvar.");
+          }
+        }
       } catch (error: any) {
         console.error("Error generating phased plan:", error);
         toast.error(error.message || "Falha ao gerar o plano de tratamento detalhado.");
@@ -130,7 +157,7 @@ Seja claro, objetivo e use uma linguagem profissional.`;
     };
 
     generatePhasedPlan();
-  }, [messages, selectedOption, selectedModel, navigate]);
+  }, [messages, selectedOption, selectedModel, navigate, patientId, patientName]);
 
   const handleExportPDF = () => {
     if (!plan) {
@@ -388,156 +415,158 @@ Gere APENAS o resumo, sem introduções ou explicações adicionais.`;
       <Sidebar />
       <main className="ml-20 p-8 transition-all duration-300">
         <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleGenerateSummaryPDF} disabled={isLoading || isExporting}>
-              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-              Gerar Resumo para Cliente
+          <div className="flex justify-between items-center mb-6">
+            <Button variant="ghost" onClick={() => navigate(-1)}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
             </Button>
-            <Button onClick={handleExportPDF} disabled={isLoading || isExporting}>
-              {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-              Exportar para PDF
-            </Button>
-          </div>
-        </div>
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Plano de Tratamento Detalhado</h1>
-          <p className="text-muted-foreground">Revise, edite e exporte o plano de tratamento gerado pela IA.</p>
-        </div>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Planejamento Gerado</CardTitle>
-              <CardDescription>
-                Visualize o plano de tratamento detalhado ou edite conforme necessário.
-              </CardDescription>
-            </div>
-            {!isLoading && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const editMode = document.getElementById('edit-mode');
-                  const viewMode = document.getElementById('view-mode');
-                  if (editMode && viewMode) {
-                    editMode.classList.toggle('hidden');
-                    viewMode.classList.toggle('hidden');
-                  }
-                }}
-              >
-                <Edit3 className="mr-2 h-4 w-4" />
-                Alternar Edição
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleGenerateSummaryPDF} disabled={isLoading || isExporting}>
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                Gerar Resumo para Cliente
               </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-4 text-muted-foreground">Gerando plano detalhado...</p>
+              <Button onClick={handleExportPDF} disabled={isLoading || isExporting}>
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                Exportar para PDF
+              </Button>
+            </div>
+          </div>
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-foreground mb-2">Plano de Tratamento Detalhado</h1>
+            <p className="text-muted-foreground">Revise, edite e exporte o plano de tratamento gerado pela IA.</p>
+          </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Planejamento Gerado</CardTitle>
+                <CardDescription>
+                  Visualize o plano de tratamento detalhado ou edite conforme necessário.
+                </CardDescription>
               </div>
-            ) : (
-              <>
-                {/* Modo de Visualização */}
-                <div id="view-mode" className="space-y-4">
-                  {plan.split(/(?=\*\*\d+\.)/).map((section, index) => {
-                    if (!section.trim()) return null;
-
-                    // Determina o ícone baseado no conteúdo da seção
-                    let Icon = ListChecks;
-                    let iconColor = "text-primary";
-
-                    if (section.includes('OPÇÃO ESCOLHIDA') || section.includes('OPÇÃO')) {
-                      Icon = CheckCircle2;
-                      iconColor = "text-green-500";
-                    } else if (section.includes('OBJETIVO')) {
-                      Icon = Target;
-                      iconColor = "text-red-500";
-                    } else if (section.includes('APARELHOS') || section.includes('ACESSÓRIOS')) {
-                      Icon = Wrench;
-                      iconColor = "text-orange-500";
-                    } else if (section.includes('TEMPO') || section.includes('ESTIMADO')) {
-                      Icon = Clock;
-                      iconColor = "text-blue-500";
-                    } else if (section.includes('FASES')) {
-                      Icon = ListChecks;
-                      iconColor = "text-purple-500";
-                    } else if (section.includes('CONTENÇÃO')) {
-                      Icon = Shield;
-                      iconColor = "text-teal-500";
+              {!isLoading && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const editMode = document.getElementById('edit-mode');
+                    const viewMode = document.getElementById('view-mode');
+                    if (editMode && viewMode) {
+                      editMode.classList.toggle('hidden');
+                      viewMode.classList.toggle('hidden');
                     }
+                  }}
+                >
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Alternar Edição
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-96">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-4 text-muted-foreground">Gerando plano detalhado...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Modo de Visualização */}
+                  <div id="view-mode" className="space-y-4">
+                    {plan.split(/(?=\*\*\d+\.)/).map((section, index) => {
+                      if (!section.trim()) return null;
 
-                    // Extrai título e conteúdo
-                    const lines = section.split('\n');
-                    const title = lines[0]?.replace(/\*\*/g, '').trim() || '';
-                    const content = lines.slice(1).join('\n').trim();
+                      // Determina o ícone baseado no conteúdo da seção
+                      let Icon = ListChecks;
+                      let iconColor = "text-primary";
 
-                    return (
-                      <div
-                        key={index}
-                        className="border rounded-lg p-4 bg-card hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 ${iconColor}`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-foreground mb-2">{title}</h3>
-                            <div className="text-muted-foreground text-sm whitespace-pre-wrap">
-                              {content.split('\n').map((line, lineIndex) => {
-                                const cleanLine = line.replace(/\*\*/g, '').replace(/^\s*-\s*/, '• ');
-                                const isBold = line.includes('**Fase') || line.includes('**Contenção');
-                                return (
-                                  <p
-                                    key={lineIndex}
-                                    className={`${isBold ? 'font-medium text-foreground mt-2' : ''} ${cleanLine.startsWith('•') ? 'ml-2' : ''}`}
-                                  >
-                                    {cleanLine}
-                                  </p>
-                                );
-                              })}
+                      if (section.includes('OPÇÃO ESCOLHIDA') || section.includes('OPÇÃO')) {
+                        Icon = CheckCircle2;
+                        iconColor = "text-green-500";
+                      } else if (section.includes('OBJETIVO')) {
+                        Icon = Target;
+                        iconColor = "text-red-500";
+                      } else if (section.includes('APARELHOS') || section.includes('ACESSÓRIOS')) {
+                        Icon = Wrench;
+                        iconColor = "text-orange-500";
+                      } else if (section.includes('TEMPO') || section.includes('ESTIMADO')) {
+                        Icon = Clock;
+                        iconColor = "text-blue-500";
+                      } else if (section.includes('FASES')) {
+                        Icon = ListChecks;
+                        iconColor = "text-purple-500";
+                      } else if (section.includes('CONTENÇÃO')) {
+                        Icon = Shield;
+                        iconColor = "text-teal-500";
+                      }
+
+                      // Extrai título e conteúdo
+                      const lines = section.split('\n');
+                      const title = lines[0]?.replace(/\*\*/g, '').trim() || '';
+                      const content = lines.slice(1).join('\n').trim();
+
+                      return (
+                        <div
+                          key={index}
+                          className="border rounded-lg p-4 bg-card hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-1 ${iconColor}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-foreground mb-2">{title}</h3>
+                              <div className="text-muted-foreground text-sm whitespace-pre-wrap">
+                                {content.split('\n').map((line, lineIndex) => {
+                                  const cleanLine = line.replace(/\*\*/g, '').replace(/^\s*-\s*/, '• ');
+                                  const isBold = line.includes('**Fase') || line.includes('**Contenção');
+                                  return (
+                                    <p
+                                      key={lineIndex}
+                                      className={`${isBold ? 'font-medium text-foreground mt-2' : ''} ${cleanLine.startsWith('•') ? 'ml-2' : ''}`}
+                                    >
+                                      {cleanLine}
+                                    </p>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Modo de Edição */}
-                <div id="edit-mode" className="hidden">
-                  <div className="border rounded-md bg-muted/20">
-                    <Textarea
-                      value={plan}
-                      onChange={(e) => setPlan(e.target.value)}
-                      className="min-h-[600px] w-full resize-y border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-4"
-                      placeholder="O plano de tratamento aparecerá aqui..."
-                    />
+                      );
+                    })}
                   </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Botão para Gerar Contrato */}
-        {!isLoading && (
-          <div className="mt-6 flex justify-end">
-            <Button
-              size="lg"
-              onClick={() => navigate("/termo-de-compromisso")}
-              className="bg-success hover:bg-success/90"
-            >
-              <FileText className="mr-2 h-5 w-5" />
-              Gerar Contrato
-            </Button>
-          </div>
-        )}
-      </div>
+                  {/* Modo de Edição */}
+                  <div id="edit-mode" className="hidden">
+                    <div className="border rounded-md bg-muted/20">
+                      <Textarea
+                        value={plan}
+                        onChange={(e) => setPlan(e.target.value)}
+                        className="min-h-[600px] w-full resize-y border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent p-4"
+                        placeholder="O plano de tratamento aparecerá aqui..."
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Botão para Gerar Contrato */}
+          {!isLoading && (
+            <div className="mt-6 flex justify-end">
+              <Button
+                size="lg"
+                onClick={() => navigate("/termo-de-compromisso", {
+                  state: { patientId, planningId, patientName }
+                })}
+                className="bg-success hover:bg-success/90"
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Gerar Contrato
+              </Button>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

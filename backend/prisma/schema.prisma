@@ -90,6 +90,7 @@ model Patient {
   birthDate   DateTime?
   email       String?
   phone       String?
+  externalId  String?  // External patient number from another application
   
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
