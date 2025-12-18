@@ -9,6 +9,8 @@ import { patientService, Patient, Planning, Contract } from "../services/patient
 import Sidebar from "@/components/Sidebar";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlanningViewer } from "@/components/PlanningViewer";
+import { ContractViewer } from "@/components/ContractViewer";
+import { EditPatientDialog } from "@/components/EditPatientDialog";
 
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-500",
@@ -31,6 +33,9 @@ const PatientDetail = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedPlanning, setSelectedPlanning] = useState<Planning | null>(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
+    const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+    const [isContractViewerOpen, setIsContractViewerOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -105,7 +110,7 @@ const PatientDetail = () => {
                                 Cadastrado em {formatDate(patient.createdAt)}
                             </p>
                         </div>
-                        <Button variant="outline" onClick={() => toast.info("Edição em desenvolvimento")}>
+                        <Button variant="outline" onClick={() => setIsEditOpen(true)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                         </Button>
@@ -217,7 +222,14 @@ const PatientDetail = () => {
                         {patient.contracts && patient.contracts.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {patient.contracts.map((contract) => (
-                                    <Card key={contract.id}>
+                                    <Card
+                                        key={contract.id}
+                                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                                        onClick={() => {
+                                            setSelectedContract(contract);
+                                            setIsContractViewerOpen(true);
+                                        }}
+                                    >
                                         <CardHeader>
                                             <CardTitle className="text-lg">Termo de Compromisso</CardTitle>
                                             <CardDescription>
@@ -283,6 +295,27 @@ const PatientDetail = () => {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <Dialog open={isContractViewerOpen} onOpenChange={setIsContractViewerOpen}>
+                <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0">
+                    <div className="flex-1 overflow-hidden">
+                        {selectedContract && (
+                            <ContractViewer
+                                content={selectedContract.content}
+                                patientName={patient?.name}
+                                onClose={() => setIsContractViewerOpen(false)}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <EditPatientDialog
+                open={isEditOpen}
+                onOpenChange={setIsEditOpen}
+                patient={patient}
+                onSuccess={(updated) => setPatient(updated)}
+            />
         </div >
     );
 };
