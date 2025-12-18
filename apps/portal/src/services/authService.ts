@@ -9,6 +9,7 @@ export interface User {
     avatarUrl?: string;
     tenantId: string;
     tenant: { id: string; name: string };
+    isSuperAdmin?: boolean;
     appAccess?: Array<{
         application: { id: string; name: string; displayName: string; icon?: string; url?: string };
         role: { id: string; name: string };

@@ -1,17 +1,20 @@
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { Response } from 'express';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 // Get all plannings for a patient
-export const getPlannings = async (req: Request, res: Response) => {
+export const getPlannings = async (req: AuthRequest, res: Response) => {
     try {
         const { patientId } = req.params;
-        const { tenantId } = req as any;
+        const { tenantId, clinicId } = req;
 
-        // Verify patient belongs to tenant
+        // Verify patient belongs to tenant AND current clinic
         const patient = await prisma.patient.findFirst({
-            where: { id: patientId, tenantId }
+            where: {
+                id: patientId,
+                tenantId,
+                clinicId: clinicId // Enforce clinic context
+            }
         });
 
         if (!patient) {
@@ -30,14 +33,18 @@ export const getPlannings = async (req: Request, res: Response) => {
 };
 
 // Create a new planning
-export const createPlanning = async (req: Request, res: Response) => {
+export const createPlanning = async (req: AuthRequest, res: Response) => {
     try {
         const { patientId, title, originalReport } = req.body;
-        const { tenantId } = req as any;
+        const { tenantId, clinicId } = req; // Proper destructuring from AuthRequest
 
-        // Verify patient belongs to tenant
+        // Verify patient belongs to tenant AND current clinic
         const patient = await prisma.patient.findFirst({
-            where: { id: patientId, tenantId }
+            where: {
+                id: patientId,
+                tenantId,
+                clinicId // Enforce clinic context
+            }
         });
 
         if (!patient) {
@@ -61,17 +68,20 @@ export const createPlanning = async (req: Request, res: Response) => {
 };
 
 // Update planning (e.g. save AI response)
-export const updatePlanning = async (req: Request, res: Response) => {
+export const updatePlanning = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { status, aiResponse, structuredPlan } = req.body;
-        const { tenantId } = req as any;
+        const { tenantId, clinicId } = req;
 
-        // Verify ownership via patient->tenant
+        // Verify ownership via patient->tenant AND clinic
         const planning = await prisma.planning.findFirst({
             where: {
                 id,
-                patient: { tenantId }
+                patient: {
+                    tenantId,
+                    clinicId // Enforce clinic context
+                }
             }
         });
 

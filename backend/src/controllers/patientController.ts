@@ -1,16 +1,21 @@
-import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Response } from 'express';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../middleware/authMiddleware';
 
-const prisma = new PrismaClient();
-
-// Get all patients for the logged-in dentist
-export const getPatients = async (req: Request, res: Response) => {
+// Get all patients for the logged-in dentist, filtered by selected clinic
+export const getPatients = async (req: AuthRequest, res: Response) => {
     try {
-        const { userId, tenantId } = req as any;
+        const { userId, tenantId, clinicId } = req;
+
+        if (!clinicId) {
+            return res.status(400).json({ error: 'Clínica não selecionada' });
+        }
+
         const patients = await prisma.patient.findMany({
             where: {
                 tenantId,
-                userId // Filter by dentist
+                userId, // Filter by dentist
+                clinicId // Filter by selected clinic
             },
             include: {
                 _count: {
@@ -29,10 +34,14 @@ export const getPatients = async (req: Request, res: Response) => {
 };
 
 // Create a new patient
-export const createPatient = async (req: Request, res: Response) => {
+export const createPatient = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, email, phone, birthDate, clinicId, externalId } = req.body;
-        const { userId, tenantId } = req as any;
+        const { name, email, phone, birthDate, externalId } = req.body;
+        const { userId, tenantId, clinicId } = req;
+
+        if (!clinicId) {
+            return res.status(400).json({ error: 'Clínica não selecionada' });
+        }
 
         const patient = await prisma.patient.create({
             data: {
@@ -41,9 +50,9 @@ export const createPatient = async (req: Request, res: Response) => {
                 phone,
                 externalId,
                 birthDate: birthDate ? new Date(birthDate) : null,
-                tenantId,
-                userId, // Assign to logged-in dentist
-                clinicId: clinicId || null
+                tenantId: tenantId!,
+                userId: userId!, // Assign to logged-in dentist
+                clinicId: clinicId
             }
         });
 
@@ -55,10 +64,14 @@ export const createPatient = async (req: Request, res: Response) => {
 };
 
 // Find existing patient or create new one (prevents duplicates)
-export const findOrCreatePatient = async (req: Request, res: Response) => {
+export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, email, phone, birthDate, clinicId, externalId } = req.body;
-        const { userId, tenantId } = req as any;
+        const { name, email, phone, birthDate, externalId } = req.body;
+        const { userId, tenantId, clinicId } = req;
+
+        if (!clinicId) {
+            return res.status(400).json({ error: 'Clínica não selecionada' });
+        }
 
         if (!name) {
             return res.status(400).json({ error: 'Nome do paciente é obrigatório' });
@@ -68,6 +81,11 @@ export const findOrCreatePatient = async (req: Request, res: Response) => {
         const whereClause: any = {
             tenantId,
             userId,
+            clinicId, // Ensure we only find in current clinic? Or global?
+            // "trabalhar com os dados... somente dessa clinica" implies creating duplicates if patient goes to another clinic?
+            // Or shared? If shared, clinicId on patient is tricky.
+            // Requirement said "data of apps must be of some clinic".
+            // Let's assume STRICT isolation. Same patient in 2 clinics = 2 records.
             name: name.trim()
         };
 
@@ -98,9 +116,9 @@ export const findOrCreatePatient = async (req: Request, res: Response) => {
                 phone,
                 externalId,
                 birthDate: birthDate ? new Date(birthDate) : null,
-                tenantId,
-                userId,
-                clinicId: clinicId || null
+                tenantId: tenantId!,
+                userId: userId!,
+                clinicId: clinicId
             }
         });
 
@@ -113,16 +131,17 @@ export const findOrCreatePatient = async (req: Request, res: Response) => {
 
 
 // Get a single patient
-export const getPatient = async (req: Request, res: Response) => {
+export const getPatient = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { userId, tenantId } = req as any;
+        const { userId, tenantId, clinicId } = req;
 
         const patient = await prisma.patient.findFirst({
             where: {
                 id,
                 tenantId,
-                userId // Ensure dentist can only see own patients
+                userId, // Ensure dentist can only see own patients
+                clinicId // Ensure patient belongs to context clinic
             },
             include: {
                 plannings: {
@@ -145,15 +164,15 @@ export const getPatient = async (req: Request, res: Response) => {
 };
 
 // Update a patient
-export const updatePatient = async (req: Request, res: Response) => {
+export const updatePatient = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, phone, birthDate, clinicId } = req.body;
-        const { userId, tenantId } = req as any;
+        const { name, email, phone, birthDate } = req.body;
+        const { userId, clinicId } = req;
 
-        // Verify ownership
+        // Verify ownership and clinic context
         const existing = await prisma.patient.findFirst({
-            where: { id, userId }
+            where: { id, userId, clinicId }
         });
 
         if (!existing) {
@@ -167,7 +186,7 @@ export const updatePatient = async (req: Request, res: Response) => {
                 email,
                 phone,
                 birthDate: birthDate ? new Date(birthDate) : null,
-                clinicId: clinicId || null
+                // Do not update clinicId usually
             }
         });
 

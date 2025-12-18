@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+import { ClinicSelector } from "./ClinicSelector";
+
 const Sidebar = () => {
     const location = useLocation();
     const { user, logout } = useAuth();
@@ -27,8 +29,9 @@ const Sidebar = () => {
             onMouseEnter={() => setIsExpanded(true)}
             onMouseLeave={() => setIsExpanded(false)}
         >
+
             {/* Logo */}
-            <div className={`mb-8 flex items-center overflow-hidden ${isExpanded ? "gap-3" : "justify-center"}`}>
+            <div className={`mb-4 flex items-center overflow-hidden ${isExpanded ? "gap-3" : "justify-center"}`}>
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                     <Stethoscope className="h-5 w-5 text-primary-foreground" />
                 </div>
@@ -36,6 +39,9 @@ const Sidebar = () => {
                     <h1 className="text-xl font-bold text-sidebar-foreground whitespace-nowrap">OrtoPlan</h1>
                 )}
             </div>
+
+            {/* Clinic Selector */}
+            <ClinicSelector isExpanded={isExpanded} />
 
             {/* Navigation */}
             <nav className="space-y-2">

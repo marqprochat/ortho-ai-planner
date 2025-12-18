@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink } from "lucide-react";
+import { ClinicSelector } from "@/components/ClinicSelector";
 
 // Default apps if user has no specific access configured
 const defaultApps = [
@@ -51,15 +52,22 @@ export default function DashboardPage() {
             {/* Header */}
             <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
-                            {user?.name?.charAt(0).toUpperCase() || "U"}
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                                {user?.name?.charAt(0).toUpperCase() || "U"}
+                            </div>
+                            <div>
+                                <h2 className="text-white font-semibold">{user?.name || "Usuário"}</h2>
+                                <p className="text-gray-400 text-sm">{user?.tenant?.name || "Portal"}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-white font-semibold">{user?.name || "Usuário"}</h2>
-                            <p className="text-gray-400 text-sm">{user?.tenant?.name || "Clínica"}</p>
-                        </div>
+
+                        {/* Clinic Selector */}
+                        <div className="h-8 w-px bg-white/10 mx-2"></div>
+                        <ClinicSelector />
                     </div>
+
                     <Button
                         variant="ghost"
                         className="text-gray-300 hover:text-white hover:bg-white/10"
@@ -73,6 +81,57 @@ export default function DashboardPage() {
 
             {/* Main Content */}
             <main className="container mx-auto px-6 py-12">
+
+                {/* Admin Section */}
+                {user?.isSuperAdmin && (
+                    <div className="mb-12">
+                        <div className="mb-8 border-b border-white/10 pb-4">
+                            <h1 className="text-3xl font-bold text-white mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+                                Administração
+                            </h1>
+                            <p className="text-gray-400">Gerenciamento do sistema</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card
+                                className="bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/50 transition-all cursor-pointer group"
+                                onClick={() => navigate('/admin/clinics')}
+                            >
+                                <CardHeader>
+                                    <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 mb-4">
+                                        <Settings className="w-6 h-6" />
+                                    </div>
+                                    <CardTitle className="text-white">Gerenciar Clínicas</CardTitle>
+                                    <CardDescription className="text-gray-400">Criar e editar clínicas do sistema</CardDescription>
+                                </CardHeader>
+                            </Card>
+                            <Card
+                                className="bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/50 transition-all cursor-pointer group"
+                                onClick={() => navigate('/admin/users')}
+                            >
+                                <CardHeader>
+                                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400 mb-4">
+                                        <Users className="w-6 h-6" />
+                                    </div>
+                                    <CardTitle className="text-white">Gerenciar Usuários</CardTitle>
+                                    <CardDescription className="text-gray-400">Contas de acesso e permissões</CardDescription>
+                                </CardHeader>
+                            </Card>
+                            <Card
+                                className="bg-white/5 border-white/10 hover:bg-white/10 hover:border-purple-500/50 transition-all cursor-pointer group"
+                                onClick={() => navigate('/admin/roles')}
+                            >
+                                <CardHeader>
+                                    <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 mb-4">
+                                        <ClipboardList className="w-6 h-6" />
+                                    </div>
+                                    <CardTitle className="text-white">Perfis e Permissões</CardTitle>
+                                    <CardDescription className="text-gray-400">Definir o que cada perfil pode fazer</CardDescription>
+                                </CardHeader>
+                            </Card>
+                        </div>
+                    </div>
+                )}
+
                 <div className="mb-10">
                     <h1 className="text-4xl font-bold text-white mb-2">Seus Aplicativos</h1>
                     <p className="text-gray-400">Selecione um aplicativo para começar</p>

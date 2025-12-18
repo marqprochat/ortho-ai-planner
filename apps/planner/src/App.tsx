@@ -16,29 +16,34 @@ import Login from "./pages/Login";
 
 const queryClient = new QueryClient();
 
+import { ClinicProvider } from "./context/ClinicContext";
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <ClinicProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Routes... */}
+              <Route path="/login" element={<Login />} />
 
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/patients" element={<Patients />} />
-              <Route path="/patients/:id" element={<PatientDetail />} />
-              <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
-              <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
-              <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
-            </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/patients" element={<Patients />} />
+                <Route path="/patients/:id" element={<PatientDetail />} />
+                <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
+                <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
+                <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
+              </Route>
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ClinicProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

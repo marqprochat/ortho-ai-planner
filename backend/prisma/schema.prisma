@@ -27,6 +27,18 @@ model Clinic {
   updatedAt   DateTime @updatedAt
   
   patients    Patient[]
+  userClinics UserClinic[]
+}
+
+model UserClinic {
+  id        String   @id @default(uuid())
+  userId    String
+  clinicId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, clinicId])
 }
 
 model User {
@@ -35,12 +47,14 @@ model User {
   password    String
   name        String
   avatarUrl   String?
+  isSuperAdmin Boolean @default(false)
   
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   
   appAccess   UserAppAccess[]
   patients    Patient[]
+  userClinics UserClinic[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -55,6 +69,7 @@ model Application {
   url         String?  // URL to redirect for this app if external/subdomain
   
   userAccess  UserAppAccess[]
+  permissions Permission[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -66,6 +81,24 @@ model Role {
   description String?
   
   userAccess  UserAppAccess[]
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  action      String   // e.g. 'read', 'write', 'delete', 'manage'
+  resource    String   // e.g. 'user', 'clinic', 'role', 'all'
+  description String?
+  
+  roles       Role[]
+
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([action, resource])
 }
 
 model UserAppAccess {
@@ -98,8 +131,8 @@ model Patient {
   userId      String   // Dentist responsible
   user        User     @relation(fields: [userId], references: [id])
   
-  clinicId    String?  // Optional clinic
-  clinic      Clinic?  @relation(fields: [clinicId], references: [id])
+  clinicId    String   // Clinic is now required
+  clinic      Clinic   @relation(fields: [clinicId], references: [id])
   
   plannings   Planning[]
   contracts   Contract[]

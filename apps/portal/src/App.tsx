@@ -3,6 +3,9 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import "./index.css";
+import ClinicManagement from "./pages/admin/ClinicManagement";
+import UserManagement from "./pages/admin/UserManagement";
+import RoleManagement from "./pages/admin/RoleManagement";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -61,17 +64,48 @@ function AppRoutes() {
                     </ProtectedRoute>
                 }
             />
+
+            {/* Admin Routes */}
+            <Route
+                path="/admin/clinics"
+                element={
+                    <ProtectedRoute>
+                        <ClinicManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/users"
+                element={
+                    <ProtectedRoute>
+                        <UserManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/roles"
+                element={
+                    <ProtectedRoute>
+                        <RoleManagement />
+                    </ProtectedRoute>
+                }
+            />
+
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
     );
 }
 
+import { ClinicProvider } from "./context/ClinicContext";
+
 function App() {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <AppRoutes />
+                <ClinicProvider>
+                    <AppRoutes />
+                </ClinicProvider>
             </AuthProvider>
         </BrowserRouter>
     );

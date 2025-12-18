@@ -45,10 +45,18 @@ export interface Contract {
 
 const getAuthHeaders = () => {
     const token = getCookie('token');
-    return {
+    const selectedClinicId = localStorage.getItem('selectedClinicId');
+
+    const headers: Record<string, string> = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
     };
+
+    if (selectedClinicId) {
+        headers['x-clinic-id'] = selectedClinicId;
+    }
+
+    return headers;
 };
 
 export const patientService = {
