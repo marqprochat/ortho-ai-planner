@@ -38,11 +38,11 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden">
+        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary via-secondary to-accent relative overflow-hidden">
             {/* Background Shapes */}
-            <div className="absolute top-10 left-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-            <div className="absolute top-0 right-10 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+            <div className="absolute top-10 left-10 w-72 h-72 bg-secondary/50 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+            <div className="absolute top-0 right-10 w-72 h-72 bg-accent/50 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-primary/50 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
 
             <Card className="w-[400px] bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl z-10 text-white">
                 <CardHeader className="text-center">
@@ -50,7 +50,7 @@ export default function LoginPage() {
                         <Sparkles className="w-8 h-8 text-white" />
                     </div>
                     <CardTitle className="text-3xl font-bold tracking-tight">Portal Dentista</CardTitle>
-                    <CardDescription className="text-gray-200">
+                    <CardDescription className="text-white/80">
                         {isRegisterMode ? "Crie sua conta" : "Acesse todos os seus aplicativos"}
                     </CardDescription>
                 </CardHeader>
@@ -63,7 +63,7 @@ export default function LoginPage() {
                                     <Input
                                         id="name"
                                         placeholder="Seu nome completo"
-                                        className="bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus-visible:ring-indigo-300"
+                                        className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-white/50"
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         required={isRegisterMode}
@@ -76,7 +76,7 @@ export default function LoginPage() {
                                     id="email"
                                     type="email"
                                     placeholder="seu@email.com"
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus-visible:ring-indigo-300"
+                                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-white/50"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -88,7 +88,7 @@ export default function LoginPage() {
                                     id="password"
                                     type="password"
                                     placeholder="••••••••"
-                                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-300 focus-visible:ring-indigo-300"
+                                    className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-white/50"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -97,14 +97,14 @@ export default function LoginPage() {
                         </div>
 
                         {error && (
-                            <div className="mt-4 p-3 bg-red-500/20 border border-red-400/30 rounded-lg text-red-200 text-sm">
+                            <div className="mt-4 p-3 bg-destructive/20 border border-destructive/30 rounded-lg text-destructive-foreground text-sm">
                                 {error}
                             </div>
                         )}
 
                         <div className="mt-6 space-y-3">
                             <Button
-                                className="w-full bg-white text-purple-600 hover:bg-gray-100 font-bold"
+                                className="w-full bg-white text-primary hover:bg-white/90 font-bold"
                                 type="submit"
                                 disabled={isLoading}
                             >
@@ -123,7 +123,7 @@ export default function LoginPage() {
                         </div>
                     </form>
                 </CardContent>
-                <CardFooter className="flex flex-col gap-2 text-sm text-gray-200">
+                <CardFooter className="flex flex-col gap-2 text-sm text-white/80">
                     <button
                         type="button"
                         onClick={() => {
@@ -136,25 +136,6 @@ export default function LoginPage() {
                     </button>
                 </CardFooter>
             </Card>
-
-            {/* Animation Styles */}
-            <style>{`
-                @keyframes blob {
-                    0% { transform: translate(0px, 0px) scale(1); }
-                    33% { transform: translate(30px, -50px) scale(1.1); }
-                    66% { transform: translate(-20px, 20px) scale(0.9); }
-                    100% { transform: translate(0px, 0px) scale(1); }
-                }
-                .animate-blob {
-                    animation: blob 7s infinite;
-                }
-                .animation-delay-2000 {
-                    animation-delay: 2s;
-                }
-                .animation-delay-4000 {
-                    animation-delay: 4s;
-                }
-            `}</style>
         </div>
     );
 }

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { adminService, Clinic } from '../../services/adminService';
+import { ArrowLeft, Building2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function ClinicManagement() {
+    const navigate = useNavigate();
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,7 +50,7 @@ export default function ClinicManagement() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this clinic?')) return;
+        if (!confirm('Tem certeza que deseja excluir esta clínica?')) return;
         try {
             await adminService.deleteClinic(id);
             loadClinics();
@@ -56,108 +59,130 @@ export default function ClinicManagement() {
         }
     };
 
-    if (isLoading) return <div className="p-8 text-white">Loading...</div>;
+    if (isLoading) return (
+        <div className="min-h-screen bg-sidebar flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+    );
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                    Gerenciar Clínicas
-                </h1>
-                <button
-                    onClick={() => {
-                        setFormData({});
-                        setIsEditing(false);
-                        setIsModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition"
-                >
-                    Nova Clínica
-                </button>
-            </div>
+        <div className="min-h-screen bg-sidebar">
+            {/* Header */}
+            <header className="border-b border-sidebar-border bg-sidebar-accent/50 backdrop-blur-sm">
+                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center text-success">
+                                <Building2 className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-sidebar-foreground">Gerenciar Clínicas</h1>
+                                <p className="text-sidebar-foreground/60 text-sm">Criar e editar clínicas do sistema</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setFormData({});
+                            setIsEditing(false);
+                            setIsModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition font-medium"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Nova Clínica
+                    </button>
+                </div>
+            </header>
 
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-                <table className="w-full text-left text-slate-300">
-                    <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs font-semibold">
-                        <tr>
-                            <th className="px-6 py-4">Nome</th>
-                            <th className="px-6 py-4">Endereço</th>
-                            <th className="px-6 py-4 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50">
-                        {clinics.map((clinic) => (
-                            <tr key={clinic.id} className="hover:bg-slate-700/30 transition">
-                                <td className="px-6 py-4 font-medium text-white">{clinic.name}</td>
-                                <td className="px-6 py-4">{clinic.address || '-'}</td>
-                                <td className="px-6 py-4 text-right space-x-2">
-                                    <button
-                                        onClick={() => handleEdit(clinic)}
-                                        className="text-blue-400 hover:text-blue-300 transition"
-                                    >
-                                        Editar
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(clinic.id)}
-                                        className="text-red-400 hover:text-red-300 transition"
-                                    >
-                                        Excluir
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {clinics.length === 0 && (
+            {/* Main Content */}
+            <main className="container mx-auto px-6 py-8">
+                <div className="bg-sidebar-accent/30 backdrop-blur-xl rounded-xl border border-sidebar-border overflow-hidden shadow-xl">
+                    <table className="w-full text-left text-sidebar-foreground/80">
+                        <thead className="bg-sidebar-accent/50 text-sidebar-foreground/60 uppercase text-xs font-semibold">
                             <tr>
-                                <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
-                                    Nenhuma clínica encontrada.
-                                </td>
+                                <th className="px-6 py-4">Nome</th>
+                                <th className="px-6 py-4">Endereço</th>
+                                <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-sidebar-border/50">
+                            {clinics.map((clinic) => (
+                                <tr key={clinic.id} className="hover:bg-sidebar-accent/30 transition">
+                                    <td className="px-6 py-4 font-medium text-sidebar-foreground">{clinic.name}</td>
+                                    <td className="px-6 py-4">{clinic.address || '-'}</td>
+                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button
+                                            onClick={() => handleEdit(clinic)}
+                                            className="text-info hover:text-info/80 transition font-medium"
+                                        >
+                                            Editar
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(clinic.id)}
+                                            className="text-destructive hover:text-destructive/80 transition font-medium"
+                                        >
+                                            Excluir
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {clinics.length === 0 && (
+                                <tr>
+                                    <td colSpan={3} className="px-6 py-8 text-center text-sidebar-foreground/40">
+                                        Nenhuma clínica encontrada.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </main>
 
+            {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h2 className="text-xl font-bold text-white mb-4">
+                    <div className="bg-sidebar border border-sidebar-border rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                        <h2 className="text-xl font-bold text-sidebar-foreground mb-4">
                             {isEditing ? 'Editar Clínica' : 'Nova Clínica'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Nome</label>
                                 <input
                                     type="text"
                                     value={formData.name || ''}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Endereço</label>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Endereço</label>
                                 <input
                                     type="text"
                                     value={formData.address || ''}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                 />
                             </div>
-                            {/* Assuming tenantId is handled automatically or by select if super admin. 
-                                For now simplistic approach: user context handles it, or explicit input if super admin. 
-                                We'll leave tenantId blank for now, assuming user creation handles it or backend defaults.
-                            */}
                             <div className="flex justify-end gap-3 mt-6">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-slate-400 hover:text-white transition"
+                                    className="px-4 py-2 text-sidebar-foreground/60 hover:text-sidebar-foreground transition"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition font-medium"
+                                    className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition font-medium"
                                 >
                                     {isEditing ? 'Salvar Alterações' : 'Criar Clínica'}
                                 </button>

@@ -13,7 +13,7 @@ interface ClinicContextType {
 const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
 
 export function ClinicProvider({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated } = useAuth();
     const [clinics, setClinics] = useState<Clinic[]>([]);
     const [selectedClinicId, setSelectedClinicId] = useState<string | null>(() => {
         return localStorage.getItem("selectedClinicId");

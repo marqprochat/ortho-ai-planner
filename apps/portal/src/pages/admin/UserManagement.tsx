@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { adminService, User, Clinic } from '../../services/adminService';
 import { useAuth } from '../../context/AuthContext';
+import { ArrowLeft, Users, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function UserManagement() {
+    const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -82,113 +85,139 @@ export default function UserManagement() {
         }
     };
 
-    if (isLoading) return <div className="p-8 text-white">Carregando...</div>;
+    if (isLoading) return (
+        <div className="min-h-screen bg-sidebar flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+    );
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                    Gerenciar Usuários
-                </h1>
-                <button
-                    onClick={() => {
-                        setFormData({ clinicIds: [] });
-                        setIsEditing(false);
-                        setIsModalOpen(true);
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition"
-                >
-                    Novo Usuário
-                </button>
-            </div>
+        <div className="min-h-screen bg-sidebar">
+            {/* Header */}
+            <header className="border-b border-sidebar-border bg-sidebar-accent/50 backdrop-blur-sm">
+                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground/60 hover:text-sidebar-foreground transition"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-info/20 flex items-center justify-center text-info">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-sidebar-foreground">Gerenciar Usuários</h1>
+                                <p className="text-sidebar-foreground/60 text-sm">Contas de acesso e permissões</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setFormData({ clinicIds: [] });
+                            setIsEditing(false);
+                            setIsModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition font-medium"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Novo Usuário
+                    </button>
+                </div>
+            </header>
 
-            <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl border border-slate-700 overflow-hidden shadow-xl">
-                <table className="w-full text-left text-slate-300">
-                    <thead className="bg-slate-900/50 text-slate-400 uppercase text-xs font-semibold">
-                        <tr>
-                            <th className="px-6 py-4">Nome</th>
-                            <th className="px-6 py-4">Email</th>
-                            <th className="px-6 py-4">Clínicas</th>
-                            <th className="px-6 py-4">Perfil</th>
-                            <th className="px-6 py-4 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50">
-                        {users.map((user) => (
-                            <tr key={user.id} className="hover:bg-slate-700/30 transition">
-                                <td className="px-6 py-4 font-medium text-white">{user.name}</td>
-                                <td className="px-6 py-4">{user.email}</td>
-                                <td className="px-6 py-4">
-                                    {user.clinics?.length ? (
-                                        <div className="flex flex-wrap gap-1">
-                                            {user.clinics.map(c => (
-                                                <span key={c.id} className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded text-xs">
-                                                    {c.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <span className="text-slate-500 text-xs">Nenhuma</span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                    {roles.find(r => r.id === user.roleId)?.name || (
-                                        user.isSuperAdmin ? (
-                                            <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs border border-purple-500/30">Super Admin</span>
-                                        ) : (
-                                            <span className="text-slate-500 text-xs italic">Sem perfil</span>
-                                        )
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 text-right space-x-2">
-                                    <button onClick={() => handleEdit(user)} className="text-blue-400 hover:text-blue-300 transition">
-                                        Editar
-                                    </button>
-                                    <button onClick={() => handleDelete(user.id)} className="text-red-400 hover:text-red-300 transition">
-                                        Excluir
-                                    </button>
-                                </td>
+            {/* Main Content */}
+            <main className="container mx-auto px-6 py-8">
+                <div className="bg-sidebar-accent/30 backdrop-blur-xl rounded-xl border border-sidebar-border overflow-hidden shadow-xl">
+                    <table className="w-full text-left text-sidebar-foreground/80">
+                        <thead className="bg-sidebar-accent/50 text-sidebar-foreground/60 uppercase text-xs font-semibold">
+                            <tr>
+                                <th className="px-6 py-4">Nome</th>
+                                <th className="px-6 py-4">Email</th>
+                                <th className="px-6 py-4">Clínicas</th>
+                                <th className="px-6 py-4">Perfil</th>
+                                <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-sidebar-border/50">
+                            {users.map((user) => (
+                                <tr key={user.id} className="hover:bg-sidebar-accent/30 transition">
+                                    <td className="px-6 py-4 font-medium text-sidebar-foreground">{user.name}</td>
+                                    <td className="px-6 py-4">{user.email}</td>
+                                    <td className="px-6 py-4">
+                                        {user.clinics?.length ? (
+                                            <div className="flex flex-wrap gap-1">
+                                                {user.clinics.map(c => (
+                                                    <span key={c.id} className="px-2 py-0.5 bg-info/20 text-info rounded text-xs">
+                                                        {c.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-sidebar-foreground/40 text-xs">Nenhuma</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {roles.find(r => r.id === user.roleId)?.name || (
+                                            user.isSuperAdmin ? (
+                                                <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs border border-primary/30">Super Admin</span>
+                                            ) : (
+                                                <span className="text-sidebar-foreground/40 text-xs italic">Sem perfil</span>
+                                            )
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button onClick={() => handleEdit(user)} className="text-info hover:text-info/80 transition font-medium">
+                                            Editar
+                                        </button>
+                                        <button onClick={() => handleDelete(user.id)} className="text-destructive hover:text-destructive/80 transition font-medium">
+                                            Excluir
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </main>
 
+            {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-                        <h2 className="text-xl font-bold text-white mb-4">
+                    <div className="bg-sidebar border border-sidebar-border rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-xl font-bold text-sidebar-foreground mb-4">
                             {isEditing ? 'Editar Usuário' : 'Novo Usuário'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Nome</label>
                                 <input
                                     type="text"
                                     value={formData.name || ''}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">Email</label>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Email</label>
                                 <input
                                     type="email"
                                     value={formData.email || ''}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                     required
                                 />
                             </div>
                             {!isEditing && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-1">Senha</label>
+                                    <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Senha</label>
                                     <input
                                         type="password"
                                         value={formData.password || ''}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                        className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                         required
                                     />
                                 </div>
@@ -199,25 +228,25 @@ export default function UserManagement() {
                                     id="isSuperAdmin"
                                     checked={formData.isSuperAdmin || false}
                                     onChange={(e) => setFormData({ ...formData, isSuperAdmin: e.target.checked })}
-                                    className="rounded bg-slate-800 border-slate-700"
+                                    className="rounded bg-sidebar-accent border-sidebar-border text-primary focus:ring-primary"
                                 />
-                                <label htmlFor="isSuperAdmin" className="text-sm text-slate-400">Super Admin?</label>
+                                <label htmlFor="isSuperAdmin" className="text-sm text-sidebar-foreground/60">Super Admin?</label>
                             </div>
 
                             {!formData.isSuperAdmin && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-400 mb-1">Perfil (Apenas para o Planner)</label>
+                                    <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Perfil (Apenas para o Planner)</label>
                                     <select
                                         value={formData.roleId || ''}
                                         onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                        className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                     >
                                         <option value="">Sem perfil atribuído</option>
                                         {roles.map(role => (
                                             <option key={role.id} value={role.id}>{role.name}</option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-slate-500 mt-1">
+                                    <p className="text-xs text-sidebar-foreground/40 mt-1">
                                         Isso define as permissões que este usuário terá no aplicativo de planejamento.
                                     </p>
                                 </div>
@@ -225,25 +254,25 @@ export default function UserManagement() {
 
                             {/* Clinic Assignment */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-2">Clínicas Permitidas</label>
-                                <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-2">Clínicas Permitidas</label>
+                                <div className="bg-sidebar-accent border border-sidebar-border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
                                     {clinics.length === 0 ? (
-                                        <p className="text-slate-500 text-sm">Nenhuma clínica disponível</p>
+                                        <p className="text-sidebar-foreground/40 text-sm">Nenhuma clínica disponível</p>
                                     ) : (
                                         clinics.map(clinic => (
-                                            <label key={clinic.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-700/50 rounded p-1">
+                                            <label key={clinic.id} className="flex items-center gap-2 cursor-pointer hover:bg-sidebar/50 rounded p-1">
                                                 <input
                                                     type="checkbox"
                                                     checked={formData.clinicIds?.includes(clinic.id) || false}
                                                     onChange={() => toggleClinic(clinic.id)}
-                                                    className="rounded bg-slate-700 border-slate-600"
+                                                    className="rounded bg-sidebar border-sidebar-border text-primary focus:ring-primary"
                                                 />
-                                                <span className="text-sm text-slate-300">{clinic.name}</span>
+                                                <span className="text-sm text-sidebar-foreground/80">{clinic.name}</span>
                                             </label>
                                         ))
                                     )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1">
+                                <p className="text-xs text-sidebar-foreground/40 mt-1">
                                     Super Admins têm acesso a todas as clínicas automaticamente.
                                 </p>
                             </div>
@@ -252,13 +281,13 @@ export default function UserManagement() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-slate-400 hover:text-white transition"
+                                    className="px-4 py-2 text-sidebar-foreground/60 hover:text-sidebar-foreground transition"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition font-medium"
+                                    className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition font-medium"
                                 >
                                     {isEditing ? 'Salvar' : 'Criar'}
                                 </button>
