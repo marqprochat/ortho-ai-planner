@@ -1,42 +1,33 @@
-import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import prisma from '../lib/prisma';
-
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.requireAppAccess = exports.requirePermission = exports.hasPermission = exports.authMiddleware = void 0;
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const prisma_1 = __importDefault(require("../lib/prisma"));
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-me';
-
-export interface AuthRequest extends Request {
-    userId?: string;
-    tenantId?: string;
-    clinicId?: string; // Selected clinic context
-    user?: any; // populated with full user object including permissions
-}
-
-export const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
+const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
         // Allow public access if needed, or enforce here?
         // Usually authMiddleware enforces.
         return res.status(401).json({ error: 'Token não fornecido' });
     }
-
     const parts = authHeader.split(' ');
     if (parts.length !== 2) {
         return res.status(401).json({ error: 'Token mal formatado' });
     }
-
     const [scheme, token] = parts;
     if (!/^Bearer$/i.test(scheme)) {
         return res.status(401).json({ error: 'Token mal formatado' });
     }
-
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; tenantId: string };
+        const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
         req.tenantId = decoded.tenantId;
-
         // Fetch user permissions
-        const user = await prisma.user.findUnique({
+        const user = await prisma_1.default.user.findUnique({
             where: { id: decoded.userId },
             include: {
                 appAccess: {
@@ -49,66 +40,56 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
                 }
             }
         });
-
         if (!user) {
             return res.status(401).json({ error: 'Usuário não encontrado' });
         }
-
         req.user = user;
-
         // Handle Clinic Context
-        const clinicId = req.headers['x-clinic-id'] as string;
+        const clinicId = req.headers['x-clinic-id'];
         if (clinicId) {
             // Optional: Validate if user has access to this clinic
             // For now, assuming Tenant-wide access, we just check if clinic belongs to same tenant
             // Or simpler: just assignment for MVP
             req.clinicId = clinicId;
         }
-
         return next();
-    } catch (error) {
+    }
+    catch (error) {
         return res.status(401).json({ error: 'Token inválido' });
     }
 };
-
-export const hasPermission = (user: any, action: string, resource: string) => {
-    if (!user) return false;
-    if (user.isSuperAdmin) return true;
-
+exports.authMiddleware = authMiddleware;
+const hasPermission = (user, action, resource) => {
+    if (!user)
+        return false;
+    if (user.isSuperAdmin)
+        return true;
     // Flatten permissions from all roles across all apps
-    return user.appAccess?.some((access: any) =>
-        access.role?.permissions?.some((p: any) =>
-            (p.action === action || p.action === 'manage') &&
-            (p.resource === resource || p.resource === 'all')
-        )
-    );
+    return user.appAccess?.some((access) => access.role?.permissions?.some((p) => (p.action === action || p.action === 'manage') &&
+        (p.resource === resource || p.resource === 'all')));
 };
-
-export const requirePermission = (action: string, resource: string) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
-        if (!hasPermission(req.user, action, resource)) {
+exports.hasPermission = hasPermission;
+const requirePermission = (action, resource) => {
+    return (req, res, next) => {
+        if (!(0, exports.hasPermission)(req.user, action, resource)) {
             return res.status(403).json({ error: 'Acesso negado' });
         }
-
         next();
     };
 };
-
-export const requireAppAccess = (appName: string) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
+exports.requirePermission = requirePermission;
+const requireAppAccess = (appName) => {
+    return (req, res, next) => {
         const user = req.user;
-        if (!user) return res.status(401).json({ error: 'Não autenticado' });
-
-        if (user.isSuperAdmin) return next();
-
-        const hasAppAccess = user.appAccess?.some((access: any) =>
-            access.application?.name === appName
-        );
-
+        if (!user)
+            return res.status(401).json({ error: 'Não autenticado' });
+        if (user.isSuperAdmin)
+            return next();
+        const hasAppAccess = user.appAccess?.some((access) => access.application?.name === appName);
         if (!hasAppAccess) {
             return res.status(403).json({ error: `Você não tem permissão para acessar o aplicativo ${appName}` });
         }
-
         next();
     };
 };
+exports.requireAppAccess = requireAppAccess;

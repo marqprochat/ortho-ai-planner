@@ -14,6 +14,7 @@ const Sidebar = () => {
     const canReadPatients = useHasPermission('read', 'patient');
     const canReadPlannings = useHasPermission('read', 'planning');
     const canWritePlanning = useHasPermission('write', 'planning');
+    const canReadContracts = useHasPermission('read', 'contract');
 
     const isActive = (path: string) => {
         if (path === "/") return location.pathname === "/";
@@ -76,11 +77,12 @@ const Sidebar = () => {
                     </Link>
                 )}
 
-                <button className={`flex w-full items-center rounded-lg py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-300 ${isExpanded ? "px-3 gap-3" : "px-0 justify-center"
-                    }`}>
-                    <FileText className="h-5 w-5 flex-shrink-0" />
-                    {isExpanded && <span className="whitespace-nowrap">Casos Ativos</span>}
-                </button>
+                {canReadContracts && (
+                    <Link to="/contracts" className={linkClass("/contracts")}>
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Contratos</span>}
+                    </Link>
+                )}
             </nav>
 
             {/* User Info at Bottom */}

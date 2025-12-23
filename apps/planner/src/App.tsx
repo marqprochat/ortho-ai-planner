@@ -10,6 +10,7 @@ import PlanoDeTratamento from "./pages/PlanoDeTratamento";
 import TermoDeCompromisso from "./pages/TermoDeCompromisso";
 import Patients from "./pages/Patients";
 import PatientDetail from "./pages/PatientDetail";
+import Contracts from "./pages/Contracts";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -51,8 +52,9 @@ const App = () => (
                   <Route path="/plannings" element={<Plannings />} />
                 </Route>
 
-                <Route element={<RequirePermission action="write" resource="contract" />}>
+                <Route element={<RequirePermission action="read" resource="contract" />}>
                   <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
+                  <Route path="/contracts" element={<Contracts />} />
                 </Route>
               </Route>
 

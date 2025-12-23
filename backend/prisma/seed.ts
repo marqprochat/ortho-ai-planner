@@ -48,13 +48,16 @@ async function main() {
         { action: 'read', resource: 'patient', description: 'Visualizar pacientes', appId: plannerApp.id },
         { action: 'write', resource: 'patient', description: 'Criar e editar pacientes', appId: plannerApp.id },
         { action: 'delete', resource: 'patient', description: 'Excluir pacientes', appId: plannerApp.id },
+        { action: 'manage', resource: 'patient', description: 'Gerenciar todos os pacientes da clínica', appId: plannerApp.id },
 
         { action: 'read', resource: 'planning', description: 'Visualizar planejamentos', appId: plannerApp.id },
         { action: 'write', resource: 'planning', description: 'Criar e editar planejamentos', appId: plannerApp.id },
         { action: 'delete', resource: 'planning', description: 'Excluir planejamentos', appId: plannerApp.id },
+        { action: 'manage', resource: 'planning', description: 'Gerenciar todos os planejamentos da clínica', appId: plannerApp.id },
 
         { action: 'read', resource: 'contract', description: 'Visualizar contratos', appId: plannerApp.id },
         { action: 'write', resource: 'contract', description: 'Gerar contratos', appId: plannerApp.id },
+        { action: 'delete', resource: 'contract', description: 'Excluir contratos', appId: plannerApp.id },
     ];
 
     for (const p of permissions) {

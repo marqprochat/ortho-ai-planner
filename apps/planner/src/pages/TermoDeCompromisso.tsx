@@ -94,6 +94,14 @@ const TermoDeCompromisso = () => {
             }));
         }
 
+        // Use patientName from state if available
+        if (patientName) {
+            setContractData(prev => ({
+                ...prev,
+                nomePaciente: patientName
+            }));
+        }
+
         // Data atual formatada
         const hoje = new Date();
         const dataFormatada = hoje.toLocaleDateString('pt-BR', {
@@ -105,7 +113,7 @@ const TermoDeCompromisso = () => {
             ...prev,
             dataContrato: dataFormatada,
         }));
-    }, []);
+    }, [patientName]);
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
