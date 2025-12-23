@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope } from "lucide-react";
+import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useHasPermission } from "../hooks/useHasPermission";
 
 import { ClinicSelector } from "./ClinicSelector";
 
@@ -9,6 +10,10 @@ const Sidebar = () => {
     const location = useLocation();
     const { user, logout } = useAuth();
     const [isExpanded, setIsExpanded] = useState(false);
+
+    const canReadPatients = useHasPermission('read', 'patient');
+    const canReadPlannings = useHasPermission('read', 'planning');
+    const canWritePlanning = useHasPermission('write', 'planning');
 
     const isActive = (path: string) => {
         if (path === "/") return location.pathname === "/";
@@ -50,20 +55,26 @@ const Sidebar = () => {
                     {isExpanded && <span className="whitespace-nowrap">Dashboard</span>}
                 </Link>
 
-                <Link to="/patients" className={linkClass("/patients")}>
-                    <Users className="h-5 w-5 flex-shrink-0" />
-                    {isExpanded && <span className="whitespace-nowrap">Pacientes</span>}
-                </Link>
+                {canReadPatients && (
+                    <Link to="/patients" className={linkClass("/patients")}>
+                        <Users className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Pacientes</span>}
+                    </Link>
+                )}
 
-                <Link to="/novo-planejamento" className={linkClass("/novo-planejamento")}>
-                    <Plus className="h-5 w-5 flex-shrink-0" />
-                    {isExpanded && <span className="whitespace-nowrap">Novo Planejamento</span>}
-                </Link>
+                {canReadPlannings && (
+                    <Link to="/plannings" className={linkClass("/plannings")}>
+                        <ClipboardList className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Planejamentos</span>}
+                    </Link>
+                )}
 
-                <Link to="/novo-planejamento" className={linkClass("/planejamento-ia")}>
-                    <Brain className="h-5 w-5 flex-shrink-0" />
-                    {isExpanded && <span className="whitespace-nowrap">Planejamento IA</span>}
-                </Link>
+                {canWritePlanning && (
+                    <Link to="/novo-planejamento" className={linkClass("/novo-planejamento")}>
+                        <Plus className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Novo Planejamento</span>}
+                    </Link>
+                )}
 
                 <button className={`flex w-full items-center rounded-lg py-3 text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-300 ${isExpanded ? "px-3 gap-3" : "px-0 justify-center"
                     }`}>

@@ -103,3 +103,33 @@ export const updatePlanning = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ error: 'Erro ao atualizar planejamento' });
     }
 };
+
+// Get all plannings for tenant/clinic
+export const getAllPlannings = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId, clinicId } = req;
+
+        const plannings = await prisma.planning.findMany({
+            where: {
+                patient: {
+                    tenantId,
+                    clinicId
+                }
+            },
+            include: {
+                patient: {
+                    select: {
+                        name: true,
+                        id: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(plannings);
+    } catch (error) {
+        console.error('Error fetching all plannings:', error);
+        res.status(500).json({ error: 'Erro ao buscar todos os planejamentos' });
+    }
+};

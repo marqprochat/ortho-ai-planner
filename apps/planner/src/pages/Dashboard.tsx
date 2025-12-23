@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen } from "lucide-react";
+import { Plus, Users, FileText, Brain, FolderOpen, ClipboardList } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
@@ -71,11 +71,11 @@ const Dashboard = () => {
         <div className="mb-8">
           <h3 className="text-xl font-bold mb-4">Ações Rápidas</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link to="/novo-planejamento">
+            <Link to="/plannings">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-secondary text-secondary-foreground">
                 <CardContent className="p-8 text-center">
-                  <Brain className="h-12 w-12 mx-auto mb-3" />
-                  <h4 className="font-semibold text-lg">Planejamento com IA</h4>
+                  <ClipboardList className="h-12 w-12 mx-auto mb-3" />
+                  <h4 className="font-semibold text-lg">Planejamentos</h4>
                 </CardContent>
               </Card>
             </Link>

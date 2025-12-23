@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import NovoPlanejamentoIA from "./pages/NovoPlanejamentoIA";
+import Plannings from "./pages/Plannings";
 import PlanoDeTratamento from "./pages/PlanoDeTratamento";
 import TermoDeCompromisso from "./pages/TermoDeCompromisso";
 import Patients from "./pages/Patients";
@@ -44,6 +45,10 @@ const App = () => (
                 <Route element={<RequirePermission action="write" resource="planning" />}>
                   <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
                   <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
+                </Route>
+
+                <Route element={<RequirePermission action="read" resource="planning" />}>
+                  <Route path="/plannings" element={<Plannings />} />
                 </Route>
 
                 <Route element={<RequirePermission action="write" resource="contract" />}>

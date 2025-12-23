@@ -38,8 +38,9 @@ app.get('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requir
 app.put('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), updatePatient);
 
 // Planning Routes
-import { getPlannings, createPlanning, updatePlanning } from './controllers/planningController';
+import { getPlannings, createPlanning, updatePlanning, getAllPlannings } from './controllers/planningController';
 app.get('/api/patients/:patientId/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getPlannings);
+app.get('/api/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getAllPlannings);
 app.post('/api/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), createPlanning);
 app.put('/api/plannings/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updatePlanning);
 
