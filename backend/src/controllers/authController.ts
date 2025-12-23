@@ -83,7 +83,11 @@ export const login = async (req: Request, res: Response) => {
                 appAccess: {
                     include: {
                         application: true,
-                        role: true
+                        role: {
+                            include: {
+                                permissions: true
+                            }
+                        }
                     }
                 }
             }
@@ -129,7 +133,11 @@ export const getMe = async (req: AuthRequest, res: Response) => {
                 appAccess: {
                     include: {
                         application: true,
-                        role: true
+                        role: {
+                            include: {
+                                permissions: true
+                            }
+                        }
                     }
                 }
             }

@@ -12,7 +12,9 @@ import PatientDetail from "./pages/PatientDetail";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { RequirePermission } from "./components/RequirePermission";
 import Login from "./pages/Login";
+import AccessDenied from "./pages/AccessDenied";
 
 const queryClient = new QueryClient();
 
@@ -29,14 +31,24 @@ const App = () => (
             <Routes>
               {/* Routes... */}
               <Route path="/login" element={<Login />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/patients" element={<Patients />} />
-                <Route path="/patients/:id" element={<PatientDetail />} />
-                <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
-                <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
-                <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
+
+                <Route element={<RequirePermission action="read" resource="patient" />}>
+                  <Route path="/patients" element={<Patients />} />
+                  <Route path="/patients/:id" element={<PatientDetail />} />
+                </Route>
+
+                <Route element={<RequirePermission action="write" resource="planning" />}>
+                  <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
+                  <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
+                </Route>
+
+                <Route element={<RequirePermission action="write" resource="contract" />}>
+                  <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
+                </Route>
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

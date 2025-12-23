@@ -18,8 +18,12 @@ export const getUsers = async (req: Request, res: Response) => {
         // Sanitize passwords
         const sanitized = users.map(u => {
             const { password, ...rest } = u;
+            // Get planner role if exists
+            const plannerAccess = u.appAccess.find(a => a.application.name === 'planner');
+
             return {
                 ...rest,
+                roleId: plannerAccess?.roleId,
                 // Flatten clinic list for easier frontend use
                 clinics: u.userClinics.map(uc => uc.clinic)
             };
@@ -32,7 +36,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -53,6 +57,20 @@ export const createUser = async (req: Request, res: Response) => {
             }
         });
 
+        // If roleId provided, assign to planner app
+        if (roleId) {
+            const plannerApp = await prisma.application.findUnique({ where: { name: 'planner' } });
+            if (plannerApp) {
+                await prisma.userAppAccess.create({
+                    data: {
+                        userId: user.id,
+                        applicationId: plannerApp.id,
+                        roleId: roleId
+                    }
+                });
+            }
+        }
+
         const { password: _, ...userWithoutPassword } = user;
         res.json({
             ...userWithoutPassword,
@@ -67,7 +85,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, isSuperAdmin, clinicIds } = req.body;
+        const { name, email, isSuperAdmin, clinicIds, roleId } = req.body;
 
         // Update user basic info
         const user = await prisma.user.update({
@@ -78,6 +96,38 @@ export const updateUser = async (req: Request, res: Response) => {
                 isSuperAdmin
             }
         });
+
+        // If roleId provided, sync UserAppAccess for planner app
+        if (roleId !== undefined) {
+            const plannerApp = await prisma.application.findUnique({ where: { name: 'planner' } });
+            if (plannerApp) {
+                if (roleId) {
+                    await prisma.userAppAccess.upsert({
+                        where: {
+                            userId_applicationId: {
+                                userId: id,
+                                applicationId: plannerApp.id
+                            }
+                        },
+                        update: { roleId },
+                        create: {
+                            userId: id,
+                            applicationId: plannerApp.id,
+                            roleId
+                        }
+                    });
+                } else {
+                    // If roleId is null/empty, maybe we should remove access? 
+                    // For now let's just delete it if it exists
+                    await prisma.userAppAccess.deleteMany({
+                        where: {
+                            userId: id,
+                            applicationId: plannerApp.id
+                        }
+                    });
+                }
+            }
+        }
 
         // If clinicIds provided, sync UserClinic records
         if (clinicIds !== undefined) {
@@ -91,11 +141,12 @@ export const updateUser = async (req: Request, res: Response) => {
             }
         }
 
-        // Fetch updated user with clinics
+        // Fetch updated user with clinics and app access
         const updated = await prisma.user.findUnique({
             where: { id },
             include: {
-                userClinics: { include: { clinic: true } }
+                userClinics: { include: { clinic: true } },
+                appAccess: { include: { application: true } }
             }
         });
 
@@ -104,8 +155,11 @@ export const updateUser = async (req: Request, res: Response) => {
         }
 
         const { password: _, ...userWithoutPassword } = updated;
+        const plannerAccess = updated.appAccess.find(a => a.application.name === 'planner');
+
         res.json({
             ...userWithoutPassword,
+            roleId: plannerAccess?.roleId,
             clinics: updated.userClinics.map(uc => uc.clinic)
         });
     } catch (error) {

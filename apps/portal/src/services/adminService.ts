@@ -45,6 +45,7 @@ export interface User {
     appAccess?: any[];
     clinics?: Clinic[]; // Assigned clinics
     clinicIds?: string[]; // For create/update payload
+    roleId?: string; // For create/update and display
 }
 
 export const adminService = {

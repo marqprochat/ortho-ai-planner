@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import prisma from './lib/prisma';
 import { register, login, getMe } from './controllers/authController';
-import { authMiddleware } from './middleware/authMiddleware';
+import { authMiddleware, requireAppAccess, requirePermission } from './middleware/authMiddleware';
 
 dotenv.config();
 
@@ -31,23 +31,23 @@ app.get('/api/auth/me', authMiddleware, getMe);
 
 // Patient Routes
 import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient } from './controllers/patientController';
-app.get('/api/patients', authMiddleware, getPatients);
-app.post('/api/patients', authMiddleware, createPatient);
-app.post('/api/patients/find-or-create', authMiddleware, findOrCreatePatient);
-app.get('/api/patients/:id', authMiddleware, getPatient);
-app.put('/api/patients/:id', authMiddleware, updatePatient);
+app.get('/api/patients', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'patient'), getPatients);
+app.post('/api/patients', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), createPatient);
+app.post('/api/patients/find-or-create', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), findOrCreatePatient);
+app.get('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'patient'), getPatient);
+app.put('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), updatePatient);
 
 // Planning Routes
 import { getPlannings, createPlanning, updatePlanning } from './controllers/planningController';
-app.get('/api/patients/:patientId/plannings', authMiddleware, getPlannings);
-app.post('/api/plannings', authMiddleware, createPlanning);
-app.put('/api/plannings/:id', authMiddleware, updatePlanning);
+app.get('/api/patients/:patientId/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getPlannings);
+app.post('/api/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), createPlanning);
+app.put('/api/plannings/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updatePlanning);
 
 // Contract Routes
 import { createContract, getPatientContracts, getContract } from './controllers/contractController';
-app.post('/api/contracts', authMiddleware, createContract);
-app.get('/api/patients/:patientId/contracts', authMiddleware, getPatientContracts);
-app.get('/api/contracts/:id', authMiddleware, getContract);
+app.post('/api/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'contract'), createContract);
+app.get('/api/patients/:patientId/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getPatientContracts);
+app.get('/api/contracts/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getContract);
 
 // Permission & Role Routes
 import { getPermissions } from './controllers/permissionController';

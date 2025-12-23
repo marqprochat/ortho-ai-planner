@@ -6,9 +6,10 @@ export default function UserManagement() {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [clinics, setClinics] = useState<Clinic[]>([]);
+    const [roles, setRoles] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[] }>({});
+    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[]; roleId?: string }>({});
     const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
@@ -17,12 +18,14 @@ export default function UserManagement() {
 
     const loadData = async () => {
         try {
-            const [usersData, clinicsData] = await Promise.all([
+            const [usersData, clinicsData, rolesData] = await Promise.all([
                 adminService.getUsers(),
-                adminService.getClinics()
+                adminService.getClinics(),
+                adminService.getRoles()
             ]);
             setUsers(usersData);
             setClinics(clinicsData);
+            setRoles(rolesData);
         } catch (error) {
             console.error('Failed to load data', error);
         } finally {
@@ -106,7 +109,7 @@ export default function UserManagement() {
                             <th className="px-6 py-4">Nome</th>
                             <th className="px-6 py-4">Email</th>
                             <th className="px-6 py-4">Clínicas</th>
-                            <th className="px-6 py-4">Admin?</th>
+                            <th className="px-6 py-4">Perfil</th>
                             <th className="px-6 py-4 text-right">Ações</th>
                         </tr>
                     </thead>
@@ -129,10 +132,12 @@ export default function UserManagement() {
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                    {user.isSuperAdmin ? (
-                                        <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">Sim</span>
-                                    ) : (
-                                        <span className="text-slate-500 text-xs">Não</span>
+                                    {roles.find(r => r.id === user.roleId)?.name || (
+                                        user.isSuperAdmin ? (
+                                            <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs border border-purple-500/30">Super Admin</span>
+                                        ) : (
+                                            <span className="text-slate-500 text-xs italic">Sem perfil</span>
+                                        )
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right space-x-2">
@@ -198,6 +203,25 @@ export default function UserManagement() {
                                 />
                                 <label htmlFor="isSuperAdmin" className="text-sm text-slate-400">Super Admin?</label>
                             </div>
+
+                            {!formData.isSuperAdmin && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Perfil (Apenas para o Planner)</label>
+                                    <select
+                                        value={formData.roleId || ''}
+                                        onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                    >
+                                        <option value="">Sem perfil atribuído</option>
+                                        {roles.map(role => (
+                                            <option key={role.id} value={role.id}>{role.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Isso define as permissões que este usuário terá no aplicativo de planejamento.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Clinic Assignment */}
                             <div>

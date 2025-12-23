@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { toast } from "sonner";
 import { patientService, Patient } from "../services/patientService";
 import Sidebar from "@/components/Sidebar";
+import { useHasPermission } from "../hooks/useHasPermission";
 
 const Patients = () => {
     const navigate = useNavigate();
@@ -23,6 +24,8 @@ const Patients = () => {
         phone: "",
         birthDate: "",
     });
+
+    const canWritePatient = useHasPermission('write', 'patient');
 
     useEffect(() => {
         loadPatients();
@@ -84,10 +87,12 @@ const Patients = () => {
                             <h1 className="text-4xl font-bold text-foreground">Pacientes</h1>
                             <p className="text-muted-foreground">Gerencie seus pacientes e planejamentos</p>
                         </div>
-                        <Button onClick={() => setIsCreateDialogOpen(true)} size="lg">
-                            <Plus className="mr-2 h-5 w-5" />
-                            Novo Paciente
-                        </Button>
+                        {canWritePatient && (
+                            <Button onClick={() => setIsCreateDialogOpen(true)} size="lg">
+                                <Plus className="mr-2 h-5 w-5" />
+                                Novo Paciente
+                            </Button>
+                        )}
                     </div>
 
                     {/* Search Bar */}
@@ -114,7 +119,7 @@ const Patients = () => {
                                 <p className="text-muted-foreground mb-4">
                                     {searchQuery ? "Tente uma busca diferente" : "Comece adicionando seu primeiro paciente"}
                                 </p>
-                                {!searchQuery && (
+                                {!searchQuery && canWritePatient && (
                                     <Button onClick={() => setIsCreateDialogOpen(true)}>
                                         <Plus className="mr-2 h-4 w-4" />
                                         Adicionar Paciente

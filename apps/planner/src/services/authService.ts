@@ -8,10 +8,20 @@ export interface User {
     name: string;
     avatarUrl?: string;
     tenantId: string;
+    isSuperAdmin?: boolean;
     tenant: { id: string; name: string };
     appAccess?: Array<{
         application: { id: string; name: string; displayName: string; icon?: string; url?: string };
-        role: { id: string; name: string };
+        role: {
+            id: string;
+            name: string;
+            permissions: Array<{
+                id: string;
+                action: string;
+                resource: string;
+                description?: string;
+            }>;
+        };
     }>;
 }
 

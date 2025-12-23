@@ -41,6 +41,7 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
             include: {
                 appAccess: {
                     include: {
+                        application: true,
                         role: {
                             include: { permissions: true }
                         }
@@ -82,8 +83,8 @@ export const requirePermission = (action: string, resource: string) => {
         // Or we might need to check "current app context".
         // Assuming global roles for now based on prompt transparency.
 
-        const hasPermission = user.appAccess.some((access: any) =>
-            access.role.permissions.some((p: any) =>
+        const hasPermission = user.appAccess?.some((access: any) =>
+            access.role?.permissions?.some((p: any) =>
                 (p.action === action || p.action === 'manage') &&
                 (p.resource === resource || p.resource === 'all')
             )
@@ -91,6 +92,25 @@ export const requirePermission = (action: string, resource: string) => {
 
         if (!hasPermission) {
             return res.status(403).json({ error: 'Acesso negado' });
+        }
+
+        next();
+    };
+};
+
+export const requireAppAccess = (appName: string) => {
+    return (req: AuthRequest, res: Response, next: NextFunction) => {
+        const user = req.user;
+        if (!user) return res.status(401).json({ error: 'Não autenticado' });
+
+        if (user.isSuperAdmin) return next();
+
+        const hasAppAccess = user.appAccess?.some((access: any) =>
+            access.application?.name === appName
+        );
+
+        if (!hasAppAccess) {
+            return res.status(403).json({ error: `Você não tem permissão para acessar o aplicativo ${appName}` });
         }
 
         next();
