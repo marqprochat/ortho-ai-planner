@@ -86,3 +86,33 @@ export const getContract = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Erro ao buscar contrato' });
     }
 };
+
+// Get all contracts for tenant/clinic
+export const getAllContracts = async (req: Request, res: Response) => {
+    try {
+        const { tenantId, clinicId } = req as any;
+
+        const contracts = await prisma.contract.findMany({
+            where: {
+                patient: {
+                    tenantId,
+                    clinicId
+                }
+            },
+            include: {
+                patient: {
+                    select: {
+                        name: true,
+                        id: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json(contracts);
+    } catch (error) {
+        console.error('Error fetching all contracts:', error);
+        res.status(500).json({ error: 'Erro ao buscar todos os contratos' });
+    }
+};

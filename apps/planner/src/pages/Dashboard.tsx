@@ -1,10 +1,45 @@
 import { Link } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, ClipboardList } from "lucide-react";
+import { Plus, Users, FileText, Brain, FolderOpen, ClipboardList, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
+import { useEffect, useState } from "react";
+import { patientService, Patient } from "@/services/patientService";
+import { planningService, Planning } from "@/services/planningService";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const Dashboard = () => {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [plannings, setPlannings] = useState<Planning[]>([]);
+  const [contractsCount, setContractsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [patientsData, planningsData, contractsData] = await Promise.all([
+          patientService.getPatients(),
+          planningService.getAllPlannings(),
+          planningService.getContracts()
+        ]);
+        setPatients(patientsData);
+        setPlannings(planningsData);
+        setContractsCount(contractsData.length);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const pendingPlannings = plannings.filter(p => p.status === 'DRAFT').length;
+  const completedPlannings = plannings.filter(p => p.status === 'COMPLETED').length;
+  const recentPlannings = plannings.slice(0, 5);
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -21,11 +56,11 @@ const Dashboard = () => {
           <Card className="border-l-4 border-l-primary">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <FileText className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">+64</span>
+                <Users className="h-8 w-8 text-primary" />
+                <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Total</span>
               </div>
-              <div className="text-3xl font-bold mb-1">49</div>
-              <div className="text-sm text-muted-foreground">Casos Ativos</div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : patients.length}</div>
+              <div className="text-sm text-muted-foreground">Pacientes</div>
             </CardContent>
           </Card>
 
@@ -33,36 +68,32 @@ const Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <Brain className="h-8 w-8 text-warning" />
-                <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">-2</span>
+                <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">Pendentes</span>
               </div>
-              <div className="text-3xl font-bold mb-1">0</div>
-              <div className="text-sm text-muted-foreground">Planejamentos Pendentes</div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingPlannings}</div>
+              <div className="text-sm text-muted-foreground">Aguardando IA</div>
             </CardContent>
           </Card>
 
           <Card className="border-l-4 border-l-success">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <svg className="h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">+5</span>
+                <CheckCircle2 className="h-8 w-8 text-success" />
+                <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">Concluídos</span>
               </div>
-              <div className="text-3xl font-bold mb-1">15</div>
-              <div className="text-sm text-muted-foreground">Concluídos</div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : completedPlannings}</div>
+              <div className="text-sm text-muted-foreground">Planejamentos</div>
             </CardContent>
           </Card>
 
           <Card className="border-l-4 border-l-secondary">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <svg className="h-8 w-8 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span className="text-sm font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full">+2%</span>
+                <FileText className="h-8 w-8 text-secondary" />
+                <span className="text-sm font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full">Contratos</span>
               </div>
-              <div className="text-3xl font-bold mb-1">23%</div>
-              <div className="text-sm text-muted-foreground">Taxa de Sucesso</div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : contractsCount}</div>
+              <div className="text-sm text-muted-foreground">Contratos Gerados</div>
             </CardContent>
           </Card>
         </div>
@@ -102,13 +133,57 @@ const Dashboard = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold">Casos Recentes</h3>
-            <Button variant="link" className="text-primary">Ver todos</Button>
+            <Link to="/plannings">
+              <Button variant="link" className="text-primary">Ver todos</Button>
+            </Link>
           </div>
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-muted-foreground py-8">
-                Nenhum caso recente para exibir
-              </p>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="p-4 font-semibold">Paciente</th>
+                      <th className="p-4 font-semibold">Título</th>
+                      <th className="p-4 font-semibold">Status</th>
+                      <th className="p-4 font-semibold">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                          Carregando...
+                        </td>
+                      </tr>
+                    ) : recentPlannings.length > 0 ? (
+                      recentPlannings.map((planning) => (
+                        <tr key={planning.id} className="border-b hover:bg-muted/30 transition-colors">
+                          <td className="p-4 font-medium">{planning.patient?.name}</td>
+                          <td className="p-4">{planning.title}</td>
+                          <td className="p-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${planning.status === 'COMPLETED'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }`}>
+                              {planning.status === 'COMPLETED' ? 'Concluído' : 'Processando'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-muted-foreground">
+                            {format(new Date(planning.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                          Nenhum caso recente para exibir
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -45,8 +45,9 @@ app.post('/api/plannings', authMiddleware, requireAppAccess('planner'), requireP
 app.put('/api/plannings/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updatePlanning);
 
 // Contract Routes
-import { createContract, getPatientContracts, getContract } from './controllers/contractController';
+import { createContract, getPatientContracts, getContract, getAllContracts } from './controllers/contractController';
 app.post('/api/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'contract'), createContract);
+app.get('/api/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getAllContracts);
 app.get('/api/patients/:patientId/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getPatientContracts);
 app.get('/api/contracts/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getContract);
 

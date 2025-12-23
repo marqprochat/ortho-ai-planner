@@ -85,5 +85,19 @@ export const planningService = {
         }
 
         return response.json();
+    },
+
+    getContracts: async (): Promise<any[]> => {
+        const response = await fetch(`${API_URL}/contracts`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            // If the endpoint doesn't exist yet, we might need to handle it
+            // but for now let's assume it does or we'll create it.
+            return [];
+        }
+
+        return response.json();
     }
 };
