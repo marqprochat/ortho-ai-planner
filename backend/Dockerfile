@@ -9,7 +9,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY . .
-RUN npm run build
+RUN npx tsc
 
 # Final stage
 FROM node:20-alpine AS runner
