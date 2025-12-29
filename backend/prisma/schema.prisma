@@ -8,24 +8,23 @@ datasource db {
 }
 
 model Tenant {
-  id          String   @id @default(uuid())
-  name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  users       User[]
-  clinics     Clinic[]
-  patients    Patient[]
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  clinics   Clinic[]
+  patients  Patient[]
+  users     User[]
 }
 
 model Clinic {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
   address     String?
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
   patients    Patient[]
   userClinics UserClinic[]
 }
@@ -34,69 +33,60 @@ model UserClinic {
   id        String   @id @default(uuid())
   userId    String
   clinicId  String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, clinicId])
 }
 
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  password    String
-  name        String
-  avatarUrl   String?
-  isSuperAdmin Boolean @default(false)
-  
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  
-  appAccess   UserAppAccess[]
-  patients    Patient[]
-  userClinics UserClinic[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String          @id @default(uuid())
+  email        String          @unique
+  password     String
+  name         String
+  avatarUrl    String?
+  isSuperAdmin Boolean         @default(false)
+  tenantId     String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  patients     Patient[]
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  appAccess    UserAppAccess[]
+  userClinics  UserClinic[]
 }
 
 model Application {
-  id          String   @id @default(uuid())
-  name        String   @unique // Internal ID name: 'planner', 'portal'
+  id          String          @id @default(uuid())
+  name        String          @unique
   displayName String
   description String?
   icon        String?
-  url         String?  // URL to redirect for this app if external/subdomain
-  
-  userAccess  UserAppAccess[]
+  url         String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   permissions Permission[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userAccess  UserAppAccess[]
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique // 'ADMIN', 'DENTIST', 'AUXILIARY', 'VIEWER'
+  id          String          @id @default(uuid())
+  name        String          @unique
   description String?
-  
   userAccess  UserAppAccess[]
-  permissions Permission[]
+  permissions Permission[]    @relation("PermissionToRole")
 }
 
 model Permission {
-  id          String   @id @default(uuid())
-  action      String   // e.g. 'read', 'write', 'delete', 'manage'
-  resource    String   // e.g. 'user', 'clinic', 'role', 'all'
-  description String?
-  
-  roles       Role[]
-
+  id            String       @id @default(uuid())
+  action        String
+  resource      String
+  description   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   applicationId String?
   application   Application? @relation(fields: [applicationId], references: [id])
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  roles         Role[]       @relation("PermissionToRole")
 
   @@unique([action, resource])
 }
@@ -106,65 +96,53 @@ model UserAppAccess {
   userId        String
   applicationId String
   roleId        String
-  
-  user          User        @relation(fields: [userId], references: [id])
-  application   Application @relation(fields: [applicationId], references: [id])
-  role          Role        @relation(fields: [roleId], references: [id])
-  
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  application   Application @relation(fields: [applicationId], references: [id])
+  role          Role        @relation(fields: [roleId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
 
   @@unique([userId, applicationId])
 }
 
 model Patient {
-  id          String   @id @default(uuid())
-  name        String
-  birthDate   DateTime?
-  email       String?
-  phone       String?
-  externalId  String?  // External patient number from another application
-  
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  
-  userId      String   // Dentist responsible
-  user        User     @relation(fields: [userId], references: [id])
-  
-  clinicId    String   // Clinic is now required
-  clinic      Clinic   @relation(fields: [clinicId], references: [id])
-  
-  plannings   Planning[]
-  contracts   Contract[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String     @id @default(uuid())
+  name       String
+  birthDate  DateTime?
+  email      String?
+  phone      String?
+  externalId String?
+  tenantId   String
+  userId     String
+  clinicId   String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  contracts  Contract[]
+  clinic     Clinic     @relation(fields: [clinicId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+  plannings  Planning[]
 }
 
 model Planning {
-  id          String   @id @default(uuid())
-  title       String
-  status      String   @default("DRAFT") // DRAFT, GENERATING, COMPLETED, REVIEWED
-  
-  patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id])
-
-  originalReport String? // The input text/report
-  aiResponse     String? // The raw AI response
-  structuredPlan Json?   // The parsed plan structure
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid())
+  title          String
+  status         String   @default("DRAFT")
+  patientId      String
+  originalReport String?
+  aiResponse     String?
+  structuredPlan Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  patient        Patient  @relation(fields: [patientId], references: [id])
 }
 
 model Contract {
-  id          String   @id @default(uuid())
-  patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  
-  content     String   // The generated contract text
-  logoUrl     String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  patientId String
+  content   String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  patient   Patient  @relation(fields: [patientId], references: [id])
 }
