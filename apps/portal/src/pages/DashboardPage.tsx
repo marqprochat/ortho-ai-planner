@@ -13,7 +13,7 @@ const defaultApps = [
         displayName: "Planejamento Ortodôntico",
         description: "Planejamento de tratamento assistido por IA",
         icon: "ClipboardList",
-        url: import.meta.env.VITE_PLANNER_URL || "http://localhost:8080",
+        url: import.meta.env.VITE_PLANNER_APP_URL || import.meta.env.VITE_PLANNER_URL || "http://localhost:8080",
     },
 ];
 

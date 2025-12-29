@@ -24,6 +24,7 @@ Para implantar este projeto no Easypanel, siga os passos abaixo:
 3. Defina o **"Subpath"** para `./apps/portal`.
 4. Em **"Build"**, adicione o seguinte **"Build Argument"**:
    - `VITE_API_URL`: `https://api.seudominio.com/api` (O domínio que você configurou no backend).
+   - `VITE_PLANNER_APP_URL`: `https://app.seudominio.com` (O domínio que você configurou no planner).
 5. Em **"Domains"**, configure o domínio do portal (ex: `portal.seudominio.com`).
 
 ## 4. Planner Frontend
