@@ -83,7 +83,40 @@ async function main() {
 
     console.log(`✅ ${permissions.length} permissions ensured.`);
 
-    // 3. Promote first user to SuperAdmin if exists and none exists
+    // 3. Roles
+    console.log('Upserting roles...');
+
+    const rolesData = [
+        { name: 'ADMIN', description: 'Administrador total do sistema' },
+        { name: 'DENTISTA', description: 'Profissional de odontologia' },
+        { name: 'ASSISTENTE', description: 'Assistente clínico' },
+    ];
+
+    const roles: any = {};
+    for (const r of rolesData) {
+        roles[r.name] = await prisma.role.upsert({
+            where: { name: r.name },
+            update: { description: r.description },
+            create: { name: r.name, description: r.description }
+        });
+    }
+
+    console.log(`✅ ${Object.keys(roles).length} roles ensured.`);
+
+    // 4. Link Permissions to ADMIN Role
+    console.log('Linking all permissions to ADMIN role...');
+    const allPermissions = await prisma.permission.findMany();
+    await prisma.role.update({
+        where: { id: roles['ADMIN'].id },
+        data: {
+            permissions: {
+                set: allPermissions.map(p => ({ id: p.id }))
+            }
+        }
+    });
+    console.log('✅ ADMIN role updated with all permissions.');
+
+    // 5. Promote first user to SuperAdmin if exists and none exists
     console.log('Checking for SuperAdmin...');
     const superAdmin = await prisma.user.findFirst({ where: { isSuperAdmin: true } });
     if (!superAdmin) {
@@ -96,25 +129,22 @@ async function main() {
             });
 
             // Grant Admin role to this user for both apps
-            const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
-            if (adminRole) {
-                const apps = await prisma.application.findMany();
-                for (const app of apps) {
-                    await prisma.userAppAccess.upsert({
-                        where: {
-                            userId_applicationId: {
-                                userId: firstUser.id,
-                                applicationId: app.id
-                            }
-                        },
-                        update: { roleId: adminRole.id },
-                        create: {
+            const apps = await prisma.application.findMany();
+            for (const app of apps) {
+                await prisma.userAppAccess.upsert({
+                    where: {
+                        userId_applicationId: {
                             userId: firstUser.id,
-                            applicationId: app.id,
-                            roleId: adminRole.id
+                            applicationId: app.id
                         }
-                    });
-                }
+                    },
+                    update: { roleId: roles['ADMIN'].id },
+                    create: {
+                        userId: firstUser.id,
+                        applicationId: app.id,
+                        roleId: roles['ADMIN'].id
+                    }
+                });
             }
             console.log(`✅ ${firstUser.email} is now SuperAdmin with full access.`);
         } else {
@@ -122,6 +152,26 @@ async function main() {
         }
     } else {
         console.log(`SuperAdmin already exists: ${superAdmin.email}`);
+
+        // Ensure SuperAdmin has ADMIN role for all apps
+        const apps = await prisma.application.findMany();
+        for (const app of apps) {
+            await prisma.userAppAccess.upsert({
+                where: {
+                    userId_applicationId: {
+                        userId: superAdmin.id,
+                        applicationId: app.id
+                    }
+                },
+                update: { roleId: roles['ADMIN'].id },
+                create: {
+                    userId: superAdmin.id,
+                    applicationId: app.id,
+                    roleId: roles['ADMIN'].id
+                }
+            });
+        }
+        console.log(`✅ SuperAdmin ${superAdmin.email} has ADMIN access ensured for all apps.`);
     }
 
     console.log('🏁 Seed completed successfully.');

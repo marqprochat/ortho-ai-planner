@@ -62,24 +62,14 @@ export const register = async (req: Request, res: Response) => {
         if (isFirstUser) {
             try {
                 const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
-                const portalApp = await prisma.application.findUnique({ where: { name: 'portal' } });
-                const plannerApp = await prisma.application.findUnique({ where: { name: 'planner' } });
+                const apps = await prisma.application.findMany();
 
-                if (adminRole) {
-                    if (portalApp) {
+                if (adminRole && apps.length > 0) {
+                    for (const app of apps) {
                         await prisma.userAppAccess.create({
                             data: {
                                 userId: user.id,
-                                applicationId: portalApp.id,
-                                roleId: adminRole.id
-                            }
-                        });
-                    }
-                    if (plannerApp) {
-                        await prisma.userAppAccess.create({
-                            data: {
-                                userId: user.id,
-                                applicationId: plannerApp.id,
+                                applicationId: app.id,
                                 roleId: adminRole.id
                             }
                         });
@@ -87,7 +77,6 @@ export const register = async (req: Request, res: Response) => {
                 }
             } catch (roleError) {
                 console.error('Error assigning initial roles:', roleError);
-                // Don't fail registration if role assignment fails
             }
         }
 
