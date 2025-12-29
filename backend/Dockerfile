@@ -9,7 +9,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY . .
-RUN npx tsc
+RUN node node_modules/typescript/bin/tsc
 
 # Final stage
 FROM node:20-alpine AS runner
