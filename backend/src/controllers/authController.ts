@@ -34,27 +34,66 @@ export const register = async (req: Request, res: Response) => {
             });
         }
 
+        // Check if this is the first user (will be super admin)
+        const userCount = await prisma.user.count();
+        const isFirstUser = userCount === 0;
+
         // Create user
         const user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
                 name,
-                tenantId: tenant.id
+                tenantId: tenant.id,
+                isSuperAdmin: isFirstUser
             },
             select: {
                 id: true,
                 email: true,
                 name: true,
                 avatarUrl: true,
+                isSuperAdmin: true,
                 tenantId: true,
                 tenant: { select: { id: true, name: true } }
             }
         });
 
+        // If it's the first user, also try to give them Admin role for Portal and Planner if they exist
+        if (isFirstUser) {
+            try {
+                const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+                const portalApp = await prisma.application.findUnique({ where: { name: 'portal' } });
+                const plannerApp = await prisma.application.findUnique({ where: { name: 'planner' } });
+
+                if (adminRole) {
+                    if (portalApp) {
+                        await prisma.userAppAccess.create({
+                            data: {
+                                userId: user.id,
+                                applicationId: portalApp.id,
+                                roleId: adminRole.id
+                            }
+                        });
+                    }
+                    if (plannerApp) {
+                        await prisma.userAppAccess.create({
+                            data: {
+                                userId: user.id,
+                                applicationId: plannerApp.id,
+                                roleId: adminRole.id
+                            }
+                        });
+                    }
+                }
+            } catch (roleError) {
+                console.error('Error assigning initial roles:', roleError);
+                // Don't fail registration if role assignment fails
+            }
+        }
+
         // Generate JWT
         const token = jwt.sign(
-            { userId: user.id, tenantId: user.tenantId },
+            { userId: user.id, tenantId: user.tenantId, isSuperAdmin: user.isSuperAdmin },
             JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
         );
