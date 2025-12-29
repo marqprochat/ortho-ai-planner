@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ArrowLeft, Upload, Brain, Send, Loader2, X } from "lucide-react";
+import { ArrowLeft, Upload, Brain, Send, Loader2, X, MessageSquare, Stethoscope, Target, Settings, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, User, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
-import { patientService } from "@/services/patientService";
+import { patientService, Patient } from "@/services/patientService";
+import { PatientSelector } from "@/components/PatientSelector";
 
 // Interfaces para o Chat com IA
 interface Message {
@@ -60,6 +61,7 @@ const initialFormData = {
 };
 
 const NovoPlanejamentoIA = () => {
+
   const navigate = useNavigate();
   const [view, setView] = useState<'form' | 'chat'>('form');
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
@@ -92,12 +94,27 @@ const NovoPlanejamentoIA = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Estado do Diálogo de Opções
   const [isOptionDialogOpen, setIsOptionDialogOpen] = useState(false);
   const [treatmentOptions, setTreatmentOptions] = useState<string[]>([]);
+  const [isChatVisible, setIsChatVisible] = useState(false);
+  const [isPatientSearchOpen, setIsPatientSearchOpen] = useState(false);
 
   // Patient ID for persistence
   const [patientId, setPatientId] = useState<string | null>(null);
+
+  const handleSelectPatient = (patient: Patient) => {
+    setFormData(prev => ({
+      ...prev,
+      nomePaciente: patient.name,
+      dataNascimento: patient.birthDate ? patient.birthDate.split('T')[0] : "",
+      telefone: patient.phone || "",
+      nCarteirinha: patient.externalId || "", // mapping externalId to nCarteirinha if applicable or keep field specificity
+      numeroPaciente: patient.externalId || "",
+    }));
+    setPatientId(patient.id);
+    setIsPatientSearchOpen(false);
+    toast.success(`Paciente ${patient.name} selecionado!`);
+  };
 
   // Efeitos do Formulário
   useEffect(() => {
@@ -425,6 +442,10 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
 
     try {
       let aiResponse = "";
+      const lastAssistantMessage = messages.filter(m => m.role === "assistant").pop();
+      const optionsContext = lastAssistantMessage && typeof lastAssistantMessage.content === 'string'
+        ? "\n\nMANTENHA AS OPÇÕES DE TRATAMENTO ORIGINAIS (Opção 1, Opção da IA, etc) ao final da sua resposta, mesmo se o usuário estiver apenas tirando dúvidas. Isso é crucial para que ele possa selecionar uma opção depois."
+        : "";
 
       if (selectedModel.startsWith('gpt')) {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -433,7 +454,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
           body: JSON.stringify({
             model: selectedModel,
             messages: [
-              { role: "system", content: "Você é um dentista sênior especializado em ortodontia. Continue a conversa de forma profissional e baseada em evidências científicas." },
+              { role: "system", content: "Você é um dentista sênior especializado em ortodontia. Continue a conversa de forma profissional e baseada em evidências científicas." + optionsContext },
               ...messages.map(msg => ({
                 ...msg,
                 content: typeof msg.content === 'string' ? msg.content : [{ type: 'text', text: 'Análise anterior baseada em imagens e texto.' }]
@@ -461,7 +482,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
           }))
         });
 
-        const result = await chat.sendMessage(inputMessage);
+        const result = await chat.sendMessage(inputMessage + optionsContext);
         const response = await result.response;
         aiResponse = response.text();
       }
@@ -504,75 +525,215 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
     });
   };
 
+  // Componente para Formatação da Resposta da IA
+  const FormattedAIResponse = ({ content }: { content: string }) => {
+    const sections = [
+      { id: 'fase', title: '1. FASE DE DESENVOLVIMENTO', icon: <User className="h-5 w-5 text-blue-500" /> },
+      { id: 'oclusao', title: '2. MÁ-OCLUSÃO', icon: <Stethoscope className="h-5 w-5 text-red-500" /> },
+      { id: 'objetivos', title: '3. OBJETIVOS DO TRATAMENTO', icon: <Target className="h-5 w-5 text-emerald-500" /> },
+      { id: 'aparelhos', title: '4. APARELHOS SELECIONADOS', icon: <Settings className="h-5 w-5 text-amber-500" /> },
+      { id: 'opcoes', title: '5. OPÇÕES DE TRATAMENTO', icon: <CheckCircle2 className="h-5 w-5 text-purple-500" /> },
+    ];
+
+    // Se o conteúdo não seguir o formato padrão, renderiza como texto simples
+    if (!content.includes('1. FASE DE DESENVOLVIMENTO')) {
+      return <div className="whitespace-pre-wrap">{content}</div>;
+    }
+
+    return (
+      <div className="space-y-6 py-2">
+        {sections.map((section, idx) => {
+          const startIdx = content.indexOf(section.title);
+          if (startIdx === -1) return null;
+
+          const nextSection = sections[idx + 1];
+          const endIdx = nextSection ? content.indexOf(nextSection.title) : content.length;
+
+          let sectionContent = content.substring(startIdx + section.title.length, endIdx).trim();
+
+          return (
+            <div key={section.id} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-muted/30 px-4 py-3 border-b border-border/50 flex items-center gap-3">
+                {section.icon}
+                <h3 className="font-bold text-foreground tracking-tight">{section.title}</h3>
+              </div>
+              <div className="px-5 py-4 text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {sectionContent}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   if (view === 'chat') {
     return (
       <>
         <Dialog open={isOptionDialogOpen} onOpenChange={setIsOptionDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Escolha uma Opção</DialogTitle>
+              <DialogTitle className="text-2xl">Escolha uma Opção de Tratamento</DialogTitle>
               <DialogDescription>
-                Selecione uma das opções de tratamento geradas pela IA para criar um plano detalhado.
+                Selecione a abordagem que melhor atende às necessidades do paciente para prosseguir com o planejamento detalhado.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-2 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-3 py-6 max-h-[60vh] overflow-y-auto pr-2">
               {treatmentOptions.map((option, index) => (
                 <Button
                   key={index}
                   variant="outline"
-                  className="w-full h-auto text-left justify-start p-4"
+                  className="w-full h-auto text-left justify-start p-4 hover:border-primary hover:bg-primary/5 transition-all group border-muted-foreground/20"
                   onClick={() => handleSelectOption(option)}
                 >
-                  {option.split('\n')[0].replace(/\*\*/g, '')}
+                  <div className="flex items-center gap-4 w-full">
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:bg-primary group-hover:text-white transition-colors">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-bold text-foreground">
+                        {option.split('\n')[0].replace(/\*\*/g, '').replace('Opção', 'Sugestão')}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                        {option.split('\n')[1]?.replace('- ', '') || 'Clique para visualizar e selecionar esta opção'}
+                      </div>
+                    </div>
+                  </div>
                 </Button>
               ))}
             </div>
-            <DialogFooter>
-              <Button variant="secondary" onClick={() => setIsOptionDialogOpen(false)}>Cancelar</Button>
+            <DialogFooter className="sm:justify-start">
+              <Button variant="ghost" onClick={() => setIsOptionDialogOpen(false)}>Voltar à conversa</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        <div className="min-h-screen bg-background flex flex-col">
-          <div className="border-b border-border p-4">
-            <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="min-h-screen bg-slate-50/50 flex flex-col">
+          {/* Header Superior */}
+          <div className="bg-white border-b border-border sticky top-0 z-10">
+            <div className="max-w-4xl mx-auto w-full px-4 h-20 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button variant="ghost" onClick={() => setView('form')}>
+                <Button variant="ghost" size="sm" onClick={() => setView('form')} className="hover:bg-slate-100">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Voltar ao Formulário
+                  Formulário
                 </Button>
+                <div className="h-8 w-px bg-border mx-1 hidden sm:block"></div>
                 <div>
-                  <h1 className="text-2xl font-bold">Planejamento com IA</h1>
-                  <p className="text-sm text-muted-foreground">Diagnóstico e análise inicial</p>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Análise da IA</h1>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/70">Diagnóstico Ortodôntico</p>
                 </div>
               </div>
+              <Button onClick={openCreatePlanejamentoDialog} className="bg-success hover:bg-success/90 text-white shadow-lg shadow-success/20 gap-2 px-6">
+                <CheckCircle2 className="h-4 w-4" />
+                Criar Planejamento
+              </Button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="max-w-5xl mx-auto space-y-4">
+
+          {/* Área de Mensagens */}
+          <div className="flex-1 overflow-y-auto py-8">
+            <div className="max-w-4xl mx-auto w-full px-4 space-y-8">
               {messages.map((message, index) => (
                 <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <Card className={`max-w-[80%] ${message.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
-                    <CardContent className="p-4"><div className="whitespace-pre-wrap">{typeof message.content === 'string' ? message.content : (message.content[0] as any).text}</div></CardContent>
-                  </Card>
+                  <div className={`flex gap-4 max-w-[90%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                    <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center shadow-sm ${message.role === "user" ? "bg-primary text-white" : "bg-white border text-blue-600"
+                      }`}>
+                      {message.role === "user" ? <User className="h-5 w-5" /> : <Brain className="h-5 w-5" />}
+                    </div>
+
+                    <div className={`space-y-1 ${message.role === "user" ? "items-end" : "items-start"}`}>
+                      <div className={`text-[10px] px-1 font-bold uppercase tracking-widest text-muted-foreground/60 ${message.role === "user" ? "text-right" : "text-left"}`}>
+                        {message.role === "user" ? "Você" : "Assistente Ortodôntico AI"}
+                      </div>
+                      <Card className={`overflow-hidden border-none shadow-md ${message.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-tr-none"
+                        : "bg-white text-foreground rounded-tl-none"
+                        }`}>
+                        <CardContent className="p-5">
+                          {message.role === "assistant" ? (
+                            <FormattedAIResponse content={typeof message.content === 'string' ? message.content : (message.content[0] as any).text} />
+                          ) : (
+                            <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">
+                              {typeof message.content === 'string' ? message.content : (message.content[0] as any).text}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
                 </div>
               ))}
+
               {isLoading && (
                 <div className="flex justify-start">
-                  <Card className="max-w-[80%]"><CardContent className="p-4 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /><span className="text-muted-foreground">Analisando...</span></CardContent></Card>
+                  <div className="flex gap-4 max-w-[90%] items-center">
+                    <div className="h-10 w-10 shrink-0 rounded-full bg-white border flex items-center justify-center animate-pulse">
+                      <Brain className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex items-center gap-3 bg-white/50 px-4 py-2 rounded-full border border-border shadow-sm">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm font-medium text-muted-foreground">Processando diagnósticos...</span>
+                    </div>
+                  </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-10" />
             </div>
           </div>
-          <div className="border-t border-border p-4 bg-background">
-            <div className="max-w-5xl mx-auto space-y-4">
-              <div className="flex gap-2">
-                <Textarea placeholder="Refine o diagnóstico..." value={inputMessage} onChange={(e) => setInputMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} className="min-h-[60px]" />
-                <Button onClick={sendMessage} disabled={isLoading || !inputMessage.trim()} size="icon" className="h-[60px] w-[60px]">{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
-              </div>
-              {messages.filter(m => m.role === "assistant").length > 0 && (
-                <div className="flex justify-end"><Button onClick={openCreatePlanejamentoDialog} size="lg" className="bg-success hover:bg-success/90">Criar Planejamento</Button></div>
+
+          {/* Footer de Interação */}
+          <div className="bg-white border-t border-border p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+            <div className="max-w-4xl mx-auto w-full">
+              {!isChatVisible ? (
+                <div className="flex flex-col items-center py-2 animate-in fade-in slide-in-from-bottom-2">
+                  <p className="text-sm text-muted-foreground mb-4 font-medium">Deseja tirar dúvidas ou refinar o planejamento?</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsChatVisible(true)}
+                    className="rounded-full px-8 py-6 h-auto border-primary/30 text-primary hover:bg-primary/5 gap-3 group"
+                  >
+                    <MessageSquare className="h-5 w-5 transition-transform group-hover:scale-110" />
+                    Conversar com a IA
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-primary/70 uppercase tracking-tighter">
+                      <MessageSquare className="h-3 w-3" />
+                      Chat de Refinamento
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setIsChatVisible(false)} className="h-7 text-muted-foreground hover:text-foreground">
+                      Ocultar chat
+                    </Button>
+                  </div>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1 relative">
+                      <Textarea
+                        placeholder="Ex: Como seriam os alinhadores neste caso? Ou, considere dentes supranumerários..."
+                        value={inputMessage}
+                        onChange={(e) => setInputMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            sendMessage();
+                          }
+                        }}
+                        className="min-h-[60px] max-h-[150px] bg-slate-50 border-slate-200 focus-visible:ring-primary/20 focus-visible:border-primary/30 resize-none pr-10 py-3 rounded-2xl"
+                      />
+                      <div className="absolute right-3 bottom-3 text-[10px] text-muted-foreground/50 font-medium">
+                        Shift + Enter para nova linha
+                      </div>
+                    </div>
+                    <Button
+                      onClick={sendMessage}
+                      disabled={isLoading || !inputMessage.trim()}
+                      className={`h-[60px] w-[60px] rounded-2xl shrink-0 ${inputMessage.trim() ? "bg-primary shadow-lg shadow-primary/20" : "bg-slate-200 text-slate-400"}`}
+                    >
+                      {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
+                    </Button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -588,7 +749,24 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         <div className="max-w-5xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <Button variant="ghost" onClick={() => navigate("/")}><ArrowLeft className="mr-2 h-4 w-4" />Voltar ao Dashboard</Button>
-            <Button variant="outline" onClick={handleClearStorage} className="text-destructive hover:text-destructive">Limpar Dados Salvos</Button>
+            <div className="flex gap-2">
+              <Dialog open={isPatientSearchOpen} onOpenChange={setIsPatientSearchOpen}>
+                <Button variant="outline" type="button" onClick={() => setIsPatientSearchOpen(true)} className="gap-2">
+                  <Search className="h-4 w-4" />
+                  Buscar Paciente Existente
+                </Button>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Selecionar Paciente</DialogTitle>
+                    <DialogDescription>
+                      Pesquise por nome e selecione um paciente para preencher o formulário.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <PatientSelector onSelect={handleSelectPatient} />
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" type="button" onClick={handleClearStorage} className="text-destructive hover:text-destructive">Limpar Dados Salvos</Button>
+            </div>
           </div>
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-2">Novo Planejamento</h1>

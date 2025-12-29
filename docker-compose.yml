@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-ortho}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_DB: ${DB_NAME:-portalclinicas}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ortho" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-ortho}:${DB_PASSWORD:-secret}@database:5432/${DB_NAME:-portalclinicas}
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  portal:
+    build:
+      context: ./apps/portal
+      args:
+        VITE_API_URL: ${PORTAL_API_URL:-http://localhost:3000/api}
+        VITE_PLANNER_URL: ${PLANNER_URL:-http://localhost:8080}
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  planner:
+    build:
+      context: ./apps/planner
+      args:
+        VITE_API_URL: ${PLANNER_API_URL:-http://localhost:3000/api}
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
