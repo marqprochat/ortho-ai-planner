@@ -35,7 +35,12 @@ export default function DashboardPage() {
 
     const handleAppClick = (app: typeof defaultApps[0]) => {
         if (app.url) {
-            window.open(app.url, "_blank");
+            const token = authService.getToken();
+            const url = new URL(app.url);
+            if (token) {
+                url.searchParams.set("token", token);
+            }
+            window.open(url.toString(), "_blank");
         }
     };
 

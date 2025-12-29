@@ -17,6 +17,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const initAuth = async () => {
+            // Check for token in URL (from Portal)
+            const params = new URLSearchParams(window.location.search);
+            const tokenFromUrl = params.get('token');
+
+            if (tokenFromUrl) {
+                authService.setCookie('token', tokenFromUrl);
+                // Remove token from URL
+                params.delete('token');
+                const newRelativePathQuery = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                window.history.replaceState({}, '', newRelativePathQuery);
+            }
+
             if (authService.isAuthenticated()) {
                 try {
                     const { user } = await authService.getMe();
@@ -29,7 +41,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(false);
         };
 
-        initAuth();
+        const timer = setTimeout(() => {
+            initAuth();
+        }, 100);
+
+        return () => clearTimeout(timer);
     }, []);
 
     const login = async (email: string, password: string) => {
