@@ -83,6 +83,47 @@ async function main() {
 
     console.log(`✅ ${permissions.length} permissions ensured.`);
 
+    // 3. Promote first user to SuperAdmin if exists and none exists
+    console.log('Checking for SuperAdmin...');
+    const superAdmin = await prisma.user.findFirst({ where: { isSuperAdmin: true } });
+    if (!superAdmin) {
+        const firstUser = await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
+        if (firstUser) {
+            console.log(`Promoting ${firstUser.email} to SuperAdmin...`);
+            await prisma.user.update({
+                where: { id: firstUser.id },
+                data: { isSuperAdmin: true }
+            });
+
+            // Grant Admin role to this user for both apps
+            const adminRole = await prisma.role.findUnique({ where: { name: 'ADMIN' } });
+            if (adminRole) {
+                const apps = await prisma.application.findMany();
+                for (const app of apps) {
+                    await prisma.userAppAccess.upsert({
+                        where: {
+                            userId_applicationId: {
+                                userId: firstUser.id,
+                                applicationId: app.id
+                            }
+                        },
+                        update: { roleId: adminRole.id },
+                        create: {
+                            userId: firstUser.id,
+                            applicationId: app.id,
+                            roleId: adminRole.id
+                        }
+                    });
+                }
+            }
+            console.log(`✅ ${firstUser.email} is now SuperAdmin with full access.`);
+        } else {
+            console.log('No users found to promote.');
+        }
+    } else {
+        console.log(`SuperAdmin already exists: ${superAdmin.email}`);
+    }
+
     console.log('🏁 Seed completed successfully.');
 }
 
