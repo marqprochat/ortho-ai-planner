@@ -12,7 +12,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN node node_modules/typescript/bin/tsc && node node_modules/vite/bin/vite.js build
 
 # Final stage
 FROM nginx:alpine
