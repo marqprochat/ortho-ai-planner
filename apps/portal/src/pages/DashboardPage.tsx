@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { authService } from "@/services/authService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog } from "lucide-react";
@@ -44,12 +45,19 @@ export default function DashboardPage() {
         }
     };
 
-    // Use user's app access or default apps
+    // Get the planner URL from environment variable
+    const plannerUrl = import.meta.env.VITE_PLANNER_APP_URL || import.meta.env.VITE_PLANNER_URL || "http://localhost:8080";
+
+    // Use user's app access or default apps, filtering out the portal (we're already in it)
     const apps = user?.appAccess?.length
-        ? user.appAccess.map((access) => ({
-            ...access.application,
-            role: access.role.name,
-        }))
+        ? user.appAccess
+            .filter((access) => access.application.name !== 'portal') // Remove portal from listing
+            .map((access) => ({
+                ...access.application,
+                // Override URL for planner with environment variable
+                url: access.application.name === 'planner' ? plannerUrl : access.application.url,
+                role: access.role.name,
+            }))
         : defaultApps;
 
     return (
