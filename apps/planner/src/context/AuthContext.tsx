@@ -18,35 +18,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const initAuth = async () => {
+            console.log('[AuthContext] initAuth started');
+            console.log('[AuthContext] window.location.search:', window.location.search);
+
             // Check for token in URL (from Portal)
             const params = new URLSearchParams(window.location.search);
             const tokenFromUrl = params.get('token');
+            console.log('[AuthContext] tokenFromUrl:', tokenFromUrl ? 'FOUND' : 'NOT FOUND');
 
             if (tokenFromUrl) {
                 setCookie('token', tokenFromUrl);
+                console.log('[AuthContext] Token saved to cookie');
                 // Remove token from URL
                 params.delete('token');
                 const newRelativePathQuery = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
                 window.history.replaceState({}, '', newRelativePathQuery);
             }
 
-            if (authService.isAuthenticated()) {
+            const isAuth = authService.isAuthenticated();
+            console.log('[AuthContext] isAuthenticated:', isAuth);
+
+            if (isAuth) {
                 try {
                     const { user } = await authService.getMe();
+                    console.log('[AuthContext] User fetched:', user.email);
                     setUser(user);
                 } catch (error) {
                     console.error('Failed to fetch user:', error);
                     authService.logout();
                 }
+            } else {
+                console.log('[AuthContext] Not authenticated, will redirect to login');
             }
             setIsLoading(false);
         };
 
-        const timer = setTimeout(() => {
-            initAuth();
-        }, 100);
-
-        return () => clearTimeout(timer);
+        initAuth();
     }, []);
 
     const login = async (email: string, password: string) => {
