@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService, User } from '../services/authService';
+import { setCookie } from '../lib/cookieUtils';
 
 interface AuthContextType {
     user: User | null;
@@ -22,7 +23,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const tokenFromUrl = params.get('token');
 
             if (tokenFromUrl) {
-                authService.setCookie('token', tokenFromUrl);
+                setCookie('token', tokenFromUrl);
                 // Remove token from URL
                 params.delete('token');
                 const newRelativePathQuery = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
