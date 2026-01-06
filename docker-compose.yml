@@ -3,6 +3,7 @@ version: '3.8'
 services:
   database:
     image: postgres:16-alpine
+    restart: always
     environment:
       POSTGRES_USER: ${DB_USER:-ortho}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
@@ -20,6 +21,7 @@ services:
   backend:
     build:
       context: ./backend
+    restart: always
     depends_on:
       database:
         condition: service_healthy
@@ -34,8 +36,9 @@ services:
     build:
       context: ./apps/portal
       args:
-        VITE_API_URL: ${PORTAL_API_URL:-http://localhost:3000/api}
-        VITE_PLANNER_URL: ${PLANNER_URL:-http://localhost:8080}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+        VITE_PLANNER_URL: ${VITE_PLANNER_URL:-http://localhost:8080}
+    restart: always
     ports:
       - "5173:80"
     depends_on:
@@ -45,7 +48,8 @@ services:
     build:
       context: ./apps/planner
       args:
-        VITE_API_URL: ${PLANNER_API_URL:-http://localhost:3000/api}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    restart: always
     ports:
       - "8080:80"
     depends_on:
