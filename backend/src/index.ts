@@ -44,9 +44,9 @@ const corsOptions: cors.CorsOptions = {
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        // Em desenvolvimento/debug, permitir qualquer origin mas logar
+        // Bloquear requisições de origens não permitidas
         console.warn(`[CORS] Origin não permitida: ${origin}`);
-        return callback(null, true); // Permitir temporariamente para debug
+        return callback(new Error(`Não permitido por CORS: ${origin}`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

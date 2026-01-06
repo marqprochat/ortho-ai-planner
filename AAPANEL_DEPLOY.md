@@ -67,6 +67,8 @@ VITE_PLANNER_URL=http://SEU_IP_PUBLICO:8080
     *   `-d`: Roda em segundo plano (detached).
     *   `--build`: Força a construção das imagens (importante para pegar as variáveis `VITE_` novas).
 
+> **Atenção:** O arquivo `docker-compose.yml` foi configurado para expor o banco de dados na porta **5433** do host (para evitar conflito com o PostgreSQL padrão do aaPanel que usa a 5432). Se precisar acessar o banco externamente, use a porta 5433.
+
 ### Opção B: Via Interface do aaPanel
 
 1.  Abra o **Docker** no menu lateral.
