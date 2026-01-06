@@ -25,34 +25,13 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy: Essencial para que o Express entenda o protocolo HTTPS vindo do Traefik/EasyPanel
 app.set('trust proxy', true);
 
-// Lista de origens permitidas
-const allowedOrigins = [
-    'https://portal.dentalkids.com.br',
-    'https://planner.dentalkids.com.br',
-    'http://localhost:5173',
-    'http://localhost:8080'
-];
-
-// Configuração CORS robusta
+// Configuração CORS permissiva para testes e desenvolvimento
 const corsOptions: cors.CorsOptions = {
-    origin: (origin, callback) => {
-        console.log(`[CORS] Verificando origin: ${origin}`);
-        // Permitir requisições sem origin (como mobile apps ou curl)
-        if (!origin) {
-            return callback(null, true);
-        }
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        // Bloquear requisições de origens não permitidas
-        console.warn(`[CORS] Origin não permitida: ${origin}`);
-        return callback(new Error(`Não permitido por CORS: ${origin}`));
-    },
+    origin: true, // Reflete a origem da requisição (permite qualquer origem com credentials: true)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    optionsSuccessStatus: 200, // Para browsers legados
-    preflightContinue: false
+    optionsSuccessStatus: 200
 };
 
 // Aplicar CORS para TODAS as rotas
