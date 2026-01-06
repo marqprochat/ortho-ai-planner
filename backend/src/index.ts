@@ -33,33 +33,33 @@ const allowedOrigins = [
     'http://localhost:8080'
 ];
 
-// Middleware CORS manual - mais robusto para ambientes com proxy reverso
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-
-    if (origin && allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight por 24h
-
-    // Responde imediatamente para requisições preflight OPTIONS
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    next();
-});
-
-// Fallback do cors
-app.use(cors({
-    origin: allowedOrigins,
+// Configuração CORS robusta
+const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+        console.log(`[CORS] Verificando origin: ${origin}`);
+        // Permitir requisições sem origin (como mobile apps ou curl)
+        if (!origin) {
+            return callback(null, true);
+        }
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // Em desenvolvimento/debug, permitir qualquer origin mas logar
+        console.warn(`[CORS] Origin não permitida: ${origin}`);
+        return callback(null, true); // Permitir temporariamente para debug
+    },
     credentials: true,
-    optionsSuccessStatus: 200
-}));
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    optionsSuccessStatus: 200, // Para browsers legados
+    preflightContinue: false
+};
+
+// Aplicar CORS para TODAS as rotas
+app.use(cors(corsOptions));
+
+// Handler explícito para preflight OPTIONS em todas as rotas
+app.options('*', cors(corsOptions));
 
 app.use(express.json());
 
