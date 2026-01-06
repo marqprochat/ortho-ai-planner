@@ -25,20 +25,21 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy: Essencial para que o Express entenda o protocolo HTTPS vindo do Traefik/EasyPanel
 app.set('trust proxy', true);
 
-// Configuração CORS permissiva para testes e desenvolvimento
-const corsOptions: cors.CorsOptions = {
-    origin: true, // Reflete a origem da requisição (permite qualquer origem com credentials: true)
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-    optionsSuccessStatus: 200
-};
+// CORS COMPLETAMENTE DESABILITADO - Headers manuais para permitir TUDO
+app.use((req, res, next) => {
+    const origin = req.headers.origin || '*';
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+    res.header('Access-Control-Allow-Headers', '*');
+    res.header('Access-Control-Expose-Headers', '*');
 
-// Aplicar CORS para TODAS as rotas
-app.use(cors(corsOptions));
-
-// Handler explícito para preflight OPTIONS em todas as rotas
-app.options('*', cors(corsOptions));
+    // Responder imediatamente para preflight OPTIONS
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
 
 app.use(express.json());
 
