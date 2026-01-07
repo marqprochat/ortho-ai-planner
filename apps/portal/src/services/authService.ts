@@ -1,6 +1,6 @@
 import { setCookie, getCookie, removeCookie } from '../lib/cookieUtils';
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export interface User {
     id: string;
