@@ -25,21 +25,16 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy: Essencial para que o Express entenda o protocolo HTTPS vindo do Traefik/EasyPanel
 app.set('trust proxy', true);
 
-// CORS COMPLETAMENTE DESABILITADO - Headers manuais para permitir TUDO
-app.use((req, res, next) => {
-    const origin = req.headers.origin || '*';
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-    res.header('Access-Control-Allow-Headers', '*');
-    res.header('Access-Control-Expose-Headers', '*');
+app.use(cors({
+    origin: true, // Permite qualquer origem e reflete a origem da requisição
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range']
+}));
 
-    // Responder imediatamente para preflight OPTIONS
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-    next();
-});
+// Habilitar pre-flight para todas as rotas
+app.options('*', cors());
 
 app.use(express.json());
 
