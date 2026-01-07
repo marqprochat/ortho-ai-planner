@@ -112,3 +112,11 @@ export const requireAppAccess = (appName: string) => {
         next();
     };
 };
+
+export const requireSuperAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.isSuperAdmin) {
+        return res.status(403).json({ error: 'Acesso negado: Apenas Super Admins' });
+    }
+    next();
+};
+

@@ -6,6 +6,7 @@ import "./index.css";
 import ClinicManagement from "./pages/admin/ClinicManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import RoleManagement from "./pages/admin/RoleManagement";
+import AiKeyManagement from "./pages/admin/AiKeyManagement";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -87,6 +88,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <RoleManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/ai-keys"
+                element={
+                    <ProtectedRoute>
+                        <AiKeyManagement />
                     </ProtectedRoute>
                 }
             />

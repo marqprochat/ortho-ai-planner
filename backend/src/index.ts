@@ -94,6 +94,15 @@ app.post('/api/users', authMiddleware, createAdminUser);
 app.put('/api/users/:id', authMiddleware, updateUser);
 app.delete('/api/users/:id', authMiddleware, deleteUser);
 
+// AI API Key Routes (Super Admin)
+import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
+import { requireSuperAdmin } from './middleware/authMiddleware';
+
+app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
+app.post('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, createKey);
+app.put('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
+app.delete('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
+
 // Start Server
 app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);

@@ -137,6 +137,7 @@ model Planning {
   patient        Patient  @relation(fields: [patientId], references: [id])
 }
 
+
 model Contract {
   id        String   @id @default(uuid())
   patientId String
@@ -145,4 +146,13 @@ model Contract {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   patient   Patient  @relation(fields: [patientId], references: [id])
+}
+
+model AiApiKey {
+  id        String   @id @default(uuid())
+  provider  String   @unique
+  key       String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
