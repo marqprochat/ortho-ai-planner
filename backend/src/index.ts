@@ -13,9 +13,10 @@ import { getPermissions } from './controllers/permissionController';
 import { getRoles, createRole, updateRole, deleteRole } from './controllers/roleController';
 import { getClinics, createClinic, updateClinic, deleteClinic } from './controllers/clinicController';
 import { getUsers, createUser as createAdminUser, updateUser, deleteUser } from './controllers/userController';
+import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
 
 // Import Middleware
-import { authMiddleware, requireAppAccess, requirePermission } from './middleware/authMiddleware';
+import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
 
 dotenv.config();
 
@@ -89,8 +90,6 @@ app.put('/api/users/:id', authMiddleware, updateUser);
 app.delete('/api/users/:id', authMiddleware, deleteUser);
 
 // AI API Key Routes (Super Admin)
-import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
-import { requireSuperAdmin } from './middleware/authMiddleware';
 
 app.get('/api/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
 app.post('/api/ai-keys', authMiddleware, requireSuperAdmin, createKey);
