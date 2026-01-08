@@ -25,6 +25,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
 
+COPY start.sh .
+RUN chmod +x start.sh
+
 EXPOSE 3000
 
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && npx prisma db seed && node dist/index.js"]
+CMD ["/bin/sh", "start.sh"]
