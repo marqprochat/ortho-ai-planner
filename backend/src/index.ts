@@ -29,7 +29,7 @@ app.set('trust proxy', true);
 app.use(cors({
     origin: '*', // Permite qualquer origem (Testes)
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-Clinic-Id'],
     exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
