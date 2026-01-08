@@ -20,7 +20,7 @@ const getHeaders = () => {
 };
 
 export const getAiKeys = async (): Promise<AiApiKey[]> => {
-    const response = await fetch(`${API_URL}/admin/ai-keys`, {
+    const response = await fetch(`${API_URL}/ai-keys`, {
         headers: getHeaders(),
     });
 
@@ -32,7 +32,7 @@ export const getAiKeys = async (): Promise<AiApiKey[]> => {
 };
 
 export const createAiKey = async (provider: string, key: string): Promise<AiApiKey> => {
-    const response = await fetch(`${API_URL}/admin/ai-keys`, {
+    const response = await fetch(`${API_URL}/ai-keys`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ provider, key }),
@@ -46,7 +46,7 @@ export const createAiKey = async (provider: string, key: string): Promise<AiApiK
 };
 
 export const updateAiKey = async (id: string, key: string, isActive: boolean): Promise<AiApiKey> => {
-    const response = await fetch(`${API_URL}/admin/ai-keys/${id}`, {
+    const response = await fetch(`${API_URL}/ai-keys/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({ key, isActive }),
@@ -60,7 +60,7 @@ export const updateAiKey = async (id: string, key: string, isActive: boolean): P
 };
 
 export const deleteAiKey = async (id: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/admin/ai-keys/${id}`, {
+    const response = await fetch(`${API_URL}/ai-keys/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
     });

@@ -92,10 +92,10 @@ app.delete('/api/users/:id', authMiddleware, deleteUser);
 import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
 import { requireSuperAdmin } from './middleware/authMiddleware';
 
-app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
-app.post('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, createKey);
-app.put('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
-app.delete('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
+app.get('/api/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
+app.post('/api/ai-keys', authMiddleware, requireSuperAdmin, createKey);
+app.put('/api/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
+app.delete('/api/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
 
 // Start Server
 app.listen(PORT, async () => {
