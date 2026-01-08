@@ -46,7 +46,7 @@ export const PlanningViewer = ({
     const [isExporting, setIsExporting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [selectedModel] = useState("gemini-1.5-flash"); // Default for summary generation if needed inside viewer
+    const [selectedModel] = useState("gemini-2.0-flash"); // Default for summary generation if needed inside viewer
 
     // Sync state with prop if it changes (e.g. after API load)
     useEffect(() => {
