@@ -49,6 +49,8 @@ services:
       context: ./apps/planner
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+        VITE_OPENAI_API_KEY: ${VITE_OPENAI_API_KEY:-}
+        VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY:-}
     restart: always
     ports:
       - "8080:80"
