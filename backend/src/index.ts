@@ -14,6 +14,7 @@ import { getRoles, createRole, updateRole, deleteRole } from './controllers/role
 import { getClinics, createClinic, updateClinic, deleteClinic } from './controllers/clinicController';
 import { getUsers, createUser as createAdminUser, updateUser, deleteUser } from './controllers/userController';
 import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
+import { generateCompletion } from './controllers/aiController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -88,6 +89,9 @@ app.get('/api/users', authMiddleware, getUsers);
 app.post('/api/users', authMiddleware, createAdminUser);
 app.put('/api/users/:id', authMiddleware, updateUser);
 app.delete('/api/users/:id', authMiddleware, deleteUser);
+
+// AI Routes
+app.post('/api/ai/completion', authMiddleware, requireAppAccess('planner'), generateCompletion);
 
 // AI API Key Routes (Super Admin)
 

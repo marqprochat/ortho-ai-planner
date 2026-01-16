@@ -202,29 +202,47 @@ export const PlanningViewer = ({
 
             let summaryText = "";
 
-            if (selectedModel.startsWith('gpt')) {
-                const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: selectedModel,
-                        messages: [{ role: "user", content: summaryPrompt }],
-                        temperature: 0.5,
-                        max_tokens: 1000,
-                    }),
-                });
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error?.message || "Erro na API da OpenAI");
+            // Try OpenAI first (more reliable), fallback to Gemini
+            if (apiKey) {
+                try {
+                    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: "gpt-4o-mini",
+                            messages: [{ role: "user", content: summaryPrompt }],
+                            temperature: 0.5,
+                            max_tokens: 1000,
+                        }),
+                    });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error?.message || "Erro na API da OpenAI");
+                    }
+                    const data = await response.json();
+                    summaryText = data.choices[0].message.content;
+                } catch (openaiError: any) {
+                    console.warn("OpenAI failed, trying Gemini as fallback:", openaiError.message);
+                    // If OpenAI fails, try Gemini
+                    if (geminiKey) {
+                        const genAI = new GoogleGenerativeAI(geminiKey);
+                        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                        const result = await model.generateContent(summaryPrompt);
+                        const response = await result.response;
+                        summaryText = response.text();
+                    } else {
+                        throw openaiError;
+                    }
                 }
-                const data = await response.json();
-                summaryText = data.choices[0].message.content;
-            } else {
+            } else if (geminiKey) {
+                // No OpenAI key, try Gemini directly
                 const genAI = new GoogleGenerativeAI(geminiKey);
-                const model = genAI.getGenerativeModel({ model: selectedModel });
+                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
                 const result = await model.generateContent(summaryPrompt);
                 const response = await result.response;
                 summaryText = response.text();
+            } else {
+                throw new Error("Nenhuma chave de API configurada (OpenAI ou Gemini)");
             }
 
             // Gerar o PDF com o resumo

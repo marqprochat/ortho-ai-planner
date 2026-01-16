@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { patientService, Patient } from "@/services/patientService";
 import { PatientSelector } from "@/components/PatientSelector";
+import { getCookie } from "@/lib/cookieUtils";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 // Interfaces para o Chat com IA
 interface Message {
@@ -206,10 +209,10 @@ const NovoPlanejamentoIA = () => {
       return;
     }
 
-    if (selectedModel.startsWith('gpt') && !apiKey) {
-      toast.error("A chave de API da OpenAI não está configurada.");
-      return;
-    }
+    // if (selectedModel.startsWith('gpt') && !apiKey) {
+    //   toast.error("A chave de API da OpenAI não está configurada.");
+    //   return;
+    // }
 
     if (selectedModel.startsWith('gemini') && !geminiKey) {
       toast.error("A chave de API do Gemini não está configurada.");
@@ -372,9 +375,13 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         });
 
       if (selectedModel.startsWith('gpt')) {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const token = getCookie('token');
+        const response = await fetch(`${API_URL}/ai/completion`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
             model: selectedModel,
             messages: [
@@ -448,9 +455,13 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         : "";
 
       if (selectedModel.startsWith('gpt')) {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        const token = getCookie('token');
+        const response = await fetch(`${API_URL}/ai/completion`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
             model: selectedModel,
             messages: [
