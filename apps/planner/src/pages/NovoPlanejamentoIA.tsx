@@ -151,6 +151,18 @@ const NovoPlanejamentoIA = () => {
         toast.error("O limite total é de 10 imagens.");
         return;
       }
+
+      // Calculate total size
+      const currentSize = images.reduce((acc, file) => acc + file.size, 0);
+      const newFilesSize = newFiles.reduce((acc, file) => acc + file.size, 0);
+      const totalSize = currentSize + newFilesSize;
+      const maxSize = 45 * 1024 * 1024; // 45MB limit (leaving 5MB for JSON overhead)
+
+      if (totalSize > maxSize) {
+        toast.error(`O tamanho total das imagens excede 45MB. Tamanho atual: ${(totalSize / (1024 * 1024)).toFixed(1)}MB`);
+        return;
+      }
+
       setImages(prev => [...prev, ...newFiles]);
     }
   };
@@ -394,8 +406,20 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error?.message || "Erro na API da OpenAI");
+          if (response.status === 413) {
+            throw new Error("O tamanho dos arquivos enviados é muito grande (Erro 413). Tente enviar menos fotos ou reduzir a qualidade.");
+          }
+
+          const errorText = await response.text();
+          try {
+            // Tenta fazer o parse do JSON se possível
+            const errorJson = JSON.parse(errorText);
+            throw new Error(errorJson.error?.message || `Erro na API: ${response.status}`);
+          } catch (e) {
+            // Se não for JSON (ex: HTML do Nginx), retorna o texto truncado ou msg genérica
+            console.error("Erro não-JSON recebido:", errorText);
+            throw new Error(`Erro no servidor (${response.status}). Verifique o console para mais detalhes.`);
+          }
         }
 
         const data = await response.json();

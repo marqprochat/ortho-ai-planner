@@ -78,6 +78,8 @@ VITE_PLANNER_URL=http://SEU_IP_PUBLICO:8080
 5.  **Path:** Selecione a pasta `/www/wwwroot/ortho-ai-planner`.
 6.  Clique em **Add** ou **Build/Run**.
 
+> **Nota Importante sobre Uploads:** O backend está configurado para aceitar até 50MB. Certifique-se de que a configuração do Nginx no aaPanel também permita uploads desse tamanho (`client_max_body_size 50M;`), caso contrário você receberá erros 413. O frontend já possui validação para prevenir envio de arquivos maiores que 45MB.
+
 ## Passo 4: Configurar o Acesso Externo (Reverse Proxy)
 
 Agora seus containers estão rodando nas portas:

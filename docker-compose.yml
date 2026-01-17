@@ -29,6 +29,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-ortho}:${DB_PASSWORD:-secret}@database:5432/${DB_NAME:-portalclinicas}
       JWT_SECRET: ${JWT_SECRET:-your-secret-key}
       PORT: 3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
       - "3000:3000"
 
