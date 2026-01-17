@@ -31,7 +31,7 @@ services:
       PORT: 3000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
-      - "3000:3000"
+      - "5174:3000"
 
   portal:
     build:
@@ -54,7 +54,7 @@ services:
         VITE_GEMINI_API_KEY: ${VITE_GEMINI_API_KEY:-}
     restart: always
     ports:
-      - "8080:80"
+      - "5172:80"
     depends_on:
       - backend
 
