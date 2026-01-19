@@ -189,9 +189,10 @@ export const PlanningViewer = ({
     1. TIPO DE TRATAMENTO: (uma frase simples)
     2. APARELHO A SER USADO: (nome do aparelho de forma simples)
     3. DURAÇÃO ESTIMADA: (tempo em meses/anos)
-    4. FASES PRINCIPAIS: (liste de forma resumida, máximo 3-4 itens)
-    5. CUIDADOS IMPORTANTES: (2-3 recomendações básicas)
-    6. RESULTADO ESPERADO: (uma frase sobre o objetivo final)
+    4. FREQUÊNCIA DE RETORNO: (mencione a frequência de retorno às consultas, se disponível no plano)
+    5. FASES PRINCIPAIS: (liste de forma resumida, máximo 3-4 itens)
+    6. CUIDADOS IMPORTANTES: (2-3 recomendações básicas)
+    7. RESULTADO ESPERADO: (uma frase sobre o objetivo final)
     
     Plano de tratamento completo:
     ---

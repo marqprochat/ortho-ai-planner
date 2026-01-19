@@ -30,6 +30,7 @@ interface ContractData {
     croDentista: string;
     // Tratamento
     tempoEstimado: string;
+    frequenciaRetorno: string;
     objetivo: string;
     // Valores
     valorAparelhos: string;
@@ -53,6 +54,7 @@ const initialContractData: ContractData = {
     nomeDentista: "",
     croDentista: "",
     tempoEstimado: "",
+    frequenciaRetorno: "",
     objetivo: "",
     valorAparelhos: "",
     valorMensalidade: "",
@@ -90,6 +92,7 @@ const TermoDeCompromisso = () => {
                 nomeDentista: parsed.nomeOrtodontista || "",
                 croDentista: parsed.croOrtodontista || "",
                 tempoEstimado: parsed.tempoEstimado || "",
+                frequenciaRetorno: parsed.frequenciaRetorno || "",
                 objetivo: parsed.objetivoTratamento || "",
             }));
         }
@@ -181,7 +184,7 @@ const TermoDeCompromisso = () => {
             nomePaciente, responsavel, endereco, cep, cpf,
             nomeClinica, croClinica, naturezaServico,
             nomeDentista, croDentista,
-            tempoEstimado, objetivo,
+            tempoEstimado, frequenciaRetorno, objetivo,
             valorAparelhos, valorMensalidade, valorQuebraDanos,
             cidade, dataContrato
         } = contractData;
@@ -209,7 +212,7 @@ O prazo estimado para a fase atual do tratamento é de aproximadamente ${tempoEs
 O paciente se compromete a:
    1. Comparecer pontualmente às consultas previamente marcadas (o não comparecimento mensal compromete os resultados);
    2. Seguir rigorosamente as orientações e prescrições indicadas pelo dentista;
-   3. Agendar mensalmente.
+   3. Agendar ${frequenciaRetorno ? frequenciaRetorno.toLowerCase() : 'mensalmente'}.
 
 CLÁUSULA DE ABANDONO: O não comparecimento a três (03) sessões consecutivas, sem motivo justificável, autoriza a dentista a considerar abandono tácito, com rescisão automática do acordo. Isenta a dentista de responsabilidade, despesas de agravamento e não há devolução de quantias pagas.
 

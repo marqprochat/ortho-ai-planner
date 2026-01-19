@@ -55,6 +55,7 @@ const initialFormData = {
   aparelhoIndicado: "",
   aparelhoSelecionado: "",
   tempoEstimado: "",
+  frequenciaRetorno: "",
   colaboracao: "",
   objetivoTratamento: "",
   consideracoes: "",
@@ -365,6 +366,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
       - Tipo de Tratamento: ${formData.tipoTratamento}
       - Aparelho Indicado: ${formData.aparelhoIndicado === 'Outro' ? formData.aparelhoSelecionado : formData.aparelhoIndicado}
       - Tempo Estimado: ${formData.tempoEstimado} meses
+      - Frequência de Retorno: ${formData.frequenciaRetorno || "Não informado"}
       - Colaboração Esperada: ${formData.colaboracao}
       - Considerações Adicionais: ${formData.consideracoes || "Nenhuma"}
 
@@ -883,8 +885,9 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                   <div className="space-y-2"><Label>Aparelho indicado *</Label><Select required value={formData.aparelhoIndicado} onValueChange={(v) => setFormData({ ...formData, aparelhoIndicado: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Fixo convencional">Fixo convencional</SelectItem><SelectItem value="Fixo autoligado">Fixo autoligado</SelectItem><SelectItem value="Fixo estético">Fixo estético</SelectItem><SelectItem value="Contenção ortodôntica">Contenção ortodôntica</SelectItem><SelectItem value="Alinhadores">Alinhadores</SelectItem><SelectItem value="Ortopedia funcional">Ortopedia funcional</SelectItem><SelectItem value="Outro">Outro</SelectItem></SelectContent></Select></div>
                   {formData.aparelhoIndicado === 'Outro' && (<div className="space-y-2"><Label htmlFor="aparelhoSelecionado">Aparelho selecionado para o tratamento *</Label><Input id="aparelhoSelecionado" required value={formData.aparelhoSelecionado} onChange={(e) => setFormData({ ...formData, aparelhoSelecionado: e.target.value })} /></div>)}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2"><Label htmlFor="tempoEstimado">Tempo estimado de tratamento em meses *</Label><Input id="tempoEstimado" required type="number" value={formData.tempoEstimado} onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })} /></div>
+                  <div className="space-y-2"><Label>Frequência de Retorno *</Label><Select required value={formData.frequenciaRetorno} onValueChange={(v) => setFormData({ ...formData, frequenciaRetorno: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Mensal">Mensal</SelectItem><SelectItem value="45-60 dias">45-60 dias</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label>Colaboração esperada *</Label><Select required value={formData.colaboracao} onValueChange={(v) => setFormData({ ...formData, colaboracao: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Boa">Boa</SelectItem><SelectItem value="Regular">Regular</SelectItem><SelectItem value="Difícil">Difícil</SelectItem></SelectContent></Select></div>
                 </div>
                 <div className="space-y-2"><Label htmlFor="objetivoTratamento">Objetivo do tratamento *</Label><Textarea id="objetivoTratamento" required value={formData.objetivoTratamento} onChange={(e) => setFormData({ ...formData, objetivoTratamento: e.target.value })} placeholder="Ex: Paciente removeu o disjuntor, após radiografia oclusal. Damos continuidade no tratamento com aparelhos móveis." /></div>
