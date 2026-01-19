@@ -25,13 +25,15 @@ const PlanoDeTratamento = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [planningId, setPlanningId] = useState<string | null>(null);
 
-  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName } = (location.state || {}) as {
+  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos } = (location.state || {}) as {
     messages: Message[];
     selectedOption: string;
     selectedModel: string;
     objetivoTratamento: string;
     patientId: string;
     patientName: string;
+    isDentistPlan?: boolean;
+    aparelhos?: string;
   };
 
   useEffect(() => {
@@ -47,6 +49,11 @@ const PlanoDeTratamento = () => {
         const chatHistory = messages
           .map((msg) => `${msg.role}: ${typeof msg.content === 'string' ? msg.content : 'Análise de imagens e dados.'}`)
           .join("\n\n");
+
+        // Logic to construct the appliances section instruction
+        const appliancesInstruction = (isDentistPlan && aparelhos)
+          ? `OBRIGATÓRIO: Nesta seção 3 (APARELHOS E ACESSÓRIOS), você deve listar EXATAMENTE e SOMENTE o que está escrito entre colchetes a seguir, sem adicionar nada, sem mudar palavras e sem inventar acessórios: [${aparelhos}]`
+          : `[Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]`;
 
         const systemPrompt = `Você é um Ortodontista Sênior com mais de 20 anos de experiência. Sua tarefa é detalhar um plano de tratamento com base em um diagnóstico inicial e uma opção de tratamento escolhida pelo dentista responsável.
 
@@ -76,7 +83,7 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 - [Refine e descreva o objetivo do tratamento com base no que foi informado pelo dentista: "${objetivoTratamento}"]
 
 **3. APARELHOS E ACESSÓRIOS**
-- [Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]
+- ${appliancesInstruction}
 
 **4. TEMPO ESTIMADO DE TRATAMENTO**
 - [Informe o tempo total estimado em meses ou anos]

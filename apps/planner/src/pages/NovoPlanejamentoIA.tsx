@@ -550,6 +550,13 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
 
   const handleSelectOption = (option: string) => {
     setIsOptionDialogOpen(false);
+
+    // Determine if it's the dentist's plan (Option 1)
+    const isDentistPlan = option.includes("Opção 1") || treatmentOptions.indexOf(option) === 0;
+
+    // Get the appliance string exactly as entered/logic used in the prompt
+    const aparelhos = formData.aparelhoIndicado === 'Outro' ? formData.aparelhoSelecionado : formData.aparelhoIndicado;
+
     navigate("/plano-de-tratamento", {
       state: {
         messages,
@@ -558,6 +565,8 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         objetivoTratamento: formData.objetivoTratamento,
         patientId,
         patientName: formData.nomePaciente,
+        isDentistPlan,
+        aparelhos
       },
     });
   };
