@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, Calendar, User, Brain, Loader2, Filter } from "lucide-react";
+import { Search, FileText, Calendar, User, Brain, Loader2, Filter, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { patientService } from "../services/patientService";
+import { useHasPermission } from "../hooks/useHasPermission";
 
 const Plannings = () => {
     const navigate = useNavigate();
@@ -20,6 +23,10 @@ const Plannings = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'COMPLETED'>('ALL');
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [planningToDelete, setPlanningToDelete] = useState<Planning | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const canDeletePlanning = useHasPermission('delete', 'planning');
 
     useEffect(() => {
         loadPlannings();
@@ -50,6 +57,23 @@ const Plannings = () => {
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('pt-BR');
+    };
+
+    const handleDeletePlanning = async () => {
+        if (!planningToDelete) return;
+        setIsDeleting(true);
+        try {
+            await patientService.deletePlanning(planningToDelete.id);
+            setPlannings(prev => prev.filter(p => p.id !== planningToDelete.id));
+            toast.success("Planejamento excluído com sucesso!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao excluir planejamento");
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteOpen(false);
+            setPlanningToDelete(null);
+        }
     };
 
     return (
@@ -144,8 +168,8 @@ const Plannings = () => {
                                         <CardTitle className="flex items-start justify-between gap-2">
                                             <span className="line-clamp-1 text-lg">{planning.title}</span>
                                             <span className={`text-xs px-2 py-1 rounded-full ${planning.status === 'COMPLETED'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-yellow-100 text-yellow-700'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {planning.status === 'COMPLETED' ? 'Concluído' : 'Rascunho'}
                                             </span>
@@ -160,6 +184,21 @@ const Plannings = () => {
                                             <Calendar className="h-4 w-4" />
                                             {formatDate(planning.createdAt)}
                                         </div>
+                                        {canDeletePlanning && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10 mt-2"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPlanningToDelete(planning);
+                                                    setIsDeleteOpen(true);
+                                                }}
+                                            >
+                                                <Trash2 className="mr-1 h-4 w-4" />
+                                                Excluir
+                                            </Button>
+                                        )}
                                     </CardContent>
                                 </Card>
                             ))}
@@ -167,6 +206,17 @@ const Plannings = () => {
                     )}
                 </div>
             </main>
+
+            <ConfirmationDialog
+                open={isDeleteOpen}
+                onOpenChange={setIsDeleteOpen}
+                title="Excluir Planejamento"
+                description={`Tem certeza que deseja excluir o planejamento "${planningToDelete?.title}"? Esta ação não pode ser desfeita.`}
+                onConfirm={handleDeletePlanning}
+                isLoading={isDeleting}
+                confirmText="Excluir Planejamento"
+                cancelText="Cancelar"
+            />
         </div>
     );
 };

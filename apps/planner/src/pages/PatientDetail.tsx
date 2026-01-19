@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature } from "lucide-react";
+import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlanningViewer } from "@/components/PlanningViewer";
 import { ContractViewer } from "@/components/ContractViewer";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { useHasPermission } from "../hooks/useHasPermission";
 
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-500",
@@ -36,6 +38,12 @@ const PatientDetail = () => {
     const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
     const [isContractViewerOpen, setIsContractViewerOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
+    const [isDeletePatientOpen, setIsDeletePatientOpen] = useState(false);
+    const [isDeletePlanningOpen, setIsDeletePlanningOpen] = useState(false);
+    const [planningToDelete, setPlanningToDelete] = useState<Planning | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const canDeletePatient = useHasPermission('delete', 'patient');
+    const canDeletePlanning = useHasPermission('delete', 'planning');
 
     useEffect(() => {
         if (id) {
@@ -73,6 +81,42 @@ const PatientDetail = () => {
             };
             localStorage.setItem("planejamentoFormData", JSON.stringify(formData));
             navigate("/novo-planejamento");
+        }
+    };
+
+    const handleDeletePatient = async () => {
+        if (!patient) return;
+        setIsDeleting(true);
+        try {
+            await patientService.deletePatient(patient.id);
+            toast.success("Paciente excluído com sucesso!");
+            navigate("/patients");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao excluir paciente");
+        } finally {
+            setIsDeleting(false);
+            setIsDeletePatientOpen(false);
+        }
+    };
+
+    const handleDeletePlanning = async () => {
+        if (!planningToDelete) return;
+        setIsDeleting(true);
+        try {
+            await patientService.deletePlanning(planningToDelete.id);
+            setPatient(prev => prev ? ({
+                ...prev,
+                plannings: prev.plannings?.filter(p => p.id !== planningToDelete.id)
+            }) : null);
+            toast.success("Planejamento excluído com sucesso!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao excluir planejamento");
+        } finally {
+            setIsDeleting(false);
+            setIsDeletePlanningOpen(false);
+            setPlanningToDelete(null);
         }
     };
 
@@ -114,6 +158,12 @@ const PatientDetail = () => {
                             <Edit className="mr-2 h-4 w-4" />
                             Editar
                         </Button>
+                        {canDeletePatient && (
+                            <Button variant="destructive" onClick={() => setIsDeletePatientOpen(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                            </Button>
+                        )}
                     </div>
 
                     {/* Patient Info Card */}
@@ -189,6 +239,23 @@ const PatientDetail = () => {
                                                 </p>
                                             )}
                                         </CardContent>
+                                        {canDeletePlanning && (
+                                            <div className="px-6 pb-4">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setPlanningToDelete(planning);
+                                                        setIsDeletePlanningOpen(true);
+                                                    }}
+                                                >
+                                                    <Trash2 className="mr-1 h-4 w-4" />
+                                                    Excluir
+                                                </Button>
+                                            </div>
+                                        )}
                                     </Card>
                                 ))}
                             </div>
@@ -315,6 +382,28 @@ const PatientDetail = () => {
                 onOpenChange={setIsEditOpen}
                 patient={patient}
                 onSuccess={(updated) => setPatient(updated)}
+            />
+
+            <ConfirmationDialog
+                open={isDeletePatientOpen}
+                onOpenChange={setIsDeletePatientOpen}
+                title="Excluir Paciente"
+                description={`Tem certeza que deseja excluir o paciente "${patient?.name}"? Todos os planejamentos e contratos associados serão excluídos permanentemente. Esta ação não pode ser desfeita.`}
+                onConfirm={handleDeletePatient}
+                isLoading={isDeleting}
+                confirmText="Excluir Paciente"
+                cancelText="Cancelar"
+            />
+
+            <ConfirmationDialog
+                open={isDeletePlanningOpen}
+                onOpenChange={setIsDeletePlanningOpen}
+                title="Excluir Planejamento"
+                description={`Tem certeza que deseja excluir o planejamento "${planningToDelete?.title}"? Esta ação não pode ser desfeita.`}
+                onConfirm={handleDeletePlanning}
+                isLoading={isDeleting}
+                confirmText="Excluir Planejamento"
+                cancelText="Cancelar"
             />
         </div >
     );

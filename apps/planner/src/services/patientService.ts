@@ -126,6 +126,17 @@ export const patientService = {
         return response.json();
     },
 
+    async deletePatient(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/patients/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao excluir paciente');
+        }
+    },
+
     async createPlanning(data: { patientId: string; title: string; originalReport?: string }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings`, {
             method: 'POST',
@@ -152,6 +163,17 @@ export const patientService = {
         }
 
         return response.json();
+    },
+
+    async deletePlanning(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/plannings/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao excluir planejamento');
+        }
     },
 
     async createContract(data: { patientId: string; content: string; logoUrl?: string }): Promise<Contract> {
