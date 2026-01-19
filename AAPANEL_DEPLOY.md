@@ -82,10 +82,10 @@ VITE_PLANNER_URL=http://SEU_IP_PUBLICO:8080
 
 ## Passo 4: Configurar o Acesso Externo (Reverse Proxy)
 
-Agora seus containers estão rodando nas portas:
-*   Backend: 3000
+Agora seus containers estão rodando nas portas (conforme docker-compose.yml):
+*   Backend: 5174
 *   Portal: 5173
-*   Planner: 8080
+*   Planner: 5172
 
 Para acessar via domínio (ex: `app.seudominio.com`) e ter HTTPS, use o recurso "Website" do aaPanel:
 
@@ -99,7 +99,7 @@ Para acessar via domínio (ex: `app.seudominio.com`) e ter HTTPS, use o recurso 
     *   **Url:** `http://127.0.0.1:5173`
     *   Salve.
 
-Repita para o Planner (`planner.seudominio.com` -> `http://127.0.0.1:8080`) e para a API (`api.seudominio.com` -> `http://127.0.0.1:3000`).
+Repita para o Planner (`planner.seudominio.com` -> `http://127.0.0.1:5172`) e para a API (`api.seudominio.com` -> `http://127.0.0.1:5174`).
 
 ## Comandos Úteis
 
