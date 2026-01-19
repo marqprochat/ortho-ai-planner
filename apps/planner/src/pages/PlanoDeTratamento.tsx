@@ -25,7 +25,7 @@ const PlanoDeTratamento = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [planningId, setPlanningId] = useState<string | null>(null);
 
-  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos } = (location.state || {}) as {
+  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos, frequenciaRetorno } = (location.state || {}) as {
     messages: Message[];
     selectedOption: string;
     selectedModel: string;
