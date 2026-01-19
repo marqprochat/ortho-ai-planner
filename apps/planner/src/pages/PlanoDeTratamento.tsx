@@ -54,7 +54,7 @@ const PlanoDeTratamento = () => {
         // Logic to construct the appliances section instruction
         const appliancesInstruction = (isDentistPlan && aparelhos)
           ? `OBRIGATÓRIO: Nesta seção 3 (APARELHOS E ACESSÓRIOS), você deve listar EXATAMENTE e SOMENTE o que está escrito entre colchetes a seguir, sem adicionar nada, sem mudar palavras e sem inventar acessórios: [${aparelhos}]`
-          : `[Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]`;
+          : `[Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc. ATENÇÃO: NUNCA especifique a prescrição (ex: Roth, MBT) a menos que explicitamente solicitado.]`;
 
         // Logic to construct the frequency section instruction
         const frequencyInstruction = (isDentistPlan && frequenciaRetorno)
