@@ -820,7 +820,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
             <p className="text-muted-foreground">Preencha os dados para gerar um planejamento ortodôntico com IA</p>
             <p className="text-sm text-primary mt-2">Os dados do formulário são salvos automaticamente</p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); generateInitialDiagnosis(); }} className="space-y-6">
+          <form onSubmit={(e) => { e.preventDefault(); generateInitialDiagnosis(); }} className="space-y-6" autoComplete="off">
             {/* Dados do Paciente */}
             <Card>
               <CardHeader><CardTitle>Dados do Paciente</CardTitle></CardHeader>
