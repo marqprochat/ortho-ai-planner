@@ -28,6 +28,7 @@ COPY --from=builder /app/package*.json ./
 
 COPY start.sh .
 RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
+RUN chmod -R +x node_modules/.bin
 
 EXPOSE 3000
 
