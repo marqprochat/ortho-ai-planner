@@ -95,9 +95,9 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 - [Informe o tempo total estimado em meses ou anos]
 
 **5. FASES DO TRATAMENTO**
-- **Fase 1 - [Nome da Fase, ex: Alinhamento e Nivelamento] (Duração: X meses)**
+- **Fase 1 - [Nome da Fase, ex: Alinhamento e Nivelamento]**
   - [Descrição detalhada dos procedimentos e objetivos desta fase]
-- **Fase 2 - [Nome da Fase, ex: Correção da Sobremordida e Relação de Molares] (Duração: Y meses)**
+- **Fase 2 - [Nome da Fase, ex: Correção da Sobremordida e Relação de Molares]**
   - [Descrição detalhada dos procedimentos e objetivos desta fase]
 - **[Adicione quantas fases forem necessárias]**
 
