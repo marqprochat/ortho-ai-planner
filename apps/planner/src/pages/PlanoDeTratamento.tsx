@@ -34,6 +34,7 @@ const PlanoDeTratamento = () => {
     patientName: string;
     isDentistPlan?: boolean;
     aparelhos?: string;
+    frequenciaRetorno?: string;
   };
 
   useEffect(() => {
@@ -54,6 +55,11 @@ const PlanoDeTratamento = () => {
         const appliancesInstruction = (isDentistPlan && aparelhos)
           ? `OBRIGATÓRIO: Nesta seção 3 (APARELHOS E ACESSÓRIOS), você deve listar EXATAMENTE e SOMENTE o que está escrito entre colchetes a seguir, sem adicionar nada, sem mudar palavras e sem inventar acessórios: [${aparelhos}]`
           : `[Liste todos os aparelhos e acessórios necessários para esta opção. Ex: Bráquetes metálicos Roth, Bandas nos molares, Elásticos intermaxilares, Mini-implantes, etc.]`;
+
+        // Logic to construct the frequency section instruction
+        const frequencyInstruction = (isDentistPlan && frequenciaRetorno)
+          ? `OBRIGATÓRIO: Nesta seção 7 (FREQUÊNCIA DE RETORNO), você deve escrever EXATAMENTE e SOMENTE o valor informado entre colchetes, sem alterar nada: [${frequenciaRetorno}]`
+          : `[Sugira uma frequência de retorno adequada para este tratamento]`;
 
         const systemPrompt = `Você é um Ortodontista Sênior com mais de 20 anos de experiência. Sua tarefa é detalhar um plano de tratamento com base em um diagnóstico inicial e uma opção de tratamento escolhida pelo dentista responsável.
 
@@ -98,6 +104,8 @@ Siga ESTRITAMENTE o seguinte formato para o plano de tratamento, usando Markdown
 **6. FASE DE CONTENÇÃO**
 - [SEMPRE sugira Alinhadores Transparentes, inclusive em casos tratados com aparelhos fixos (bráquetes).]
 
+**7. FREQUÊNCIA DE RETORNO**
+- ${frequencyInstruction}
 
 Seja claro, objetivo e use uma linguagem profissional.`;
 

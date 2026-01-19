@@ -566,7 +566,8 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         patientId,
         patientName: formData.nomePaciente,
         isDentistPlan,
-        aparelhos
+        aparelhos,
+        frequenciaRetorno: formData.frequenciaRetorno
       },
     });
   };
