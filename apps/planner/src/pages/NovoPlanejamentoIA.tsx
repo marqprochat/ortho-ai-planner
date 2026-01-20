@@ -29,7 +29,7 @@ interface ImagePayload {
   data: string;
 }
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const initialFormData = {

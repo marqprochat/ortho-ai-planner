@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { patientService } from "@/services/patientService";
 import { PlanningViewer } from "@/components/PlanningViewer";
+import { getCookie } from "@/lib/cookieUtils";
 
 // Interfaces
 interface Message {
@@ -14,7 +15,7 @@ interface Message {
   content: string | any[];
 }
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const PlanoDeTratamento = () => {
@@ -112,14 +113,24 @@ Seja claro, objetivo e use uma linguagem profissional.`;
         let aiResponse = "";
 
         if (selectedModel.startsWith('gpt')) {
-          const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          const token = getCookie('token');
+          const selectedClinicId = localStorage.getItem('selectedClinicId');
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          };
+          if (selectedClinicId) {
+            headers['x-clinic-id'] = selectedClinicId;
+          }
+
+          const response = await fetch(`${API_URL}/ai/completion`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+            headers,
             body: JSON.stringify({
               model: selectedModel,
               messages: [{ role: "system", content: systemPrompt }],
               temperature: 0.5,
-              max_tokens: 3000,
+              max_completion_tokens: 3000,
             }),
           });
           if (!response.ok) {

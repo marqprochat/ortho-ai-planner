@@ -19,8 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getCookie } from "@/lib/cookieUtils";
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 interface PlanningViewerProps {
@@ -203,47 +204,46 @@ export const PlanningViewer = ({
 
             let summaryText = "";
 
-            // Try OpenAI first (more reliable), fallback to Gemini
-            if (apiKey) {
-                try {
-                    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                        body: JSON.stringify({
-                            model: "gpt-4o-mini",
-                            messages: [{ role: "user", content: summaryPrompt }],
-                            temperature: 0.5,
-                            max_tokens: 1000,
-                        }),
-                    });
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.error?.message || "Erro na API da OpenAI");
-                    }
-                    const data = await response.json();
-                    summaryText = data.choices[0].message.content;
-                } catch (openaiError: any) {
-                    console.warn("OpenAI failed, trying Gemini as fallback:", openaiError.message);
-                    // If OpenAI fails, try Gemini
-                    if (geminiKey) {
-                        const genAI = new GoogleGenerativeAI(geminiKey);
-                        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                        const result = await model.generateContent(summaryPrompt);
-                        const response = await result.response;
-                        summaryText = response.text();
-                    } else {
-                        throw openaiError;
-                    }
+            // Try OpenAI via backend proxy first, fallback to Gemini
+            try {
+                const token = getCookie('token');
+                const selectedClinicId = localStorage.getItem('selectedClinicId');
+                const headers: Record<string, string> = {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                };
+                if (selectedClinicId) {
+                    headers['x-clinic-id'] = selectedClinicId;
                 }
-            } else if (geminiKey) {
-                // No OpenAI key, try Gemini directly
-                const genAI = new GoogleGenerativeAI(geminiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-                const result = await model.generateContent(summaryPrompt);
-                const response = await result.response;
-                summaryText = response.text();
-            } else {
-                throw new Error("Nenhuma chave de API configurada (OpenAI ou Gemini)");
+
+                const response = await fetch(`${API_URL}/ai/completion`, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [{ role: "user", content: summaryPrompt }],
+                        temperature: 0.5,
+                        max_completion_tokens: 1000,
+                    }),
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error?.message || "Erro na API do backend");
+                }
+                const data = await response.json();
+                summaryText = data.choices[0].message.content;
+            } catch (backendError: any) {
+                console.warn("Backend AI failed, trying Gemini as fallback:", backendError.message);
+                // If backend fails, try Gemini directly
+                if (geminiKey) {
+                    const genAI = new GoogleGenerativeAI(geminiKey);
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                    const result = await model.generateContent(summaryPrompt);
+                    const response = await result.response;
+                    summaryText = response.text();
+                } else {
+                    throw new Error("Falha ao gerar resumo. Tente novamente.");
+                }
             }
 
             // Gerar o PDF com o resumo
