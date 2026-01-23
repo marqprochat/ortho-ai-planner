@@ -65,7 +65,16 @@ export const authService = {
 
         if (!response.ok) {
             removeCookie('token');
-            throw new Error('Sessão expirada');
+            let errorMessage = 'Sessão expirada';
+            try {
+                const errorData = await response.json();
+                if (errorData && errorData.error) {
+                    errorMessage = errorData.error;
+                }
+            } catch (e) {
+                // Ignore json parse error, keep default message
+            }
+            throw new Error(errorMessage);
         }
 
         return response.json();
