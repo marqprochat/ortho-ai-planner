@@ -370,7 +370,7 @@ export const PlanningViewer = ({
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        {!readOnly && (
+                        {!readOnly && onSave && (
                             isEditing ? (
                                 <Button size="sm" onClick={handleSave} disabled={isSaving} className="bg-green-600 hover:bg-green-700 text-white">
                                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

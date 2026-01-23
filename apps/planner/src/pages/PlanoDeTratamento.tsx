@@ -182,17 +182,7 @@ Seja claro, objetivo e use uma linguagem profissional.`;
     generatePhasedPlan();
   }, [messages, selectedOption, selectedModel, navigate, patientId, patientName]);
 
-  const handleSavePlan = async (newPlan: string) => {
-    if (planningId) {
-      await patientService.updatePlanning(planningId, { aiResponse: newPlan });
-      setPlan(newPlan);
-    } else {
-      // If not yet saved (e.g. error earlier), try to create? 
-      // For now just update local state if no ID, but warn context.
-      setPlan(newPlan);
-      toast.warning("Não há planejamento salvo para atualizar no banco.");
-    }
-  };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -224,7 +214,6 @@ Seja claro, objetivo e use uma linguagem profissional.`;
               <PlanningViewer
                 initialPlan={plan}
                 patientName={patientName}
-                onSave={handleSavePlan}
                 showGenerateContract={true}
                 onGenerateContract={() => navigate("/termo-de-compromisso", {
                   state: { patientId, planningId, patientName }

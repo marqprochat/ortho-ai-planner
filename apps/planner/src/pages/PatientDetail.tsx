@@ -330,21 +330,6 @@ const PatientDetail = () => {
                             <PlanningViewer
                                 initialPlan={selectedPlanning.aiResponse || selectedPlanning.originalReport || "Sem conteúdo"}
                                 patientName={patient?.name}
-                                onSave={async (newPlan) => {
-                                    try {
-                                        await patientService.updatePlanning(selectedPlanning.id, { aiResponse: newPlan });
-                                        // Update local state to avoid full reload flickering
-                                        setPatient(prev => prev ? ({
-                                            ...prev,
-                                            plannings: prev.plannings?.map(p =>
-                                                p.id === selectedPlanning.id ? { ...p, aiResponse: newPlan } : p
-                                            )
-                                        }) : null);
-                                    } catch (error) {
-                                        console.error(error);
-                                        throw error; // Re-throw to be caught by PlanningViewer
-                                    }
-                                }}
                                 onClose={() => setIsViewerOpen(false)}
                                 showGenerateContract={true}
                                 onGenerateContract={() => {
