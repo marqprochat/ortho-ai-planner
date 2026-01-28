@@ -115,7 +115,12 @@ export default function ClinicManagement() {
                         <tbody className="divide-y divide-sidebar-border/50">
                             {clinics.map((clinic) => (
                                 <tr key={clinic.id} className="hover:bg-sidebar-accent/30 transition">
-                                    <td className="px-6 py-4 font-medium text-sidebar-foreground">{clinic.name}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="font-medium text-sidebar-foreground">{clinic.name}</div>
+                                        {clinic.nickname && (
+                                            <div className="text-xs text-sidebar-foreground/60">{clinic.nickname}</div>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4">{clinic.address || '-'}</td>
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button
@@ -153,6 +158,16 @@ export default function ClinicManagement() {
                             {isEditing ? 'Editar Clínica' : 'Nova Clínica'}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Apelido (Opcional)</label>
+                                <input
+                                    type="text"
+                                    value={formData.nickname || ''}
+                                    onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
+                                    placeholder="Ex: Matriz, Filial Centro..."
+                                />
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">Nome</label>
                                 <input

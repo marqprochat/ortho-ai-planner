@@ -14,6 +14,7 @@ export interface Clinic {
     id: string;
     name: string;
     address?: string;
+    nickname?: string;
     tenantId: string;
 }
 
@@ -40,6 +41,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
+    nickname?: string;
     tenantId: string;
     isSuperAdmin?: boolean;
     appAccess?: any[];

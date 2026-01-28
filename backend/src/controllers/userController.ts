@@ -86,17 +86,23 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
+        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
 
         // Update user basic info
+        const updateData: any = {
+            name,
+            email,
+            isSuperAdmin,
+            nickname // Add nickname
+        };
+
+        if (password && password.trim() !== '') {
+            updateData.password = await bcrypt.hash(password, 10);
+        }
+
         const user = await prisma.user.update({
             where: { id },
-            data: {
-                name,
-                email,
-                isSuperAdmin,
-                nickname // Add nickname
-            }
+            data: updateData
         });
 
         // If roleId provided, sync UserAppAccess for planner app
