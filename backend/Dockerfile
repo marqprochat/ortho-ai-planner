@@ -10,7 +10,7 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 # Cache bust - change this value to force rebuild
-ARG CACHE_BUST=2026011715
+ARG CACHE_BUST=202601261555
 RUN echo "Cache bust: $CACHE_BUST"
 
 COPY . .
