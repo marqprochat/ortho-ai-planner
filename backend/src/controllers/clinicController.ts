@@ -29,7 +29,7 @@ export const getClinics = async (req: AuthRequest, res: Response) => {
 
 export const createClinic = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, address, tenantId: bodyTenantId } = req.body;
+        const { name, address, tenantId: bodyTenantId, nickname } = req.body;
 
         // Use tenantId from body if provided (super admin case), otherwise use logged-in user's tenantId
         const tenantId = bodyTenantId || req.tenantId;
@@ -42,7 +42,8 @@ export const createClinic = async (req: AuthRequest, res: Response) => {
             data: {
                 name,
                 address,
-                tenantId
+                tenantId,
+                nickname // Add nickname
             }
         });
         res.json(clinic);
@@ -55,11 +56,11 @@ export const createClinic = async (req: AuthRequest, res: Response) => {
 export const updateClinic = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, address } = req.body;
+        const { name, address, nickname } = req.body;
 
         const clinic = await prisma.clinic.update({
             where: { id },
-            data: { name, address }
+            data: { name, address, nickname } // Add nickname
         });
         res.json(clinic);
     } catch (error) {

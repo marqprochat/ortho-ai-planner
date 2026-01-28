@@ -36,7 +36,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -47,6 +47,7 @@ export const createUser = async (req: Request, res: Response) => {
                 password: hashedPassword,
                 tenantId,
                 isSuperAdmin: isSuperAdmin || false,
+                nickname, // Add nickname
                 // Create UserClinic records if clinicIds provided
                 userClinics: clinicIds?.length ? {
                     create: clinicIds.map((clinicId: string) => ({ clinicId }))
@@ -85,7 +86,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, isSuperAdmin, clinicIds, roleId } = req.body;
+        const { name, email, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
 
         // Update user basic info
         const user = await prisma.user.update({
@@ -93,7 +94,8 @@ export const updateUser = async (req: Request, res: Response) => {
             data: {
                 name,
                 email,
-                isSuperAdmin
+                isSuperAdmin,
+                nickname // Add nickname
             }
         });
 

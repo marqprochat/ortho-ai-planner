@@ -20,6 +20,8 @@ model Tenant {
 model Clinic {
   id          String       @id @default(uuid())
   name        String
+  // [NEW] Nickname for display
+  nickname    String?
   address     String?
   tenantId    String
   createdAt   DateTime     @default(now())
@@ -45,6 +47,8 @@ model User {
   email        String          @unique
   password     String
   name         String
+  // [NEW] Nickname for display
+  nickname     String?
   avatarUrl    String?
   isSuperAdmin Boolean         @default(false)
   tenantId     String

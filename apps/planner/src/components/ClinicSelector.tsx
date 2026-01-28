@@ -60,7 +60,7 @@ export function ClinicSelector({ isExpanded }: ClinicSelectorProps) {
                         <div className="flex-1 text-left overflow-hidden">
                             <p className="text-xs text-sidebar-foreground/60">Clínica</p>
                             <p className="text-sm font-medium text-sidebar-foreground truncate">
-                                {currentClinic?.name || "Selecione..."}
+                                {(currentClinic?.nickname || currentClinic?.name) || "Selecione..."}
                             </p>
                         </div>
                         <ChevronDown className={`w-3 h-3 text-sidebar-foreground/50 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -85,7 +85,7 @@ export function ClinicSelector({ isExpanded }: ClinicSelectorProps) {
                                     }`}
                             >
                                 <Building2 className="w-3 h-3 opacity-70" />
-                                <span className="truncate">{clinic.name}</span>
+                                <span className="truncate">{clinic.nickname || clinic.name}</span>
                                 {currentClinic?.id === clinic.id && (
                                     <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"></span>
                                 )}

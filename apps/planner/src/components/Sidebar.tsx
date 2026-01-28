@@ -98,7 +98,7 @@ const Sidebar = () => {
                         <>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-sidebar-foreground truncate">
-                                    {user?.name || "Usuário"}
+                                    {(user?.nickname || user?.name) || "Usuário"}
                                 </p>
                                 <p className="text-xs text-sidebar-foreground/60 truncate">
                                     {user?.email || ""}

@@ -7,6 +7,7 @@ export interface Clinic {
     name: string;
     address: string;
     tenantId: string;
+    nickname?: string;
 }
 
 export const clinicService = {
