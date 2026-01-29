@@ -36,7 +36,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -48,6 +48,7 @@ export const createUser = async (req: Request, res: Response) => {
                 tenantId,
                 isSuperAdmin: isSuperAdmin || false,
                 nickname, // Add nickname
+                cro, // Add cro
                 // Create UserClinic records if clinicIds provided
                 userClinics: clinicIds?.length ? {
                     create: clinicIds.map((clinicId: string) => ({ clinicId }))
@@ -73,10 +74,11 @@ export const createUser = async (req: Request, res: Response) => {
         }
 
         const { password: _, ...userWithoutPassword } = user;
-        res.json({
+        const responseData = {
             ...userWithoutPassword,
-            clinics: user.userClinics.map(uc => uc.clinic)
-        });
+            clinics: (user as any).userClinics?.map((uc: any) => uc.clinic) || []
+        };
+        res.json(responseData);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to create user' });
@@ -86,14 +88,15 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname } = req.body;
+        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro } = req.body;
 
         // Update user basic info
         const updateData: any = {
             name,
             email,
             isSuperAdmin,
-            nickname // Add nickname
+            nickname, // Add nickname
+            cro // Add cro
         };
 
         if (password && password.trim() !== '') {

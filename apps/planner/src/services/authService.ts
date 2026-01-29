@@ -7,6 +7,7 @@ export interface User {
     email: string;
     name: string;
     nickname?: string;
+    cro?: string;
     avatarUrl?: string;
     tenantId: string;
     isSuperAdmin?: boolean;

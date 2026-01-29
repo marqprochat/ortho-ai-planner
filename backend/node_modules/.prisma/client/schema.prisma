@@ -49,6 +49,8 @@ model User {
   name         String
   // [NEW] Nickname for display
   nickname     String?
+  // [NEW] CRO number
+  cro          String?
   avatarUrl    String?
   isSuperAdmin Boolean         @default(false)
   tenantId     String

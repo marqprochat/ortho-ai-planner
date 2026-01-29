@@ -12,7 +12,7 @@ export default function UserManagement() {
     const [roles, setRoles] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[]; roleId?: string; nickname?: string }>({});
+    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[]; roleId?: string; nickname?: string; cro?: string }>({});
     const [showPassword, setShowPassword] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
@@ -216,6 +216,16 @@ export default function UserManagement() {
                                     onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
                                     className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
                                     placeholder="Como o usuário será chamado no sistema"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-sidebar-foreground/60 mb-1">CRO (Opcional)</label>
+                                <input
+                                    type="text"
+                                    value={formData.cro || ''}
+                                    onChange={(e) => setFormData({ ...formData, cro: e.target.value })}
+                                    className="w-full bg-sidebar-accent border border-sidebar-border rounded-lg px-4 py-2 text-sidebar-foreground focus:ring-2 focus:ring-primary outline-none"
+                                    placeholder="Registro no Conselho Regional de Odontologia"
                                 />
                             </div>
                             <div>

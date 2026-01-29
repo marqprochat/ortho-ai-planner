@@ -42,6 +42,7 @@ export interface User {
     name: string;
     email: string;
     nickname?: string;
+    cro?: string;
     tenantId: string;
     isSuperAdmin?: boolean;
     appAccess?: any[];
