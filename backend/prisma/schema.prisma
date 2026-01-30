@@ -112,8 +112,10 @@ model UserAppAccess {
 }
 
 model Patient {
-  id         String     @id @default(uuid())
-  name       String
+  id            String     @id @default(uuid())
+  patientNumber String?    // Patient registration number (número do paciente)
+  insurance     String?    // Health insurance (convênio)
+  name          String
   birthDate  DateTime?
   email      String?
   phone      String?

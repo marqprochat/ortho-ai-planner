@@ -5,6 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 export interface Patient {
     id: string;
     name: string;
+    patientNumber?: string;  // Patient registration number (número do paciente)
+    insurance?: string;      // Health insurance (convênio)
     email?: string;
     phone?: string;
     birthDate?: string;
@@ -84,7 +86,7 @@ export const patientService = {
         return response.json();
     },
 
-    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<Patient> {
+    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -98,7 +100,7 @@ export const patientService = {
         return response.json();
     },
 
-    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<{ patient: Patient; isNew: boolean }> {
+    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<{ patient: Patient; isNew: boolean }> {
         const response = await fetch(`${API_URL}/patients/find-or-create`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -112,7 +114,7 @@ export const patientService = {
         return response.json();
     },
 
-    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string }): Promise<Patient> {
+    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),

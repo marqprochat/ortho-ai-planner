@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2, Hash, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -148,6 +148,9 @@ const PatientDetail = () => {
                         <div className="flex-1">
                             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                                 <User className="h-8 w-8 text-primary" />
+                                {patient.patientNumber && (
+                                    <span className="text-lg font-normal text-muted-foreground">#{patient.patientNumber}</span>
+                                )}
                                 {patient.name}
                             </h1>
                             <p className="text-muted-foreground">
@@ -171,7 +174,7 @@ const PatientDetail = () => {
                         <CardHeader>
                             <CardTitle>Informações do Paciente</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="flex items-center gap-2">
                                 <Mail className="h-5 w-5 text-muted-foreground" />
                                 <div>
@@ -191,6 +194,13 @@ const PatientDetail = () => {
                                 <div>
                                     <p className="text-sm font-medium">Data de Nascimento</p>
                                     <p className="text-muted-foreground">{formatDate(patient.birthDate)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm font-medium">Convênio</p>
+                                    <p className="text-muted-foreground">{patient.insurance || "-"}</p>
                                 </div>
                             </div>
                         </CardContent>

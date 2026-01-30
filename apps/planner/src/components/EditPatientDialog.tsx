@@ -30,6 +30,8 @@ export function EditPatientDialog({
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
+        patientNumber: "",
+        insurance: "",
         email: "",
         phone: "",
         birthDate: ""
@@ -39,6 +41,8 @@ export function EditPatientDialog({
         if (patient && open) {
             setFormData({
                 name: patient.name || "",
+                patientNumber: patient.patientNumber || "",
+                insurance: patient.insurance || "",
                 email: patient.email || "",
                 phone: patient.phone || "",
                 birthDate: patient.birthDate ? patient.birthDate.split('T')[0] : ""
@@ -98,6 +102,32 @@ export function EditPatientDialog({
                                 onChange={handleChange}
                                 className="col-span-3"
                                 required
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="patientNumber" className="text-right">
+                                Número
+                            </Label>
+                            <Input
+                                id="patientNumber"
+                                name="patientNumber"
+                                value={formData.patientNumber}
+                                onChange={handleChange}
+                                className="col-span-3"
+                                placeholder="Número do paciente"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="insurance" className="text-right">
+                                Convênio
+                            </Label>
+                            <Input
+                                id="insurance"
+                                name="insurance"
+                                value={formData.insurance}
+                                onChange={handleChange}
+                                className="col-span-3"
+                                placeholder="Convênio do paciente"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

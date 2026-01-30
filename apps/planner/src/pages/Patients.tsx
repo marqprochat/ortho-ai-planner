@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Plus, Search, User, FileText, Calendar, Phone, Mail, Loader2 } from "lucide-react";
+import { Plus, Search, User, FileText, Calendar, Phone, Mail, Loader2, Hash, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ const Patients = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [newPatientData, setNewPatientData] = useState({
         name: "",
+        patientNumber: "",
+        insurance: "",
         email: "",
         phone: "",
         birthDate: "",
@@ -55,7 +57,7 @@ const Patients = () => {
             const patient = await patientService.createPatient(newPatientData);
             setPatients(prev => [patient, ...prev]);
             setIsCreateDialogOpen(false);
-            setNewPatientData({ name: "", email: "", phone: "", birthDate: "" });
+            setNewPatientData({ name: "", patientNumber: "", insurance: "", email: "", phone: "", birthDate: "" });
             toast.success("Paciente criado com sucesso!");
             navigate(`/patients/${patient.id}`);
         } catch (error) {
@@ -69,7 +71,9 @@ const Patients = () => {
     const filteredPatients = patients.filter(patient =>
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.phone?.includes(searchQuery)
+        patient.phone?.includes(searchQuery) ||
+        patient.patientNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        patient.insurance?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const formatDate = (dateString?: string) => {
@@ -138,6 +142,9 @@ const Patients = () => {
                                     <CardHeader className="pb-2">
                                         <CardTitle className="flex items-center gap-2">
                                             <User className="h-5 w-5 text-primary" />
+                                            {patient.patientNumber && (
+                                                <span className="text-sm font-normal text-muted-foreground">#{patient.patientNumber}</span>
+                                            )}
                                             {patient.name}
                                         </CardTitle>
                                     </CardHeader>
@@ -158,6 +165,12 @@ const Patients = () => {
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Calendar className="h-4 w-4" />
                                                 {formatDate(patient.birthDate)}
+                                            </div>
+                                        )}
+                                        {patient.insurance && (
+                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                <Shield className="h-4 w-4" />
+                                                {patient.insurance}
                                             </div>
                                         )}
                                         <div className="flex items-center gap-4 pt-2 border-t">
@@ -184,13 +197,33 @@ const Patients = () => {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">Nome *</Label>
+                                <Input
+                                    id="name"
+                                    value={newPatientData.name}
+                                    onChange={(e) => setNewPatientData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="patientNumber">Número do Paciente</Label>
+                                <Input
+                                    id="patientNumber"
+                                    value={newPatientData.patientNumber}
+                                    onChange={(e) => setNewPatientData(prev => ({ ...prev, patientNumber: e.target.value }))}
+                                    placeholder="Ex: 12345"
+                                />
+                            </div>
+                        </div>
                         <div className="space-y-2">
-                            <Label htmlFor="name">Nome *</Label>
+                            <Label htmlFor="insurance">Convênio</Label>
                             <Input
-                                id="name"
-                                value={newPatientData.name}
-                                onChange={(e) => setNewPatientData(prev => ({ ...prev, name: e.target.value }))}
-                                placeholder="Nome completo do paciente"
+                                id="insurance"
+                                value={newPatientData.insurance}
+                                onChange={(e) => setNewPatientData(prev => ({ ...prev, insurance: e.target.value }))}
+                                placeholder="Ex: Unimed, Bradesco Saúde"
                             />
                         </div>
                         <div className="space-y-2">
