@@ -139,7 +139,7 @@ export const patientService = {
         }
     },
 
-    async createPlanning(data: { patientId: string; title: string; originalReport?: string }): Promise<Planning> {
+    async createPlanning(data: { patientId: string; title: string; originalReport?: string; status?: string; structuredPlan?: any }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings`, {
             method: 'POST',
             headers: getAuthHeaders(),

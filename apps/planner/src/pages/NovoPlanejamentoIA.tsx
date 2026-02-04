@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ArrowLeft, Upload, Brain, Send, Loader2, X, MessageSquare, Stethoscope, Target, Settings, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, User, Search } from "lucide-react";
+import { ArrowLeft, Upload, Brain, Send, Loader2, X, MessageSquare, Stethoscope, Target, Settings, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, User, Search, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -480,6 +480,43 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
     console.error("Error:", error);
     toast.error(error.message || "Erro ao gerar diagnóstico.");
     setView('form'); // Volta para o formulário em caso de erro
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handleSaveDocumentation = async () => {
+  if (!formData.nomePaciente) {
+    toast.error("Por favor, preencha pelo menos o nome do paciente para salvar a documentação.");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // 1. Find or Create Patient
+    const patientResult = await patientService.findOrCreatePatient({
+      name: formData.nomePaciente,
+      phone: formData.telefone || undefined,
+      birthDate: formData.dataNascimento || undefined,
+      externalId: formData.numeroPaciente || undefined,
+    });
+
+    setPatientId(patientResult.patient.id);
+
+    // 2. Save Planning as Documentation
+    await patientService.createPlanning({
+      patientId: patientResult.patient.id,
+      title: `Documentação Inicial - ${new Date().toLocaleDateString()}`,
+      status: 'DOCUMENTACAO_ENVIADA',
+      structuredPlan: formData,
+    });
+
+    toast.success("Documentação salva com sucesso!");
+    // Optional: Navigate or reset? For now, we keep the user here as they might want to continue to AI.
+  } catch (error: any) {
+    console.error("Erro ao salvar documentação:", error);
+    toast.error(error.message || "Erro ao salvar documentação.");
   } finally {
     setIsLoading(false);
   }
@@ -968,7 +1005,11 @@ return (
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" size="lg" className="gap-2" onClick={handleSaveDocumentation} disabled={isLoading}>
+              <Save className="h-5 w-5" />
+              Salvar Documentação
+            </Button>
             <Button type="submit" size="lg" className="gap-2" disabled={isLoading}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}Gerar Planejamento com IA</Button>
           </div>
         </form>

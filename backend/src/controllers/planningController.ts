@@ -38,7 +38,7 @@ export const getPlannings = async (req: AuthRequest, res: Response) => {
 // Create a new planning
 export const createPlanning = async (req: AuthRequest, res: Response) => {
     try {
-        const { patientId, title, originalReport } = req.body;
+        const { patientId, title, originalReport, status, structuredPlan } = req.body;
         const { tenantId, clinicId } = req; // Proper destructuring from AuthRequest
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -62,7 +62,8 @@ export const createPlanning = async (req: AuthRequest, res: Response) => {
                 title,
                 originalReport,
                 patientId,
-                status: 'DRAFT'
+                status: status || 'DRAFT',
+                structuredPlan
             }
         });
 
