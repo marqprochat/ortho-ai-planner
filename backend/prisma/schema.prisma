@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -114,7 +115,7 @@ model UserAppAccess {
 model Patient {
   id            String     @id @default(uuid())
   patientNumber String?    // Patient registration number (número do paciente)
-  insurance     String?    // Health insurance (convênio)
+  paymentType   String?    // Payment type: 'Convênio' or 'Particular'
   name          String
   birthDate  DateTime?
   email      String?
@@ -142,18 +143,23 @@ model Planning {
   structuredPlan Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  contracts      Contract[]
   patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 
 model Contract {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   patientId String
   content   String
   logoUrl   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  patient   Patient  @relation(fields: [patientId], references: [id])
+  isSigned  Boolean   @default(false)
+  signedAt  DateTime?
+  planningId String?
+  planning  Planning? @relation(fields: [planningId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  patient   Patient   @relation(fields: [patientId], references: [id])
 }
 
 model AiApiKey {

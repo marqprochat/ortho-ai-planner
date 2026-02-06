@@ -8,7 +8,7 @@ import prisma from './lib/prisma';
 import { register, login, getMe } from './controllers/authController';
 import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient, deletePatient } from './controllers/patientController';
 import { getPlannings, createPlanning, updatePlanning, getAllPlannings, deletePlanning } from './controllers/planningController';
-import { createContract, getPatientContracts, getContract, getAllContracts, deleteContract } from './controllers/contractController';
+import { createContract, getPatientContracts, getContract, getAllContracts, deleteContract, signContract } from './controllers/contractController';
 import { getPermissions } from './controllers/permissionController';
 import { getRoles, createRole, updateRole, deleteRole } from './controllers/roleController';
 import { getClinics, createClinic, updateClinic, deleteClinic } from './controllers/clinicController';
@@ -68,6 +68,7 @@ app.get('/api/contracts', authMiddleware, requireAppAccess('planner'), requirePe
 app.get('/api/patients/:patientId/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getPatientContracts);
 app.get('/api/contracts/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'contract'), getContract);
 app.delete('/api/contracts/:id', authMiddleware, requireAppAccess('planner'), requirePermission('delete', 'contract'), deleteContract);
+app.patch('/api/contracts/:id/sign', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'contract'), signContract);
 
 // Permission & Role Routes
 app.get('/api/permissions', authMiddleware, getPermissions);

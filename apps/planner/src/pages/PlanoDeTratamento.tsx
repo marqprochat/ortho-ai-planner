@@ -24,7 +24,7 @@ const PlanoDeTratamento = () => {
 
   const [plan, setPlan] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [planningId, setPlanningId] = useState<string | null>(null);
+  const [planningId, setPlanningId] = useState<string | null>((location.state as any)?.planningId || null);
 
   const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos, frequenciaRetorno } = (location.state || {}) as {
     messages: Message[];
@@ -36,6 +36,7 @@ const PlanoDeTratamento = () => {
     isDentistPlan?: boolean;
     aparelhos?: string;
     frequenciaRetorno?: string;
+    planningId?: string;
   };
 
   useEffect(() => {
@@ -151,20 +152,27 @@ Seja claro, objetivo e use uma linguagem profissional.`;
         // Save the planning to the database
         if (patientId) {
           try {
-            const planning = await patientService.createPlanning({
-              patientId,
-              title: `Planejamento - ${patientName || 'Paciente'}`,
-              originalReport: selectedOption,
-            });
+            let currentPlanningId = planningId;
+
+            // If we don't have a planning ID (new plan), create it first
+            if (!currentPlanningId) {
+              const planning = await patientService.createPlanning({
+                patientId,
+                title: `Planejamento - ${patientName || 'Paciente'}`,
+                originalReport: selectedOption,
+              });
+              currentPlanningId = planning.id;
+              setPlanningId(planning.id);
+            }
 
             // Update with AI response
-            await patientService.updatePlanning(planning.id, {
-              status: 'COMPLETED',
-              aiResponse,
-            });
-
-            setPlanningId(planning.id);
-            toast.success("Planejamento salvo com sucesso!");
+            if (currentPlanningId) {
+              await patientService.updatePlanning(currentPlanningId, {
+                status: 'COMPLETED',
+                aiResponse,
+              });
+              toast.success("Planejamento salvo com sucesso!");
+            }
           } catch (saveError) {
             console.error("Error saving planning:", saveError);
             toast.error("Planejamento gerado, mas houve erro ao salvar.");

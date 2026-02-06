@@ -298,6 +298,7 @@ CRO: ${croDentista}`;
                 patientId,
                 content: contractContent,
                 logoUrl: contractData.logoPreview || undefined,
+                planningId: planningId || undefined,
             });
             toast.success("Contrato salvo com sucesso!");
         } catch (error) {

@@ -86,7 +86,7 @@ const Plannings = () => {
                             <h1 className="text-4xl font-bold text-foreground">Planejamentos</h1>
                             <p className="text-muted-foreground">Gerencie todos os planejamentos dos seus pacientes</p>
                         </div>
-                        <Button onClick={() => navigate('/novo-planejamento')} size="lg">
+                        <Button onClick={() => navigate('/novo-planejamento', { state: { isNew: true } })} size="lg">
                             <Brain className="mr-2 h-5 w-5" />
                             Novo Planejamento com IA
                         </Button>
@@ -140,7 +140,7 @@ const Plannings = () => {
                                         : "Comece criando seu primeiro planejamento com IA"}
                                 </p>
                                 {(!searchQuery && statusFilter === 'ALL') && (
-                                    <Button onClick={() => navigate('/novo-planejamento')}>
+                                    <Button onClick={() => navigate('/novo-planejamento', { state: { isNew: true } })}>
                                         <Brain className="mr-2 h-4 w-4" />
                                         Criar Planejamento
                                     </Button>

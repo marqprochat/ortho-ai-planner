@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { Patient, patientService } from "@/services/patientService";
 import { toast } from "sonner";
@@ -31,7 +32,7 @@ export function EditPatientDialog({
     const [formData, setFormData] = useState({
         name: "",
         patientNumber: "",
-        insurance: "",
+        paymentType: "",
         email: "",
         phone: "",
         birthDate: ""
@@ -42,7 +43,7 @@ export function EditPatientDialog({
             setFormData({
                 name: patient.name || "",
                 patientNumber: patient.patientNumber || "",
-                insurance: patient.insurance || "",
+                paymentType: patient.paymentType || "",
                 email: patient.email || "",
                 phone: patient.phone || "",
                 birthDate: patient.birthDate ? patient.birthDate.split('T')[0] : ""
@@ -118,17 +119,23 @@ export function EditPatientDialog({
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="insurance" className="text-right">
-                                Convênio
+                            <Label htmlFor="paymentType" className="text-right">
+                                Pagamento
                             </Label>
-                            <Input
-                                id="insurance"
-                                name="insurance"
-                                value={formData.insurance}
-                                onChange={handleChange}
-                                className="col-span-3"
-                                placeholder="Convênio do paciente"
-                            />
+                            <div className="col-span-3">
+                                <Select
+                                    value={formData.paymentType}
+                                    onValueChange={(v) => setFormData(prev => ({ ...prev, paymentType: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Convênio">Convênio</SelectItem>
+                                        <SelectItem value="Particular">Particular</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="email" className="text-right">

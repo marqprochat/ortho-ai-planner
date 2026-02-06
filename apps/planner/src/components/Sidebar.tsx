@@ -71,7 +71,7 @@ const Sidebar = () => {
                 )}
 
                 {canWritePlanning && (
-                    <Link to="/novo-planejamento" className={linkClass("/novo-planejamento")}>
+                    <Link to="/novo-planejamento" state={{ isNew: true }} className={linkClass("/novo-planejamento")}>
                         <Plus className="h-5 w-5 flex-shrink-0" />
                         {isExpanded && <span className="whitespace-nowrap">Novo Planejamento</span>}
                     </Link>

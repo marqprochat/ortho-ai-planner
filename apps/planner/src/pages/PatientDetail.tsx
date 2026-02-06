@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2, Hash, Shield } from "lucide-react";
+import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2, Hash, Shield, FileUp, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,14 @@ import { ContractViewer } from "@/components/ContractViewer";
 import { EditPatientDialog } from "@/components/EditPatientDialog";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { useHasPermission } from "../hooks/useHasPermission";
+import { ProcessStages, computePlanningStage } from "@/components/ProcessStages";
 
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-500",
     GENERATING: "bg-yellow-500",
     COMPLETED: "bg-green-500",
     REVIEWED: "bg-blue-500",
+    DOCUMENTACAO_ENVIADA: "bg-orange-500",
 };
 
 const statusLabels: Record<string, string> = {
@@ -26,6 +28,7 @@ const statusLabels: Record<string, string> = {
     GENERATING: "Gerando",
     COMPLETED: "Concluído",
     REVIEWED: "Revisado",
+    DOCUMENTACAO_ENVIADA: "Documentação Enviada",
 };
 
 const PatientDetail = () => {
@@ -169,6 +172,8 @@ const PatientDetail = () => {
                         )}
                     </div>
 
+                    {/* Process Stages removed from top - now inside Planning cards */}
+
                     {/* Patient Info Card */}
                     <Card className="mb-8">
                         <CardHeader>
@@ -199,8 +204,8 @@ const PatientDetail = () => {
                             <div className="flex items-center gap-2">
                                 <Shield className="h-5 w-5 text-muted-foreground" />
                                 <div>
-                                    <p className="text-sm font-medium">Convênio</p>
-                                    <p className="text-muted-foreground">{patient.insurance || "-"}</p>
+                                    <p className="text-sm font-medium">Tipo de Pagamento</p>
+                                    <p className="text-muted-foreground">{patient.paymentType || "-"}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -242,6 +247,9 @@ const PatientDetail = () => {
                                                 Criado em {formatDate(planning.createdAt)}
                                             </CardDescription>
                                         </CardHeader>
+                                        <div className="mb-4">
+                                            <ProcessStages currentStage={computePlanningStage(planning)} />
+                                        </div>
                                         <CardContent>
                                             {planning.originalReport && (
                                                 <p className="text-sm text-muted-foreground line-clamp-2">
@@ -250,7 +258,30 @@ const PatientDetail = () => {
                                             )}
                                         </CardContent>
                                         {canDeletePlanning && (
-                                            <div className="px-6 pb-4">
+                                            <div className="px-6 pb-4 flex gap-2">
+                                                {planning.status === 'DOCUMENTACAO_ENVIADA' && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="text-primary hover:text-primary hover:bg-primary/10"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                // Load structuredPlan into localStorage and navigate to form
+                                                                if (planning.structuredPlan) {
+                                                                    localStorage.setItem("planejamentoFormData", JSON.stringify({
+                                                                        ...planning.structuredPlan,
+                                                                        patientId: planning.patientId
+                                                                    }));
+                                                                }
+                                                                navigate(`/novo-planejamento`, { state: { planningId: planning.id } });
+                                                            }}
+                                                        >
+                                                            <Edit className="mr-1 h-4 w-4" />
+                                                            Editar / Criar Planejamento
+                                                        </Button>
+                                                    </>
+                                                )}
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -301,18 +332,55 @@ const PatientDetail = () => {
                                 {patient.contracts.map((contract) => (
                                     <Card
                                         key={contract.id}
-                                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                                        className={`cursor-pointer hover:shadow-lg transition-shadow ${contract.isSigned ? 'border-emerald-500 border-2' : ''}`}
                                         onClick={() => {
                                             setSelectedContract(contract);
                                             setIsContractViewerOpen(true);
                                         }}
                                     >
                                         <CardHeader>
-                                            <CardTitle className="text-lg">Termo de Compromisso</CardTitle>
+                                            <div className="flex justify-between items-start">
+                                                <CardTitle className="text-lg">Termo de Compromisso</CardTitle>
+                                                {contract.isSigned ? (
+                                                    <Badge className="bg-emerald-500">
+                                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                                        Assinado
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline">Pendente</Badge>
+                                                )}
+                                            </div>
                                             <CardDescription>
                                                 Gerado em {formatDate(contract.createdAt)}
+                                                {contract.signedAt && (
+                                                    <span className="block text-emerald-600">
+                                                        Assinado em {formatDate(contract.signedAt)}
+                                                    </span>
+                                                )}
                                             </CardDescription>
                                         </CardHeader>
+                                        {!contract.isSigned && (
+                                            <CardContent>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-300"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await patientService.signContract(contract.id);
+                                                            toast.success("Contrato marcado como assinado!");
+                                                            loadPatient();
+                                                        } catch (error) {
+                                                            toast.error("Erro ao assinar contrato");
+                                                        }
+                                                    }}
+                                                >
+                                                    <CheckCircle className="mr-1 h-4 w-4" />
+                                                    Marcar como Assinado
+                                                </Button>
+                                            </CardContent>
+                                        )}
                                     </Card>
                                 ))}
                             </div>

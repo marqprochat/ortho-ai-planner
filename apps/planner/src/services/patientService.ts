@@ -6,7 +6,7 @@ export interface Patient {
     id: string;
     name: string;
     patientNumber?: string;  // Patient registration number (número do paciente)
-    insurance?: string;      // Health insurance (convênio)
+    paymentType?: string;   // Payment type: 'Convênio' or 'Particular'
     email?: string;
     phone?: string;
     birthDate?: string;
@@ -32,6 +32,7 @@ export interface Planning {
     originalReport?: string;
     aiResponse?: string;
     structuredPlan?: any;
+    contracts?: Contract[];
     createdAt: string;
     updatedAt: string;
 }
@@ -41,6 +42,9 @@ export interface Contract {
     patientId: string;
     content: string;
     logoUrl?: string;
+    isSigned?: boolean;
+    signedAt?: string;
+    planningId?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -86,7 +90,7 @@ export const patientService = {
         return response.json();
     },
 
-    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<Patient> {
+    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -100,7 +104,7 @@ export const patientService = {
         return response.json();
     },
 
-    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<{ patient: Patient; isNew: boolean }> {
+    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string }): Promise<{ patient: Patient; isNew: boolean }> {
         const response = await fetch(`${API_URL}/patients/find-or-create`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -114,7 +118,7 @@ export const patientService = {
         return response.json();
     },
 
-    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; insurance?: string }): Promise<Patient> {
+    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -178,7 +182,7 @@ export const patientService = {
         }
     },
 
-    async createContract(data: { patientId: string; content: string; logoUrl?: string }): Promise<Contract> {
+    async createContract(data: { patientId: string; content: string; logoUrl?: string; planningId?: string }): Promise<Contract> {
         const response = await fetch(`${API_URL}/contracts`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -199,6 +203,19 @@ export const patientService = {
 
         if (!response.ok) {
             throw new Error('Erro ao buscar contratos');
+        }
+
+        return response.json();
+    },
+
+    async signContract(contractId: string): Promise<Contract> {
+        const response = await fetch(`${API_URL}/contracts/${contractId}/sign`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao assinar contrato');
         }
 
         return response.json();

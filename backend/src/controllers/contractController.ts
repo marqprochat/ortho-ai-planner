@@ -5,7 +5,7 @@ import prisma from '../lib/prisma';
 // Create a new contract
 export const createContract = async (req: AuthRequest, res: Response) => {
     try {
-        const { patientId, content, logoUrl } = req.body;
+        const { patientId, content, logoUrl, planningId } = req.body;
         const { tenantId, userId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'patient');
@@ -28,7 +28,8 @@ export const createContract = async (req: AuthRequest, res: Response) => {
             data: {
                 patientId,
                 content,
-                logoUrl: logoUrl || null
+                logoUrl: logoUrl || null,
+                planningId: planningId || null
             }
         });
 
@@ -170,5 +171,43 @@ export const deleteContract = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Erro ao excluir contrato' });
+    }
+};
+
+// Sign a contract
+export const signContract = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { tenantId, userId, clinicId } = req;
+
+        const canManageAll = hasPermission(req.user, 'manage', 'patient');
+
+        const contract = await prisma.contract.findFirst({
+            where: {
+                id,
+                patient: {
+                    tenantId,
+                    clinicId,
+                    ...(canManageAll ? {} : { userId })
+                }
+            }
+        });
+
+        if (!contract) {
+            return res.status(404).json({ error: 'Contrato não encontrado' });
+        }
+
+        const updatedContract = await prisma.contract.update({
+            where: { id },
+            data: {
+                isSigned: true,
+                signedAt: new Date()
+            }
+        });
+
+        res.json(updatedContract);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao assinar contrato' });
     }
 };

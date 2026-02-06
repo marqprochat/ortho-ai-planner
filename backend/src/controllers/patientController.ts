@@ -38,7 +38,7 @@ export const getPatients = async (req: AuthRequest, res: Response) => {
 // Create a new patient
 export const createPatient = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, email, phone, birthDate, externalId, patientNumber, insurance } = req.body;
+        const { name, email, phone, birthDate, externalId, patientNumber, paymentType } = req.body;
         const { userId, tenantId, clinicId } = req;
 
         if (!clinicId) {
@@ -52,7 +52,7 @@ export const createPatient = async (req: AuthRequest, res: Response) => {
                 phone,
                 externalId,
                 patientNumber,
-                insurance,
+                paymentType,
                 birthDate: birthDate ? new Date(birthDate) : null,
                 tenantId: tenantId!,
                 userId: userId!, // Assign to logged-in dentist
@@ -70,7 +70,7 @@ export const createPatient = async (req: AuthRequest, res: Response) => {
 // Find existing patient or create new one (prevents duplicates)
 export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, email, phone, birthDate, externalId, patientNumber, insurance } = req.body;
+        const { name, email, phone, birthDate, externalId, patientNumber, paymentType } = req.body;
         const { userId, tenantId, clinicId } = req;
 
         if (!clinicId) {
@@ -118,7 +118,7 @@ export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
                 phone,
                 externalId,
                 patientNumber,
-                insurance,
+                paymentType,
                 birthDate: birthDate ? new Date(birthDate) : null,
                 tenantId: tenantId!,
                 userId: userId!,
@@ -173,7 +173,7 @@ export const getPatient = async (req: AuthRequest, res: Response) => {
 export const updatePatient = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, phone, birthDate, patientNumber, insurance } = req.body;
+        const { name, email, phone, birthDate, patientNumber, paymentType } = req.body;
         const { userId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'patient');
@@ -198,7 +198,7 @@ export const updatePatient = async (req: AuthRequest, res: Response) => {
                 email,
                 phone,
                 patientNumber,
-                insurance,
+                paymentType,
                 birthDate: birthDate ? new Date(birthDate) : null,
                 // Do not update clinicId usually
             }
