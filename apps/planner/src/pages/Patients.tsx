@@ -21,7 +21,8 @@ const Patients = () => {
     const [newPatientData, setNewPatientData] = useState({
         name: "",
         patientNumber: "",
-        insurance: "",
+        paymentType: "",
+        insuranceCompany: "",
         email: "",
         phone: "",
         birthDate: "",
@@ -57,7 +58,7 @@ const Patients = () => {
             const patient = await patientService.createPatient(newPatientData);
             setPatients(prev => [patient, ...prev]);
             setIsCreateDialogOpen(false);
-            setNewPatientData({ name: "", patientNumber: "", insurance: "", email: "", phone: "", birthDate: "" });
+            setNewPatientData({ name: "", patientNumber: "", paymentType: "", insuranceCompany: "", email: "", phone: "", birthDate: "" });
             toast.success("Paciente criado com sucesso!");
             navigate(`/patients/${patient.id}`);
         } catch (error) {
@@ -73,7 +74,8 @@ const Patients = () => {
         patient.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.phone?.includes(searchQuery) ||
         patient.patientNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.insurance?.toLowerCase().includes(searchQuery.toLowerCase())
+        patient.paymentType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        patient.insuranceCompany?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const formatDate = (dateString?: string) => {
@@ -167,10 +169,11 @@ const Patients = () => {
                                                 {formatDate(patient.birthDate)}
                                             </div>
                                         )}
-                                        {patient.insurance && (
+                                        {patient.paymentType && (
                                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                                 <Shield className="h-4 w-4" />
-                                                {patient.insurance}
+                                                {patient.paymentType}
+                                                {patient.paymentType === 'Convênio' && patient.insuranceCompany && ` (${patient.insuranceCompany})`}
                                             </div>
                                         )}
                                         <div className="flex items-center gap-4 pt-2 border-t">
@@ -217,14 +220,44 @@ const Patients = () => {
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="insurance">Convênio</Label>
-                            <Input
-                                id="insurance"
-                                value={newPatientData.insurance}
-                                onChange={(e) => setNewPatientData(prev => ({ ...prev, insurance: e.target.value }))}
-                                placeholder="Ex: Unimed, Bradesco Saúde"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="paymentType">Pagamento</Label>
+                                <Select
+                                    value={newPatientData.paymentType}
+                                    onValueChange={(v) => setNewPatientData(prev => ({
+                                        ...prev,
+                                        paymentType: v,
+                                        insuranceCompany: v === 'Convênio' ? prev.insuranceCompany : ""
+                                    }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Convênio">Convênio</SelectItem>
+                                        <SelectItem value="Particular">Particular</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {newPatientData.paymentType === 'Convênio' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="insuranceCompany">Convênio</Label>
+                                    <Select
+                                        value={newPatientData.insuranceCompany}
+                                        onValueChange={(v) => setNewPatientData(prev => ({ ...prev, insuranceCompany: v }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {["Amil", "Odontoprev", "Hapvida", "Uniodonto", "Porto Seguro", "Sulamérica"].map(opt => (
+                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>

@@ -35,7 +35,8 @@ export function EditPatientDialog({
         paymentType: "",
         email: "",
         phone: "",
-        birthDate: ""
+        birthDate: "",
+        insuranceCompany: ""
     });
 
     useEffect(() => {
@@ -46,7 +47,8 @@ export function EditPatientDialog({
                 paymentType: patient.paymentType || "",
                 email: patient.email || "",
                 phone: patient.phone || "",
-                birthDate: patient.birthDate ? patient.birthDate.split('T')[0] : ""
+                birthDate: patient.birthDate ? patient.birthDate.split('T')[0] : "",
+                insuranceCompany: patient.insuranceCompany || ""
             });
         }
     }, [patient, open]);
@@ -125,7 +127,13 @@ export function EditPatientDialog({
                             <div className="col-span-3">
                                 <Select
                                     value={formData.paymentType}
-                                    onValueChange={(v) => setFormData(prev => ({ ...prev, paymentType: v }))}
+                                    onValueChange={(v) => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            paymentType: v,
+                                            insuranceCompany: v === 'Convênio' ? prev.insuranceCompany : ""
+                                        }))
+                                    }}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecione" />
@@ -137,6 +145,28 @@ export function EditPatientDialog({
                                 </Select>
                             </div>
                         </div>
+                        {formData.paymentType === 'Convênio' && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="insuranceCompany" className="text-right">
+                                    Convênio
+                                </Label>
+                                <div className="col-span-3">
+                                    <Select
+                                        value={formData.insuranceCompany}
+                                        onValueChange={(v) => setFormData(prev => ({ ...prev, insuranceCompany: v }))}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione o convênio" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {["Amil", "Odontoprev", "Hapvida", "Uniodonto", "Porto Seguro", "Sulamérica"].map(opt => (
+                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="email" className="text-right">
                                 Email

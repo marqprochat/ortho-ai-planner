@@ -38,6 +38,7 @@ const initialFormData = {
   dataNascimento: "",
   telefone: "",
   paymentType: "",
+  insuranceCompany: "",
   numeroPaciente: "",  // External ID from another application
   queixas: "",
   perfilFacial: "",
@@ -131,6 +132,7 @@ const NovoPlanejamentoIA = () => {
       dataNascimento: patient.birthDate ? patient.birthDate.split('T')[0] : "",
       telefone: patient.phone || "",
       paymentType: patient.paymentType || "",
+      insuranceCompany: patient.insuranceCompany || "",
       numeroPaciente: patient.externalId || "",
     }));
     setPatientId(patient.id);
@@ -297,6 +299,8 @@ const NovoPlanejamentoIA = () => {
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
         externalId: formData.numeroPaciente || undefined,
+        paymentType: formData.paymentType || undefined,
+        insuranceCompany: formData.insuranceCompany || undefined,
       });
 
       setPatientId(patientResult.patient.id);
@@ -396,7 +400,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
       - Nome: ${formData.nomePaciente}
       - Data de Nascimento: ${formData.dataNascimento}
       - Telefone: ${formData.telefone}
-      - Tipo de Pagamento: ${formData.paymentType || "N/A"}
+      - Tipo de Pagamento: ${formData.paymentType || "N/A"}${formData.insuranceCompany ? ` (${formData.insuranceCompany})` : ""}
       - Queixas: ${formData.queixas}
 
       **Exame Clínico Extraoral:**
@@ -930,7 +934,42 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                 <div className="space-y-2"><Label htmlFor="nomePaciente">Nome do paciente *</Label><Input id="nomePaciente" required value={formData.nomePaciente} onChange={(e) => setFormData({ ...formData, nomePaciente: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="dataNascimento">Data de nascimento *</Label><Input id="dataNascimento" type="date" required value={formData.dataNascimento} onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="telefone">Telefone *</Label><Input id="telefone" required value={formData.telefone} onChange={handlePhoneChange} placeholder="(XX) XXXXX-XXXX" /></div>
-                <div className="space-y-2"><Label>Tipo de Pagamento</Label><Select value={formData.paymentType} onValueChange={(v) => setFormData({ ...formData, paymentType: v })}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="Convênio">Convênio</SelectItem><SelectItem value="Particular">Particular</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label>Tipo de Pagamento</Label>
+                  <Select
+                    value={formData.paymentType}
+                    onValueChange={(v) => {
+                      setFormData({
+                        ...formData,
+                        paymentType: v,
+                        // Reset insurance if not "Convênio"
+                        insuranceCompany: v === 'Convênio' ? formData.insuranceCompany : ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Convênio">Convênio</SelectItem>
+                      <SelectItem value="Particular">Particular</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.paymentType === 'Convênio' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Label>Nome do Convênio</Label>
+                    <Select
+                      value={formData.insuranceCompany}
+                      onValueChange={(v) => setFormData({ ...formData, insuranceCompany: v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione o convênio" /></SelectTrigger>
+                      <SelectContent>
+                        {["Amil", "Odontoprev", "Hapvida", "Uniodonto", "Porto Seguro", "Sulamérica"].map(opt => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2"><Label htmlFor="numeroPaciente">Número do Paciente (ID externo)</Label><Input id="numeroPaciente" value={formData.numeroPaciente} onChange={(e) => setFormData({ ...formData, numeroPaciente: e.target.value })} placeholder="Número de outro sistema" /></div>
                 <div className="md:col-span-2 space-y-2"><Label htmlFor="queixas">Queixas do paciente *</Label><Textarea id="queixas" required value={formData.queixas} onChange={(e) => setFormData({ ...formData, queixas: e.target.value })} /></div>
               </CardContent>

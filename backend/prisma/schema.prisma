@@ -116,6 +116,7 @@ model Patient {
   id            String     @id @default(uuid())
   patientNumber String?    // Patient registration number (número do paciente)
   paymentType   String?    // Payment type: 'Convênio' or 'Particular'
+  insuranceCompany String?  // Insurance company name
   name          String
   birthDate  DateTime?
   email      String?

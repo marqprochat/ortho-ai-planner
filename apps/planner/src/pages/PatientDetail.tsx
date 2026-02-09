@@ -205,7 +205,10 @@ const PatientDetail = () => {
                                 <Shield className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-sm font-medium">Tipo de Pagamento</p>
-                                    <p className="text-muted-foreground">{patient.paymentType || "-"}</p>
+                                    <p className="text-muted-foreground">
+                                        {patient.paymentType || "-"}
+                                        {patient.paymentType === 'Convênio' && patient.insuranceCompany && ` (${patient.insuranceCompany})`}
+                                    </p>
                                 </div>
                             </div>
                         </CardContent>
