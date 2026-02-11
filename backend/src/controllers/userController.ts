@@ -24,6 +24,7 @@ export const getUsers = async (req: Request, res: Response) => {
             return {
                 ...rest,
                 roleId: plannerAccess?.roleId,
+                canTransferPatient: u.canTransferPatient,
                 // Flatten clinic list for easier frontend use
                 clinics: u.userClinics.map(uc => uc.clinic)
             };
@@ -36,7 +37,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -49,6 +50,7 @@ export const createUser = async (req: Request, res: Response) => {
                 isSuperAdmin: isSuperAdmin || false,
                 nickname, // Add nickname
                 cro, // Add cro
+                canTransferPatient: canTransferPatient || false,
                 // Create UserClinic records if clinicIds provided
                 userClinics: clinicIds?.length ? {
                     create: clinicIds.map((clinicId: string) => ({ clinicId }))
@@ -88,7 +90,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro } = req.body;
+        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient } = req.body;
 
         // Update user basic info
         const updateData: any = {
@@ -96,7 +98,8 @@ export const updateUser = async (req: Request, res: Response) => {
             email,
             isSuperAdmin,
             nickname, // Add nickname
-            cro // Add cro
+            cro, // Add cro
+            canTransferPatient
         };
 
         if (password && password.trim() !== '') {
@@ -171,6 +174,7 @@ export const updateUser = async (req: Request, res: Response) => {
         res.json({
             ...userWithoutPassword,
             roleId: plannerAccess?.roleId,
+            canTransferPatient: updated.canTransferPatient,
             clinics: updated.userClinics.map(uc => uc.clinic)
         });
     } catch (error) {

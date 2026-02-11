@@ -245,3 +245,76 @@ export const deletePatient = async (req: AuthRequest, res: Response) => {
         res.status(500).json({ error: 'Erro ao excluir paciente' });
     }
 };
+
+// Transfer a patient to another user
+export const transferPatient = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { targetEmail } = req.body;
+        const { user } = req;
+
+        if (!user) {
+            return res.status(401).json({ error: 'Não autorizado' });
+        }
+
+        const dbUser = await prisma.user.findUnique({
+            where: { id: user.id }
+        });
+
+        if (!dbUser?.canTransferPatient && !user.isSuperAdmin) {
+            return res.status(403).json({ error: 'Você não tem permissão para transferir pacientes' });
+        }
+
+        if (!targetEmail) {
+            return res.status(400).json({ error: 'Email do destinatário é obrigatório' });
+        }
+
+        const targetUser = await prisma.user.findUnique({
+            where: { email: targetEmail },
+            include: {
+                userClinics: {
+                    take: 1,
+                    include: { clinic: true }
+                }
+            }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ error: 'Usuário destinatário não encontrado' });
+        }
+
+        if (targetUser.userClinics.length === 0) {
+            return res.status(400).json({ error: 'O usuário destinatário não está vinculado a nenhuma clínica' });
+        }
+
+        const patient = await prisma.patient.findUnique({
+            where: { id }
+        });
+
+        if (!patient) {
+            return res.status(404).json({ error: 'Paciente não encontrado' });
+        }
+
+        const canManageAll = hasPermission(req.user, 'manage', 'patient');
+        if (!canManageAll && patient.userId !== dbUser!.id) {
+            return res.status(403).json({ error: 'Você só pode transferir seus próprios pacientes' });
+        }
+
+        const targetClinicId = targetUser.userClinics[0].clinicId;
+        const targetTenantId = targetUser.tenantId;
+
+        await prisma.patient.update({
+            where: { id },
+            data: {
+                userId: targetUser.id,
+                clinicId: targetClinicId,
+                tenantId: targetTenantId
+            }
+        });
+
+        res.json({ message: 'Paciente transferido com sucesso', targetUser: targetUser.name });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao transferir paciente' });
+    }
+};

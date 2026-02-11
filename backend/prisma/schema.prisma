@@ -55,6 +55,7 @@ model User {
   avatarUrl    String?
   isSuperAdmin Boolean         @default(false)
   tenantId     String
+  canTransferPatient Boolean @default(false)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   patients     Patient[]

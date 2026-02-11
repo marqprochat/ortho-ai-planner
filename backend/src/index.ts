@@ -6,7 +6,7 @@ import prisma from './lib/prisma';
 
 // Import Controllers
 import { register, login, getMe } from './controllers/authController';
-import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient, deletePatient } from './controllers/patientController';
+import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient, deletePatient, transferPatient } from './controllers/patientController';
 import { getPlannings, createPlanning, updatePlanning, getAllPlannings, deletePlanning } from './controllers/planningController';
 import { createContract, getPatientContracts, getContract, getAllContracts, deleteContract, signContract } from './controllers/contractController';
 import { getPermissions } from './controllers/permissionController';
@@ -54,6 +54,7 @@ app.post('/api/patients/find-or-create', authMiddleware, requireAppAccess('plann
 app.get('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'patient'), getPatient);
 app.put('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), updatePatient);
 app.delete('/api/patients/:id', authMiddleware, requireAppAccess('planner'), requirePermission('delete', 'patient'), deletePatient);
+app.post('/api/patients/:id/transfer', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'patient'), transferPatient);
 
 // Planning Routes
 app.get('/api/patients/:patientId/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getPlannings);

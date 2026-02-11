@@ -12,7 +12,7 @@ export default function UserManagement() {
     const [roles, setRoles] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[]; roleId?: string; nickname?: string; cro?: string }>({});
+    const [formData, setFormData] = useState<Partial<User> & { password?: string; clinicIds?: string[]; roleId?: string; nickname?: string; cro?: string; canTransferPatient?: boolean }>({});
     const [showPassword, setShowPassword] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
 
@@ -268,6 +268,16 @@ export default function UserManagement() {
                                     className="rounded bg-sidebar-accent border-sidebar-border text-primary focus:ring-primary"
                                 />
                                 <label htmlFor="isSuperAdmin" className="text-sm text-sidebar-foreground/60">Super Admin?</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="canTransferPatient"
+                                    checked={formData.canTransferPatient || false}
+                                    onChange={(e) => setFormData({ ...formData, canTransferPatient: e.target.checked })}
+                                    className="rounded bg-sidebar-accent border-sidebar-border text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="canTransferPatient" className="text-sm text-sidebar-foreground/60">Pode transferir pacientes?</label>
                             </div>
 
                             {!formData.isSuperAdmin && (

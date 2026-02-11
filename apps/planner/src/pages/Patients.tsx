@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Plus, Search, User, FileText, Calendar, Phone, Mail, Loader2, Hash, Shield } from "lucide-react";
+import { Plus, Search, User, FileText, Calendar, Phone, Mail, Loader2, Hash, Shield, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,14 @@ import { toast } from "sonner";
 import { patientService, Patient } from "../services/patientService";
 import Sidebar from "@/components/Sidebar";
 import { useHasPermission } from "../hooks/useHasPermission";
+import { useAuth } from "@/context/AuthContext";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 const Patients = () => {
     const navigate = useNavigate();
@@ -27,6 +35,12 @@ const Patients = () => {
         phone: "",
         birthDate: "",
     });
+    const { user } = useAuth();
+    const canTransfer = user?.canTransferPatient || user?.isSuperAdmin;
+    const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+    const [isTransferring, setIsTransferring] = useState(false);
+    const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+    const [targetEmail, setTargetEmail] = useState("");
 
     const canWritePatient = useHasPermission('write', 'patient');
 
@@ -181,6 +195,21 @@ const Patients = () => {
                                                 <FileText className="h-4 w-4 text-blue-500" />
                                                 <span>{patient._count?.plannings || 0} planejamentos</span>
                                             </div>
+                                            {canTransfer && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="ml-auto h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedPatientId(patient.id);
+                                                        setIsTransferDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Send className="h-4 w-4 mr-1" />
+                                                    Transferir
+                                                </Button>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -295,6 +324,58 @@ const Patients = () => {
                         <Button onClick={handleCreatePatient} disabled={isCreating}>
                             {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                             Criar Paciente
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Transfer Patient Dialog */}
+            <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Transferir Paciente</DialogTitle>
+                        <DialogDescription>
+                            Informe o e-mail do usuário para quem deseja transferir este paciente.
+                            <strong> Atenção:</strong> Você perderá o acesso a este paciente e todos os seus dados.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="targetEmail">E-mail do Destinatário</Label>
+                            <Input
+                                id="targetEmail"
+                                type="email"
+                                value={targetEmail}
+                                onChange={(e) => setTargetEmail(e.target.value)}
+                                placeholder="dentista@exemplo.com"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                if (!selectedPatientId || !targetEmail) return;
+                                setIsTransferring(true);
+                                try {
+                                    await patientService.transferPatient(selectedPatientId, targetEmail);
+                                    toast.success("Paciente transferido com sucesso!");
+                                    setIsTransferDialogOpen(false);
+                                    setTargetEmail("");
+                                    loadPatients(); // Reload list
+                                } catch (error: unknown) {
+                                    const errorMessage = error instanceof Error ? error.message : "Erro ao transferir paciente";
+                                    toast.error(errorMessage);
+                                } finally {
+                                    setIsTransferring(false);
+                                }
+                            }}
+                            disabled={isTransferring || !targetEmail}
+                        >
+                            {isTransferring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Confirmar Transferência
                         </Button>
                     </DialogFooter>
                 </DialogContent>

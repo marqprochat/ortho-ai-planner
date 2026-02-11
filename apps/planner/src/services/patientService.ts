@@ -221,5 +221,20 @@ export const patientService = {
 
         return response.json();
     },
+
+    async transferPatient(id: string, targetEmail: string): Promise<{ message: string; targetUser: string }> {
+        const response = await fetch(`${API_URL}/patients/${id}/transfer`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ targetEmail }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Erro ao transferir paciente');
+        }
+
+        return response.json();
+    },
 };
 

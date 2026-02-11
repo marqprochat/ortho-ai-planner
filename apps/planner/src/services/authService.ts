@@ -11,6 +11,7 @@ export interface User {
     avatarUrl?: string;
     tenantId: string;
     isSuperAdmin?: boolean;
+    canTransferPatient?: boolean;
     tenant: { id: string; name: string };
     appAccess?: Array<{
         application: { id: string; name: string; displayName: string; icon?: string; url?: string };
