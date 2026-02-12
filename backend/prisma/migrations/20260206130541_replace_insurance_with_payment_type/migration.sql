@@ -5,5 +5,5 @@
 
 */
 -- AlterTable
-ALTER TABLE "Patient" DROP COLUMN "insurance",
-ADD COLUMN     "paymentType" TEXT;
+ALTER TABLE "Patient" DROP COLUMN IF EXISTS "insurance",
+ADD COLUMN IF NOT EXISTS "paymentType" TEXT;
