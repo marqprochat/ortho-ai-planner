@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2, Hash, Shield, FileUp, CheckCircle } from "lucide-react";
+import { ArrowLeft, Plus, User, FileText, Calendar, Phone, Mail, Edit, Loader2, Brain, FileSignature, Trash2, Hash, Shield, FileUp, CheckCircle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { patientService, Patient, Planning, Contract } from "../services/patientService";
+import { patientService, Patient, Planning, Contract, Treatment } from "../services/patientService";
 import Sidebar from "@/components/Sidebar";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlanningViewer } from "@/components/PlanningViewer";
@@ -259,32 +259,100 @@ const PatientDetail = () => {
                                                     {planning.originalReport.substring(0, 150)}...
                                                 </p>
                                             )}
+                                            {/* Treatment Info */}
+                                            {planning.treatment && (
+                                                <div className="mt-3 p-3 bg-teal-50 dark:bg-teal-950/30 rounded-lg border border-teal-200 dark:border-teal-800">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Activity className="h-4 w-4 text-teal-600" />
+                                                        <span className="text-sm font-medium text-teal-700 dark:text-teal-400">Tratamento</span>
+                                                        <Badge className={{
+                                                            EM_ANDAMENTO: 'bg-blue-500',
+                                                            CONCLUIDO: 'bg-emerald-500',
+                                                            CANCELADO: 'bg-red-500'
+                                                        }[planning.treatment.status] || 'bg-gray-500'} >
+                                                            {{
+                                                                EM_ANDAMENTO: 'Em Andamento',
+                                                                CONCLUIDO: 'Concluído',
+                                                                CANCELADO: 'Cancelado'
+                                                            }[planning.treatment.status] || planning.treatment.status}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                                                        <span>Início: {formatDate(planning.treatment.startDate)}</span>
+                                                        {planning.treatment.deadline && <span>Prazo: {formatDate(planning.treatment.deadline)}</span>}
+                                                        {planning.treatment.lastAppointment && <span>Última consulta: {formatDate(planning.treatment.lastAppointment)}</span>}
+                                                        {planning.treatment.endDate && <span>Finalizado: {formatDate(planning.treatment.endDate)}</span>}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </CardContent>
-                                        {canDeletePlanning && (
-                                            <div className="px-6 pb-4 flex gap-2">
-                                                {planning.status === 'DOCUMENTACAO_ENVIADA' && (
-                                                    <>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-primary hover:text-primary hover:bg-primary/10"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                // Load structuredPlan into localStorage and navigate to form
-                                                                if (planning.structuredPlan) {
-                                                                    localStorage.setItem("planejamentoFormData", JSON.stringify({
-                                                                        ...planning.structuredPlan,
-                                                                        patientId: planning.patientId
-                                                                    }));
-                                                                }
-                                                                navigate(`/novo-planejamento`, { state: { planningId: planning.id } });
-                                                            }}
-                                                        >
-                                                            <Edit className="mr-1 h-4 w-4" />
-                                                            Editar / Criar Planejamento
-                                                        </Button>
-                                                    </>
-                                                )}
+                                        <div className="px-6 pb-4 flex gap-2 flex-wrap">
+                                            {planning.status === 'DOCUMENTACAO_ENVIADA' && (
+                                                <>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-primary hover:text-primary hover:bg-primary/10"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Load structuredPlan into localStorage and navigate to form
+                                                            if (planning.structuredPlan) {
+                                                                localStorage.setItem("planejamentoFormData", JSON.stringify({
+                                                                    ...planning.structuredPlan,
+                                                                    patientId: planning.patientId
+                                                                }));
+                                                            }
+                                                            navigate(`/novo-planejamento`, { state: { planningId: planning.id } });
+                                                        }}
+                                                    >
+                                                        <Edit className="mr-1 h-4 w-4" />
+                                                        Editar / Criar Planejamento
+                                                    </Button>
+                                                </>
+                                            )}
+                                            {/* Treatment button — show when no treatment exists yet */}
+                                            {!planning.treatment && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-300"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate('/tratamento', {
+                                                            state: {
+                                                                planningId: planning.id,
+                                                                patientName: patient?.name,
+                                                                patientId: patient?.id
+                                                            }
+                                                        });
+                                                    }}
+                                                >
+                                                    <Activity className="mr-1 h-4 w-4" />
+                                                    Iniciar Tratamento
+                                                </Button>
+                                            )}
+                                            {/* Edit treatment button */}
+                                            {planning.treatment && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-300"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate('/tratamento', {
+                                                            state: {
+                                                                planningId: planning.id,
+                                                                patientName: patient?.name,
+                                                                patientId: patient?.id
+                                                            }
+                                                        });
+                                                    }}
+                                                >
+                                                    <Edit className="mr-1 h-4 w-4" />
+                                                    Editar Tratamento
+                                                </Button>
+                                            )}
+                                            {canDeletePlanning && (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
@@ -298,8 +366,8 @@ const PatientDetail = () => {
                                                     <Trash2 className="mr-1 h-4 w-4" />
                                                     Excluir
                                                 </Button>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </Card>
                                 ))}
                             </div>

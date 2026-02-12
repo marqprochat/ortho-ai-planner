@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList } from "lucide-react";
+import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList, Activity } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/useHasPermission";
 
@@ -81,6 +81,13 @@ const Sidebar = () => {
                     <Link to="/contracts" className={linkClass("/contracts")}>
                         <FileText className="h-5 w-5 flex-shrink-0" />
                         {isExpanded && <span className="whitespace-nowrap">Contratos</span>}
+                    </Link>
+                )}
+
+                {canReadPlannings && (
+                    <Link to="/tratamentos" className={linkClass("/tratamentos")}>
+                        <Activity className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Tratamentos</span>}
                     </Link>
                 )}
             </nav>

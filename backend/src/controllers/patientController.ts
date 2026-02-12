@@ -153,6 +153,10 @@ export const getPatient = async (req: AuthRequest, res: Response) => {
             },
             include: {
                 plannings: {
+                    include: {
+                        contracts: true,
+                        treatment: true
+                    },
                     orderBy: { createdAt: 'desc' }
                 },
                 contracts: {

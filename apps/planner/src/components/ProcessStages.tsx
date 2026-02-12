@@ -1,4 +1,4 @@
-import { FileText, Brain, FileSignature, CheckCircle, CircleDot, Circle } from "lucide-react";
+import { FileText, Brain, FileSignature, CheckCircle, Activity, CircleDot, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProcessStagesProps {
@@ -8,11 +8,12 @@ interface ProcessStagesProps {
 const stages = [
     { id: 'DOCUMENTACAO_ENVIADA', label: 'Documentação', icon: FileText, color: 'orange' },
     { id: 'PLANEJAMENTO_GERADO', label: 'Planejamento', icon: Brain, color: 'blue' },
-    { id: 'CONTRATO_GERADO', label: 'Contrato', icon: FileSignature, color: 'purple' },
+    { id: 'CONTRATO_GERADO', label: 'Contrato', icon: FileSignature, color: 'indigo' },
     { id: 'CONTRATO_ASSINADO', label: 'Assinado', icon: CheckCircle, color: 'green' },
+    { id: 'TRATAMENTO', label: 'Tratamento', icon: Activity, color: 'teal' },
 ];
 
-const stageOrder = ['DOCUMENTACAO_ENVIADA', 'PLANEJAMENTO_GERADO', 'CONTRATO_GERADO', 'CONTRATO_ASSINADO'];
+const stageOrder = ['DOCUMENTACAO_ENVIADA', 'PLANEJAMENTO_GERADO', 'CONTRATO_GERADO', 'CONTRATO_ASSINADO', 'TRATAMENTO'];
 
 export function ProcessStages({ currentStage }: ProcessStagesProps) {
     const currentIndex = stageOrder.indexOf(currentStage);
@@ -27,8 +28,9 @@ export function ProcessStages({ currentStage }: ProcessStagesProps) {
     const colorClasses = {
         orange: { bg: 'bg-orange-500', border: 'border-orange-500', text: 'text-orange-500', light: 'bg-orange-100' },
         blue: { bg: 'bg-blue-500', border: 'border-blue-500', text: 'text-blue-500', light: 'bg-blue-100' },
-        purple: { bg: 'bg-violet-500', border: 'border-violet-500', text: 'text-violet-500', light: 'bg-violet-100' },
+        indigo: { bg: 'bg-indigo-500', border: 'border-indigo-500', text: 'text-indigo-500', light: 'bg-indigo-100' },
         green: { bg: 'bg-emerald-500', border: 'border-emerald-500', text: 'text-emerald-500', light: 'bg-emerald-100' },
+        teal: { bg: 'bg-teal-500', border: 'border-teal-500', text: 'text-teal-500', light: 'bg-teal-100' },
     };
 
     return (
@@ -39,16 +41,17 @@ export function ProcessStages({ currentStage }: ProcessStagesProps) {
 
                 {/* Progress Line Filled */}
                 <div
-                    className="absolute top-6 left-0 h-1 bg-gradient-to-r from-orange-500 via-blue-500 to-emerald-500 rounded-full z-0 transition-all duration-500"
+                    className="absolute top-6 left-0 h-1 bg-gradient-to-r from-orange-500 via-blue-500 to-teal-500 rounded-full z-0 transition-all duration-500"
                     style={{
-                        width: currentIndex === 1 ? '0%' :
-                            currentIndex === 2 ? '33%' :
-                                currentIndex === 3 ? '66%' :
-                                    currentIndex === 4 ? '100%' : '0%'
+                        width: currentIndex <= 0 ? '0%' :
+                            currentIndex === 1 ? '25%' :
+                                currentIndex === 2 ? '50%' :
+                                    currentIndex === 3 ? '75%' :
+                                        currentIndex === 4 ? '100%' : '0%'
                     }}
                 />
 
-                {stages.map((stage, index) => {
+                {stages.map((stage) => {
                     const status = getStageStatus(stage.id);
                     const colors = colorClasses[stage.color as keyof typeof colorClasses];
                     const Icon = stage.icon;
@@ -72,7 +75,7 @@ export function ProcessStages({ currentStage }: ProcessStagesProps) {
 
                             {/* Label */}
                             <span className={cn(
-                                "mt-2 text-sm font-medium transition-colors",
+                                "mt-2 text-xs font-medium transition-colors text-center",
                                 status === 'completed' && colors.text,
                                 status === 'current' && `${colors.text} font-semibold`,
                                 status === 'pending' && "text-muted-foreground/50"
@@ -97,21 +100,24 @@ export function ProcessStages({ currentStage }: ProcessStagesProps) {
     );
 }
 
-export type PatientStage = 'SEM_DOCUMENTACAO' | 'DOCUMENTACAO_ENVIADA' | 'PLANEJAMENTO_GERADO' | 'CONTRATO_GERADO' | 'CONTRATO_ASSINADO';
+export type PatientStage = 'SEM_DOCUMENTACAO' | 'DOCUMENTACAO_ENVIADA' | 'PLANEJAMENTO_GERADO' | 'CONTRATO_GERADO' | 'CONTRATO_ASSINADO' | 'TRATAMENTO';
 
-export type PlanningStage = 'DOCUMENTACAO_ENVIADA' | 'PLANEJAMENTO_GERADO' | 'CONTRATO_GERADO' | 'CONTRATO_ASSINADO';
+export type PlanningStage = 'DOCUMENTACAO_ENVIADA' | 'PLANEJAMENTO_GERADO' | 'CONTRATO_GERADO' | 'CONTRATO_ASSINADO' | 'TRATAMENTO';
 
 export function computePlanningStage(planning: {
     status: string;
     aiResponse?: string;
     contracts?: { isSigned?: boolean }[];
+    treatment?: { id: string } | null;
 }): PlanningStage {
     const hasSignedContract = planning.contracts?.some(c => c.isSigned);
     const hasContract = (planning.contracts?.length || 0) > 0;
+    const hasTreatment = !!planning.treatment;
 
     // Check if planning is completed or generated
     const isPlanningGenerated = planning.status === 'COMPLETED' || planning.status === 'REVIEWED' || !!planning.aiResponse;
 
+    if (hasTreatment) return 'TRATAMENTO';
     if (hasSignedContract) return 'CONTRATO_ASSINADO';
     if (hasContract) return 'CONTRATO_GERADO';
     if (isPlanningGenerated) return 'PLANEJAMENTO_GERADO';

@@ -8,6 +8,8 @@ import NovoPlanejamentoIA from "./pages/NovoPlanejamentoIA";
 import Plannings from "./pages/Plannings";
 import PlanoDeTratamento from "./pages/PlanoDeTratamento";
 import TermoDeCompromisso from "./pages/TermoDeCompromisso";
+import Tratamento from "./pages/Tratamento";
+import Tratamentos from "./pages/Tratamentos";
 import Patients from "./pages/Patients";
 import PatientDetail from "./pages/PatientDetail";
 import Contracts from "./pages/Contracts";
@@ -46,10 +48,12 @@ const App = () => (
                 <Route element={<RequirePermission action="write" resource="planning" />}>
                   <Route path="/novo-planejamento" element={<NovoPlanejamentoIA />} />
                   <Route path="/plano-de-tratamento" element={<PlanoDeTratamento />} />
+                  <Route path="/tratamento" element={<Tratamento />} />
                 </Route>
 
                 <Route element={<RequirePermission action="read" resource="planning" />}>
                   <Route path="/plannings" element={<Plannings />} />
+                  <Route path="/tratamentos" element={<Tratamentos />} />
                 </Route>
 
                 <Route element={<RequirePermission action="read" resource="contract" />}>

@@ -34,6 +34,7 @@ export interface Planning {
     aiResponse?: string;
     structuredPlan?: any;
     contracts?: Contract[];
+    treatment?: Treatment;
     createdAt: string;
     updatedAt: string;
 }
@@ -50,6 +51,18 @@ export interface Contract {
     updatedAt: string;
 }
 
+export interface Treatment {
+    id: string;
+    planningId: string;
+    status: string; // EM_ANDAMENTO | CONCLUIDO | CANCELADO
+    startDate: string;
+    deadline?: string;
+    endDate?: string;
+    lastAppointment?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
 const getAuthHeaders = () => {
     const token = getCookie('token');
     const selectedClinicId = localStorage.getItem('selectedClinicId');
@@ -235,6 +248,69 @@ export const patientService = {
         }
 
         return response.json();
+    },
+
+    async getTreatment(planningId: string): Promise<Treatment> {
+        const response = await fetch(`${API_URL}/plannings/${planningId}/treatment`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar tratamento');
+        }
+
+        return response.json();
+    },
+
+    async getAllTreatments(): Promise<(Treatment & { planning: { id: string; title: string; patient: { id: string; name: string } } })[]> {
+        const response = await fetch(`${API_URL}/treatments`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar tratamentos');
+        }
+
+        return response.json();
+    },
+
+    async createTreatment(data: { planningId: string; startDate: string; deadline?: string; endDate?: string; lastAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
+        const response = await fetch(`${API_URL}/treatments`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao criar tratamento');
+        }
+
+        return response.json();
+    },
+
+    async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
+        const response = await fetch(`${API_URL}/treatments/${id}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao atualizar tratamento');
+        }
+
+        return response.json();
+    },
+
+    async deleteTreatment(id: string): Promise<void> {
+        const response = await fetch(`${API_URL}/treatments/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao excluir tratamento');
+        }
     },
 };
 

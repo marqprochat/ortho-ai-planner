@@ -26,7 +26,7 @@ export const getPlannings = async (req: AuthRequest, res: Response) => {
 
         const plannings = await prisma.planning.findMany({
             where: { patientId },
-            include: { contracts: true },
+            include: { contracts: true, treatment: true },
             orderBy: { createdAt: 'desc' }
         });
 
@@ -137,7 +137,8 @@ export const getAllPlannings = async (req: AuthRequest, res: Response) => {
                         id: true
                     }
                 },
-                contracts: true
+                contracts: true,
+                treatment: true
             },
             orderBy: { createdAt: 'desc' }
         });

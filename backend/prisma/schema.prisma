@@ -136,19 +136,33 @@ model Patient {
 }
 
 model Planning {
-  id             String   @id @default(uuid())
+  id             String     @id @default(uuid())
   title          String
-  status         String   @default("DRAFT")
+  status         String     @default("DRAFT")
   patientId      String
   originalReport String?
   aiResponse     String?
   structuredPlan Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
   contracts      Contract[]
-  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  treatment      Treatment?
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
+model Treatment {
+  id              String    @id @default(uuid())
+  planningId      String    @unique
+  status          String    @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDO | CANCELADO
+  startDate       DateTime  // Data de início do tratamento
+  deadline        DateTime? // Prazo final (convênio ou estipulado)
+  endDate         DateTime? // Data de finalização real
+  lastAppointment DateTime? // Data da última consulta/agendamento
+  notes           String?   // Observações gerais
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  planning        Planning  @relation(fields: [planningId], references: [id], onDelete: Cascade)
+}
 
 model Contract {
   id        String    @id @default(uuid())

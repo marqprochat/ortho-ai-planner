@@ -8,6 +8,7 @@ import prisma from './lib/prisma';
 import { register, login, getMe } from './controllers/authController';
 import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient, deletePatient, transferPatient } from './controllers/patientController';
 import { getPlannings, createPlanning, updatePlanning, getAllPlannings, deletePlanning } from './controllers/planningController';
+import { getAllTreatments, getTreatment, createTreatment, updateTreatment, deleteTreatment } from './controllers/treatmentController';
 import { createContract, getPatientContracts, getContract, getAllContracts, deleteContract, signContract } from './controllers/contractController';
 import { getPermissions } from './controllers/permissionController';
 import { getRoles, createRole, updateRole, deleteRole } from './controllers/roleController';
@@ -62,6 +63,13 @@ app.get('/api/plannings', authMiddleware, requireAppAccess('planner'), requirePe
 app.post('/api/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), createPlanning);
 app.put('/api/plannings/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updatePlanning);
 app.delete('/api/plannings/:id', authMiddleware, requireAppAccess('planner'), requirePermission('delete', 'planning'), deletePlanning);
+
+// Treatment Routes
+app.get('/api/treatments', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getAllTreatments);
+app.get('/api/plannings/:planningId/treatment', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getTreatment);
+app.post('/api/treatments', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), createTreatment);
+app.put('/api/treatments/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updateTreatment);
+app.delete('/api/treatments/:id', authMiddleware, requireAppAccess('planner'), requirePermission('delete', 'planning'), deleteTreatment);
 
 // Contract Routes
 app.post('/api/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'contract'), createContract);

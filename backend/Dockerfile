@@ -10,10 +10,11 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 # Cache bust - change this value to force rebuild
-ARG CACHE_BUST=202601261555
+ARG CACHE_BUST=202602111130
 RUN echo "Cache bust: $CACHE_BUST"
 
 COPY . .
+RUN npx prisma generate
 RUN node node_modules/typescript/bin/tsc
 
 # Final stage
