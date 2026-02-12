@@ -6,8 +6,8 @@ set -e
 echo "🚀 Starting deployment script..."
 
 # 1. Fix failed migrations (if any)
-# echo "🔧 Checking for failed migrations..."
-# npx prisma migrate resolve --applied 20260205172128_add_cro 2>/dev/null && echo "✅ Resolved failed migration 20260205172128_add_cro" || echo "ℹ️ No failed migration to resolve (or already resolved)"
+echo "🔧 Checking for failed migrations..."
+npx prisma migrate resolve --rolled-back 20260206130541_replace_insurance_with_payment_type 2>/dev/null && echo "✅ Resolved failed migration 20260206130541_replace_insurance_with_payment_type" || echo "ℹ️ No failed migration to resolve (or already resolved)"
 
 # 2. Migrations (Critical - if this fails, we should probably stop)
 echo "📦 Running database migrations..."
