@@ -8,6 +8,7 @@ interface ClinicContextType {
     setSelectedClinicId: (id: string) => void;
     currentClinic: Clinic | null;
     isLoading: boolean;
+    refreshClinics: () => Promise<void>;
 }
 
 const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
@@ -80,6 +81,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
                 setSelectedClinicId: handleSetSelectedClinic,
                 currentClinic,
                 isLoading,
+                refreshClinics: loadClinics,
             }}
         >
             {children}

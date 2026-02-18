@@ -23,6 +23,21 @@ model Clinic {
   name        String
   // [NEW] Nickname for display
   nickname    String?
+  // [NEW] Logo URL
+  logoUrl     String?
+  // [NEW] CRO Number
+  cro         String?
+  // [NEW] Website
+  website     String?
+  // [NEW] Structured Address
+  zipCode     String?
+  street      String?
+  number      String?
+  complement  String?
+  district    String?
+  city        String?
+  state       String?
+  // [DEPRECATED] Old address field, kept for backward compatibility if needed, or migration target
   address     String?
   tenantId    String
   createdAt   DateTime     @default(now())

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList, Activity } from "lucide-react";
+import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList, Activity, Settings } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/useHasPermission";
 
@@ -90,6 +90,13 @@ const Sidebar = () => {
                         {isExpanded && <span className="whitespace-nowrap">Tratamentos</span>}
                     </Link>
                 )}
+
+                <div className="pt-4 mt-4 border-t border-sidebar-border">
+                    <Link to="/settings/clinic" className={linkClass("/settings/clinic")}>
+                        <Settings className="h-5 w-5 flex-shrink-0" />
+                        {isExpanded && <span className="whitespace-nowrap">Minha Clínica</span>}
+                    </Link>
+                </div>
             </nav>
 
             {/* User Info at Bottom */}

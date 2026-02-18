@@ -29,7 +29,22 @@ export const getClinics = async (req: AuthRequest, res: Response) => {
 
 export const createClinic = async (req: AuthRequest, res: Response) => {
     try {
-        const { name, address, tenantId: bodyTenantId, nickname } = req.body;
+        const {
+            name,
+            address,
+            tenantId: bodyTenantId,
+            nickname,
+            logoUrl,
+            cro,
+            website,
+            zipCode,
+            street,
+            number,
+            complement,
+            district,
+            city,
+            state
+        } = req.body;
 
         // Use tenantId from body if provided (super admin case), otherwise use logged-in user's tenantId
         const tenantId = bodyTenantId || req.tenantId;
@@ -43,7 +58,17 @@ export const createClinic = async (req: AuthRequest, res: Response) => {
                 name,
                 address,
                 tenantId,
-                nickname // Add nickname
+                nickname,
+                logoUrl,
+                cro,
+                website,
+                zipCode,
+                street,
+                number,
+                complement,
+                district,
+                city,
+                state
             }
         });
         res.json(clinic);
@@ -56,11 +81,39 @@ export const createClinic = async (req: AuthRequest, res: Response) => {
 export const updateClinic = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, address, nickname } = req.body;
+        const {
+            name,
+            address,
+            nickname,
+            logoUrl,
+            cro,
+            website,
+            zipCode,
+            street,
+            number,
+            complement,
+            district,
+            city,
+            state
+        } = req.body;
 
         const clinic = await prisma.clinic.update({
             where: { id },
-            data: { name, address, nickname } // Add nickname
+            data: {
+                name,
+                address,
+                nickname,
+                logoUrl,
+                cro,
+                website,
+                zipCode,
+                street,
+                number,
+                complement,
+                district,
+                city,
+                state
+            }
         });
         res.json(clinic);
     } catch (error) {

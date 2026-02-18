@@ -33,6 +33,8 @@ interface ImagePayload {
 
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
+const getTodayValue = () => new Date().toLocaleDateString('en-CA');
+
 const initialFormData = {
   nomePaciente: "",
   dataNascimento: "",
@@ -63,7 +65,7 @@ const initialFormData = {
   consideracoes: "",
   nomeOrtodontista: "",
   croOrtodontista: "",
-  dataPlanejamento: "",
+  dataPlanejamento: getTodayValue(),
 };
 
 const NovoPlanejamentoIA = () => {
@@ -84,6 +86,8 @@ const NovoPlanejamentoIA = () => {
       return {
         ...initialFormData,
         ...parsed,
+        // Pre-fill date if it's missing or empty, as requested
+        dataPlanejamento: parsed.dataPlanejamento || getTodayValue(),
         // Ensure arrays are always arrays
         relacaoMolar: Array.isArray(parsed.relacaoMolar) ? parsed.relacaoMolar : [],
         relacaoCanina: Array.isArray(parsed.relacaoCanina) ? parsed.relacaoCanina : [],
@@ -96,6 +100,7 @@ const NovoPlanejamentoIA = () => {
       ...initialFormData,
       nomeOrtodontista: user?.name || "",
       croOrtodontista: user?.cro || "",
+      dataPlanejamento: getTodayValue(),
     };
   });
 

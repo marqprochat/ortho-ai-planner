@@ -19,6 +19,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RequirePermission } from "./components/RequirePermission";
 import Login from "./pages/Login";
 import AccessDenied from "./pages/AccessDenied";
+import ClinicSettings from "./pages/ClinicSettings";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,8 @@ const App = () => (
                   <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
                   <Route path="/contracts" element={<Contracts />} />
                 </Route>
+
+                <Route path="/settings/clinic" element={<ClinicSettings />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

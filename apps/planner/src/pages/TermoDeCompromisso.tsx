@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import Sidebar from "@/components/Sidebar";
 import { patientService } from "@/services/patientService";
 import { useAuth } from "@/context/AuthContext";
+import { useClinic } from "@/context/ClinicContext";
 
 interface ContractData {
     // Logo
@@ -75,6 +76,7 @@ const TermoDeCompromisso = () => {
     const [contractData, setContractData] = useState<ContractData>(initialContractData);
     const [editableContract, setEditableContract] = useState("");
     const [logoFile, setLogoFile] = useState<File | null>(null);
+    const { currentClinic } = useClinic();
 
     // Get patientId from navigation state
     const { patientId, planningId, patientName } = (location.state || {}) as {
@@ -133,6 +135,21 @@ const TermoDeCompromisso = () => {
             }));
         }
     }, [user]);
+
+    // Auto-fill from Clinic Context
+    useEffect(() => {
+        if (currentClinic) {
+            setContractData(prev => ({
+                ...prev,
+                nomeClinica: currentClinic.name || prev.nomeClinica,
+                croClinica: currentClinic.cro || prev.croClinica,
+                logoPreview: currentClinic.logoUrl || prev.logoPreview,
+                endereco: currentClinic.address || `${currentClinic.street || ''}, ${currentClinic.number || ''} ${currentClinic.complement ? '- ' + currentClinic.complement : ''} - ${currentClinic.district || ''}`.replace(/^, | - $/g, '') || prev.endereco,
+                cep: currentClinic.zipCode || prev.cep,
+                cidade: currentClinic.city || prev.cidade,
+            }));
+        }
+    }, [currentClinic]);
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
