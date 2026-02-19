@@ -276,17 +276,7 @@ ENCERRAMENTO
 
 E por assim estarem justos e acordados, assinam o presente em duas vias de igual teor.
 
-${cidade}, ${dataContrato}.
-
-
-_______________________________          _______________________________
-Paciente: ${nomePaciente}                Responsável: ${responsavel}
-                                         CPF: ${cpf}
-
-
-_______________________________
-Dentista: ${nomeDentista}
-CRO: ${croDentista}`;
+${cidade}, ${dataContrato}.`;
     };
 
     const handleGeneratePreview = () => {
@@ -381,6 +371,9 @@ CRO: ${croDentista}`;
                     pdf.setFont('helvetica', 'normal');
                 }
 
+                // Ignora linhas de underscores do template (serão desenhadas como assinatura gráfica)
+                if (line.trim().startsWith('___')) return;
+
                 const wrappedLines = pdf.splitTextToSize(line, contentWidth);
                 wrappedLines.forEach((wrappedLine: string) => {
                     if (cursorY + 5 > pageHeight - margin) {
@@ -391,6 +384,47 @@ CRO: ${croDentista}`;
                     cursorY += 5;
                 });
             });
+
+            // ── Assinaturas (blocos gráficos) ──
+            const signatureLineWidth = 70;
+            const signatureSpacing = 25;
+
+            // Verifica se cabe na página, senão adiciona nova
+            if (cursorY + 60 > pageHeight - margin) {
+                pdf.addPage();
+                cursorY = margin + 20;
+            }
+
+            cursorY += signatureSpacing;
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(10);
+
+            // Duas assinaturas lado a lado
+            const leftX = margin;
+            const rightX = pageWidth - margin - signatureLineWidth;
+
+            // Linhas de assinatura
+            pdf.setDrawColor(0, 0, 0);
+            pdf.line(leftX, cursorY, leftX + signatureLineWidth, cursorY);
+            pdf.line(rightX, cursorY, rightX + signatureLineWidth, cursorY);
+
+            // Labels esquerda
+            pdf.text(`Paciente: ${contractData.nomePaciente}`, leftX, cursorY + 5);
+
+            // Labels direita
+            pdf.text(`Responsável: ${contractData.responsavel}`, rightX, cursorY + 5);
+            pdf.text(`CPF: ${contractData.cpf}`, rightX, cursorY + 10);
+
+            // Assinatura do Dentista (centralizada abaixo)
+            cursorY += signatureSpacing + 5;
+            if (cursorY + 20 > pageHeight - margin) {
+                pdf.addPage();
+                cursorY = margin + 20;
+            }
+            const centerX = (pageWidth - signatureLineWidth) / 2;
+            pdf.line(centerX, cursorY, centerX + signatureLineWidth, cursorY);
+            pdf.text(`Dentista: ${contractData.nomeDentista}`, centerX, cursorY + 5);
+            pdf.text(`CRO: ${contractData.croDentista}`, centerX, cursorY + 10);
 
             // Rodapé com numeração
             const pageCount = pdf.getNumberOfPages();
@@ -476,6 +510,31 @@ CRO: ${croDentista}`;
                                 ) : (
                                     <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed border rounded-lg p-6 bg-white dark:bg-gray-900">
                                         {editableContract}
+
+                                        {/* Assinaturas estilizadas */}
+                                        <div style={{ marginTop: '48px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '24px', marginBottom: '40px' }}>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '48px' }}>
+                                                        <p style={{ margin: 0, fontWeight: 500 }}>Paciente: {contractData.nomePaciente}</p>
+                                                    </div>
+                                                </div>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '48px' }}>
+                                                        <p style={{ margin: 0, fontWeight: 500 }}>Responsável: {contractData.responsavel}</p>
+                                                        <p style={{ margin: 0, fontSize: '0.85em', color: '#555' }}>CPF: {contractData.cpf}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                <div style={{ width: '280px', textAlign: 'center' }}>
+                                                    <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '24px' }}>
+                                                        <p style={{ margin: 0, fontWeight: 500 }}>Dentista: {contractData.nomeDentista}</p>
+                                                        <p style={{ margin: 0, fontSize: '0.85em', color: '#555' }}>CRO: {contractData.croDentista}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>

@@ -59,6 +59,9 @@ export const ContractViewer = ({
             const splitText = pdf.splitTextToSize(content, contentWidth);
 
             splitText.forEach((line: string) => {
+                // Ignora linhas de underscores (assinaturas serão desenhadas graficamente)
+                if (line.trim().startsWith('___')) return;
+
                 if (cursorY + lineHeight > pageHeight - margin) {
                     pdf.addPage();
                     cursorY = margin;
@@ -67,21 +70,34 @@ export const ContractViewer = ({
                 cursorY += lineHeight;
             });
 
-            // Assinaturas
-            cursorY += 30; // Garante espaço antes das assinaturas
-            if (cursorY + 40 > pageHeight - margin) {
+            // ── Assinaturas (blocos gráficos) ──
+            const signatureLineWidth = 70;
+            cursorY += 25;
+            if (cursorY + 60 > pageHeight - margin) {
                 pdf.addPage();
                 cursorY = margin + 20;
             }
 
-            // Assinatura Paciente
-            pdf.line(margin, cursorY, margin + 70, cursorY);
-            pdf.text("Assinatura do Paciente", margin, cursorY + 5);
+            pdf.setDrawColor(0, 0, 0);
+            const leftX = margin;
+            const rightX = pageWidth - margin - signatureLineWidth;
 
-            // Assinatura Dentista
-            pdf.line(pageWidth - margin - 70, cursorY, pageWidth - margin, cursorY);
-            pdf.text("Assinatura do Profissional", pageWidth - margin - 70, cursorY + 5);
+            // Paciente + Responsável lado a lado
+            pdf.line(leftX, cursorY, leftX + signatureLineWidth, cursorY);
+            pdf.text("Assinatura do Paciente", leftX, cursorY + 5);
 
+            pdf.line(rightX, cursorY, rightX + signatureLineWidth, cursorY);
+            pdf.text("Assinatura do Responsável", rightX, cursorY + 5);
+
+            // Dentista centralizado abaixo
+            cursorY += 30;
+            if (cursorY + 20 > pageHeight - margin) {
+                pdf.addPage();
+                cursorY = margin + 20;
+            }
+            const centerX = (pageWidth - signatureLineWidth) / 2;
+            pdf.line(centerX, cursorY, centerX + signatureLineWidth, cursorY);
+            pdf.text("Assinatura do Profissional", centerX, cursorY + 5);
 
             pdf.save(`contrato-${patientName.replace(/\s+/g, '-').toLowerCase()}.pdf`);
             toast.success("PDF exportado com sucesso!");
