@@ -34,10 +34,13 @@ interface ContractData {
     tempoEstimado: string;
     frequenciaRetorno: string;
     objetivo: string;
+    // Pagamento
+    paymentType: string;
     // Valores
     valorAparelhos: string;
     valorMensalidade: string;
     valorQuebraDanos: string;
+    valorConsertoRemovivel: string;
     // Data
     cidade: string;
     dataContrato: string;
@@ -58,9 +61,11 @@ const initialContractData: ContractData = {
     tempoEstimado: "",
     frequenciaRetorno: "",
     objetivo: "",
+    paymentType: "",
     valorAparelhos: "",
     valorMensalidade: "",
     valorQuebraDanos: "",
+    valorConsertoRemovivel: "",
     cidade: "Campinas",
     dataContrato: "",
 };
@@ -98,6 +103,7 @@ const TermoDeCompromisso = () => {
                 tempoEstimado: parsed.tempoEstimado || "",
                 frequenciaRetorno: parsed.frequenciaRetorno || "",
                 objetivo: parsed.objetivoTratamento || "",
+                paymentType: parsed.paymentType || "",
             }));
         }
 
@@ -218,9 +224,24 @@ const TermoDeCompromisso = () => {
             nomeClinica, croClinica, naturezaServico,
             nomeDentista, croDentista,
             tempoEstimado, frequenciaRetorno, objetivo,
-            valorAparelhos, valorMensalidade, valorQuebraDanos,
+            paymentType,
+            valorAparelhos, valorMensalidade, valorQuebraDanos, valorConsertoRemovivel,
             cidade, dataContrato
         } = contractData;
+
+        const isConvenio = paymentType === 'Convênio';
+
+        const paymentSection = isConvenio
+            ? `7 - PAGAMENTO
+As mensalidades do tratamento ortodôntico serão pagas pelo seu convênio, conforme as regras estabelecidas pelo plano.
+
+Em caso de quebra, perda ou dano ao aparelho, e não sendo possível o conserto, será cobrado o valor de R$ ${valorQuebraDanos || '________'}.
+Se houver a possibilidade de conserto do aparelho removível (se for o caso), o valor será de R$ ${valorConsertoRemovivel || '___'}.`
+            : `7 - PAGAMENTO
+   • Valor do tratamento (aparelhos): R$ ${valorAparelhos} (referente ao aparelho superior e inferior)
+   • Mensalidade: R$ ${valorMensalidade} (a partir da data de instalação)
+   • Quebra/Danos no aparelho: Será cobrado R$ ${valorQuebraDanos} por aparelho novo (cada)
+   • Acompanhamento Pós-tratamento: Após a remoção, é indicado o acompanhamento anual.`;
 
         return `TERMO DE COMPROMISSO PARA EXECUÇÃO DE TRATAMENTO ODONTOLÓGICO – ORTODÔNTICO/ORTOPÉDICO
 
@@ -266,11 +287,7 @@ Estalos e ruídos da ATM podem não ser eliminados após o tratamento. O objetiv
 6 - OBJETIVO
 ${objetivo}
 
-7 - PAGAMENTO
-   • Valor do tratamento (aparelhos): R$ ${valorAparelhos} (referente ao aparelho superior e inferior)
-   • Mensalidade: R$ ${valorMensalidade} (a partir da data de instalação)
-   • Quebra/Danos no aparelho: Será cobrado R$ ${valorQuebraDanos} por aparelho novo (cada)
-   • Acompanhamento Pós-tratamento: Após a remoção, é indicado o acompanhamento anual.
+${paymentSection}
 
 ENCERRAMENTO
 
@@ -700,27 +717,34 @@ CRO: ${croDentista}`;
                         <Card>
                             <CardHeader>
                                 <CardTitle>Valores do Tratamento</CardTitle>
+                                {contractData.paymentType === 'Convênio' && (
+                                    <CardDescription>Pagamento via convênio — preencha apenas os valores de quebra/danos e conserto.</CardDescription>
+                                )}
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="valorAparelhos">Valor dos Aparelhos (R$)</Label>
-                                        <Input
-                                            id="valorAparelhos"
-                                            value={contractData.valorAparelhos}
-                                            onChange={handleCurrencyChange('valorAparelhos')}
-                                            placeholder="0,00"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="valorMensalidade">Mensalidade (R$)</Label>
-                                        <Input
-                                            id="valorMensalidade"
-                                            value={contractData.valorMensalidade}
-                                            onChange={handleCurrencyChange('valorMensalidade')}
-                                            placeholder="0,00"
-                                        />
-                                    </div>
+                                    {contractData.paymentType !== 'Convênio' && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valorAparelhos">Valor dos Aparelhos (R$)</Label>
+                                                <Input
+                                                    id="valorAparelhos"
+                                                    value={contractData.valorAparelhos}
+                                                    onChange={handleCurrencyChange('valorAparelhos')}
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="valorMensalidade">Mensalidade (R$)</Label>
+                                                <Input
+                                                    id="valorMensalidade"
+                                                    value={contractData.valorMensalidade}
+                                                    onChange={handleCurrencyChange('valorMensalidade')}
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="valorQuebraDanos">Quebra/Danos (R$)</Label>
                                         <Input
@@ -730,6 +754,17 @@ CRO: ${croDentista}`;
                                             placeholder="0,00"
                                         />
                                     </div>
+                                    {contractData.paymentType === 'Convênio' && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="valorConsertoRemovivel">Conserto Aparelho Removível (R$)</Label>
+                                            <Input
+                                                id="valorConsertoRemovivel"
+                                                value={contractData.valorConsertoRemovivel}
+                                                onChange={handleCurrencyChange('valorConsertoRemovivel')}
+                                                placeholder="0,00"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
