@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, Calendar, User, Loader2, Plus, Trash2, Eye } from "lucide-react";
+import { Search, FileText, Calendar, User, Loader2, Plus, Trash2, Eye, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,12 @@ const Contracts = () => {
     const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
     const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isSignDialogOpen, setIsSignDialogOpen] = useState(false);
     const [isPatientDialogOpen, setIsPatientDialogOpen] = useState(false);
     const [contractToDelete, setContractToDelete] = useState<string | null>(null);
+    const [contractToSign, setContractToSign] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSigning, setIsSigning] = useState(false);
 
     useEffect(() => {
         loadContracts();
@@ -55,6 +58,23 @@ const Contracts = () => {
             toast.error("Erro ao excluir contrato");
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleSign = async () => {
+        if (!contractToSign) return;
+
+        try {
+            setIsSigning(true);
+            const updatedContract = await contractService.signContract(contractToSign);
+            setContracts(prev => prev.map(c => c.id === contractToSign ? updatedContract : c));
+            toast.success("Contrato assinado com sucesso");
+            setIsSignDialogOpen(false);
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao assinar contrato");
+        } finally {
+            setIsSigning(false);
         }
     };
 
@@ -130,38 +150,66 @@ const Contracts = () => {
                                     </CardHeader>
                                     <CardContent className="space-y-4 flex-1 flex flex-col justify-between">
                                         <div>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                                                <Calendar className="h-4 w-4" />
-                                                {formatDate(contract.createdAt)}
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                    <Calendar className="h-4 w-4" />
+                                                    {formatDate(contract.createdAt)}
+                                                </div>
+                                                {contract.isSigned ? (
+                                                    <span className="flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full border border-green-200">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                        Assinado
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-medium text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-200">
+                                                        Pendente
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-sm text-muted-foreground line-clamp-3 italic bg-muted/30 p-3 rounded-md border">
                                                 {contract.content.substring(0, 150)}...
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2 pt-4 border-t mt-auto">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="flex-1 gap-2"
-                                                onClick={() => {
-                                                    setSelectedContract(contract);
-                                                    setIsViewerOpen(true);
-                                                }}
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                                Visualizar
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={() => {
-                                                    setContractToDelete(contract.id);
-                                                    setIsDeleteDialogOpen(true);
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                        <div className="flex flex-col gap-2 pt-4 border-t mt-auto">
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="flex-1 gap-2"
+                                                    onClick={() => {
+                                                        setSelectedContract(contract);
+                                                        setIsViewerOpen(true);
+                                                    }}
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                    Visualizar
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => {
+                                                        setContractToDelete(contract.id);
+                                                        setIsDeleteDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            {!contract.isSigned && (
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white border-none"
+                                                    onClick={() => {
+                                                        setContractToSign(contract.id);
+                                                        setIsSignDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <CheckCircle2 className="h-4 w-4" />
+                                                    Confirmar Assinatura
+                                                </Button>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -199,6 +247,7 @@ const Contracts = () => {
                             <ContractViewer
                                 content={selectedContract.content}
                                 patientName={selectedContract.patient?.name}
+                                logoUrl={selectedContract.logoUrl}
                                 onClose={() => setIsViewerOpen(false)}
                             />
                         </div>
@@ -226,6 +275,31 @@ const Contracts = () => {
                         >
                             {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                             Excluir
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Sign Confirmation Dialog */}
+            <Dialog open={isSignDialogOpen} onOpenChange={setIsSignDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirmar Assinatura</DialogTitle>
+                        <DialogDescription>
+                            Você confirma que o contrato foi assinado?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsSignDialogOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={handleSign}
+                            disabled={isSigning}
+                        >
+                            {isSigning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                            Confirmar
                         </Button>
                     </DialogFooter>
                 </DialogContent>

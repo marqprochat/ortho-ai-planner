@@ -12,20 +12,33 @@ import { ptBR } from "date-fns/locale";
 const Dashboard = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [plannings, setPlannings] = useState<Planning[]>([]);
-  const [contractsCount, setContractsCount] = useState(0);
+  const [treatments, setTreatments] = useState<any[]>([]);
+  const [pendingContracts, setPendingContracts] = useState(0);
+  const [activeTreatments, setActiveTreatments] = useState(0);
+  const [newTreatments, setNewTreatments] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsData, planningsData, contractsData] = await Promise.all([
+        const [patientsData, planningsData, contractsData, treatmentsData] = await Promise.all([
           patientService.getPatients(),
           planningService.getAllPlannings(),
-          planningService.getContracts()
+          planningService.getContracts(),
+          patientService.getAllTreatments()
         ]);
         setPatients(patientsData);
         setPlannings(planningsData);
-        setContractsCount(contractsData.length);
+        setTreatments(treatmentsData);
+
+        setPendingContracts(contractsData.filter(c => !c.isSigned).length);
+
+        const active = treatmentsData.filter(t => t.status === 'EM_ANDAMENTO');
+        setActiveTreatments(active.length);
+
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        setNewTreatments(active.filter(t => new Date(t.createdAt) > thirtyDaysAgo).length);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -37,8 +50,7 @@ const Dashboard = () => {
   }, []);
 
   const pendingPlannings = plannings.filter(p => p.status === 'DRAFT').length;
-  const completedPlannings = plannings.filter(p => p.status === 'COMPLETED').length;
-  const recentPlannings = plannings.slice(0, 5);
+  const recentTreatments = treatments.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,17 +65,6 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-l-4 border-l-primary">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Users className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Total</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : patients.length}</div>
-              <div className="text-sm text-muted-foreground">Pacientes</div>
-            </CardContent>
-          </Card>
-
           <Card className="border-l-4 border-l-warning">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -71,18 +72,7 @@ const Dashboard = () => {
                 <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">Pendentes</span>
               </div>
               <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingPlannings}</div>
-              <div className="text-sm text-muted-foreground">Aguardando IA</div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-success">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <CheckCircle2 className="h-8 w-8 text-success" />
-                <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">Concluídos</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : completedPlannings}</div>
-              <div className="text-sm text-muted-foreground">Planejamentos</div>
+              <div className="text-sm text-muted-foreground">Aguardando planejamento</div>
             </CardContent>
           </Card>
 
@@ -92,8 +82,30 @@ const Dashboard = () => {
                 <FileText className="h-8 w-8 text-secondary" />
                 <span className="text-sm font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full">Contratos</span>
               </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : contractsCount}</div>
-              <div className="text-sm text-muted-foreground">Contratos Gerados</div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingContracts}</div>
+              <div className="text-sm text-muted-foreground">Contratos pendentes</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-primary">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <Clock className="h-8 w-8 text-primary" />
+                <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Tratamento</span>
+              </div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : activeTreatments}</div>
+              <div className="text-sm text-muted-foreground">Pacientes em tratamento</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-success">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <Users className="h-8 w-8 text-success" />
+                <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">Novos</span>
+              </div>
+              <div className="text-3xl font-bold mb-1">{loading ? "..." : newTreatments}</div>
+              <div className="text-sm text-muted-foreground">Novos pacientes em tratamento</div>
             </CardContent>
           </Card>
         </div>
@@ -143,40 +155,44 @@ const Dashboard = () => {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="p-4 font-semibold">Paciente</th>
-                      <th className="p-4 font-semibold">Título</th>
-                      <th className="p-4 font-semibold">Status</th>
-                      <th className="p-4 font-semibold">Data</th>
+                      <th className="p-4 font-semibold text-sm">nº do paciente</th>
+                      <th className="p-4 font-semibold text-sm">Paciente</th>
+                      <th className="p-4 font-semibold text-sm">Dentista</th>
+                      <th className="p-4 font-semibold text-sm">Status</th>
+                      <th className="p-4 font-semibold text-sm whitespace-nowrap">prox. consulta</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
                           Carregando...
                         </td>
                       </tr>
-                    ) : recentPlannings.length > 0 ? (
-                      recentPlannings.map((planning) => (
-                        <tr key={planning.id} className="border-b hover:bg-muted/30 transition-colors">
-                          <td className="p-4 font-medium">{planning.patient?.name}</td>
-                          <td className="p-4">{planning.title}</td>
+                    ) : recentTreatments.length > 0 ? (
+                      recentTreatments.map((t) => (
+                        <tr key={t.id} className="border-b hover:bg-muted/30 transition-colors">
+                          <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || '-'}</td>
+                          <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || '-'}</td>
+                          <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || '-'}</td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${planning.status === 'COMPLETED'
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : t.status === 'EM_ANDAMENTO'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
                                 : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                               }`}>
-                              {planning.status === 'COMPLETED' ? 'Concluído' : 'Processando'}
+                              {t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Pausado'}
                             </span>
                           </td>
-                          <td className="p-4 text-muted-foreground">
-                            {format(new Date(planning.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                          <td className="p-4 text-muted-foreground text-sm whitespace-nowrap">
+                            {t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy", { locale: ptBR }) : '-'}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
                           Nenhum caso recente para exibir
                         </td>
                       </tr>

@@ -59,6 +59,7 @@ export interface Treatment {
     deadline?: string;
     endDate?: string;
     lastAppointment?: string;
+    nextAppointment?: string;
     notes?: string;
     createdAt: string;
     updatedAt: string;
@@ -262,7 +263,7 @@ export const patientService = {
         return response.json();
     },
 
-    async getAllTreatments(): Promise<(Treatment & { planning: { id: string; title: string; patient: { id: string; name: string } } })[]> {
+    async getAllTreatments(): Promise<(Treatment & { planning: { id: string; title: string; patient: { id: string; name: string; patientNumber?: string; user?: { name: string } } } })[]> {
         const response = await fetch(`${API_URL}/treatments`, {
             headers: getAuthHeaders(),
         });
@@ -274,7 +275,7 @@ export const patientService = {
         return response.json();
     },
 
-    async createTreatment(data: { planningId: string; startDate: string; deadline?: string; endDate?: string; lastAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
+    async createTreatment(data: { planningId: string; startDate: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
         const response = await fetch(`${API_URL}/treatments`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -288,7 +289,7 @@ export const patientService = {
         return response.json();
     },
 
-    async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
+    async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
         const response = await fetch(`${API_URL}/treatments/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),

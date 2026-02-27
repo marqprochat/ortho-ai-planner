@@ -26,7 +26,13 @@ export const getAllTreatments = async (req: AuthRequest, res: Response) => {
                         patient: {
                             select: {
                                 id: true,
-                                name: true
+                                name: true,
+                                patientNumber: true,
+                                user: {
+                                    select: {
+                                        name: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -84,7 +90,7 @@ export const getTreatment = async (req: AuthRequest, res: Response) => {
 // Create treatment
 export const createTreatment = async (req: AuthRequest, res: Response) => {
     try {
-        const { planningId, startDate, deadline, endDate, lastAppointment, notes, status } = req.body;
+        const { planningId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
         const { tenantId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -121,6 +127,7 @@ export const createTreatment = async (req: AuthRequest, res: Response) => {
                 deadline: deadline ? new Date(deadline) : null,
                 endDate: endDate ? new Date(endDate) : null,
                 lastAppointment: lastAppointment ? new Date(lastAppointment) : null,
+                nextAppointment: nextAppointment ? new Date(nextAppointment) : null,
                 notes: notes || null,
                 status: status || 'EM_ANDAMENTO'
             }
@@ -137,7 +144,7 @@ export const createTreatment = async (req: AuthRequest, res: Response) => {
 export const updateTreatment = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { startDate, deadline, endDate, lastAppointment, notes, status } = req.body;
+        const { startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
         const { tenantId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -167,6 +174,7 @@ export const updateTreatment = async (req: AuthRequest, res: Response) => {
                 ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
                 ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
                 ...(lastAppointment !== undefined && { lastAppointment: lastAppointment ? new Date(lastAppointment) : null }),
+                ...(nextAppointment !== undefined && { nextAppointment: nextAppointment ? new Date(nextAppointment) : null }),
                 ...(notes !== undefined && { notes }),
                 ...(status !== undefined && { status })
             }

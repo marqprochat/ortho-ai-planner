@@ -43,8 +43,11 @@ const PatientDetail = () => {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeletePatientOpen, setIsDeletePatientOpen] = useState(false);
     const [isDeletePlanningOpen, setIsDeletePlanningOpen] = useState(false);
+    const [isSignContractOpen, setIsSignContractOpen] = useState(false);
     const [planningToDelete, setPlanningToDelete] = useState<Planning | null>(null);
+    const [contractToSign, setContractToSign] = useState<Contract | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSigning, setIsSigning] = useState(false);
     const canDeletePatient = useHasPermission('delete', 'patient');
     const canDeletePlanning = useHasPermission('delete', 'planning');
 
@@ -120,6 +123,23 @@ const PatientDetail = () => {
             setIsDeleting(false);
             setIsDeletePlanningOpen(false);
             setPlanningToDelete(null);
+        }
+    };
+
+    const handleSignContract = async () => {
+        if (!contractToSign) return;
+        setIsSigning(true);
+        try {
+            await patientService.signContract(contractToSign.id);
+            toast.success("Contrato marcado como assinado!");
+            loadPatient();
+        } catch (error) {
+            console.error(error);
+            toast.error("Erro ao assinar contrato");
+        } finally {
+            setIsSigning(false);
+            setIsSignContractOpen(false);
+            setContractToSign(null);
         }
     };
 
@@ -436,15 +456,10 @@ const PatientDetail = () => {
                                                     variant="outline"
                                                     size="sm"
                                                     className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-300"
-                                                    onClick={async (e) => {
+                                                    onClick={(e) => {
                                                         e.stopPropagation();
-                                                        try {
-                                                            await patientService.signContract(contract.id);
-                                                            toast.success("Contrato marcado como assinado!");
-                                                            loadPatient();
-                                                        } catch (error) {
-                                                            toast.error("Erro ao assinar contrato");
-                                                        }
+                                                        setContractToSign(contract);
+                                                        setIsSignContractOpen(true);
                                                     }}
                                                 >
                                                     <CheckCircle className="mr-1 h-4 w-4" />
@@ -504,6 +519,7 @@ const PatientDetail = () => {
                             <ContractViewer
                                 content={selectedContract.content}
                                 patientName={patient?.name}
+                                logoUrl={selectedContract.logoUrl}
                                 onClose={() => setIsContractViewerOpen(false)}
                             />
                         )}
@@ -537,6 +553,17 @@ const PatientDetail = () => {
                 onConfirm={handleDeletePlanning}
                 isLoading={isDeleting}
                 confirmText="Excluir Planejamento"
+                cancelText="Cancelar"
+            />
+
+            <ConfirmationDialog
+                open={isSignContractOpen}
+                onOpenChange={setIsSignContractOpen}
+                title="Confirmar Assinatura"
+                description="Você confirma que o contrato foi assinado?"
+                onConfirm={handleSignContract}
+                isLoading={isSigning}
+                confirmText="Confirmar"
                 cancelText="Cancelar"
             />
         </div >

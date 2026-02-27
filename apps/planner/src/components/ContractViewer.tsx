@@ -12,17 +12,38 @@ import jsPDF from 'jspdf';
 interface ContractViewerProps {
     content: string;
     patientName?: string;
+    logoUrl?: string | null;
     onClose?: () => void;
 }
 
 export const ContractViewer = ({
     content,
     patientName = "Paciente",
+    logoUrl,
     onClose,
 }: ContractViewerProps) => {
     const [isExporting, setIsExporting] = useState(false);
 
-    const handleExportPDF = () => {
+    // Converte URL/base64 de imagem para base64 via canvas
+    const toBase64ViaCanvas = (src: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error('canvas context unavailable'));
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => reject(new Error('image load failed'));
+            img.src = src;
+        });
+    };
+
+    const handleExportPDF = async () => {
         if (!content) {
             toast.error("Não há conteúdo para exportar.");
             return;
@@ -36,6 +57,19 @@ export const ContractViewer = ({
             const margin = 20;
             const contentWidth = pageWidth - margin * 2;
             let cursorY = margin;
+
+            // Logo - topo à esquerda
+            if (logoUrl) {
+                const logoWidth = 40;
+                const logoHeight = 20;
+                try {
+                    const base64Logo = await toBase64ViaCanvas(logoUrl);
+                    pdf.addImage(base64Logo, 'PNG', margin, cursorY, logoWidth, logoHeight);
+                } catch (err) {
+                    console.warn('Não foi possível carregar o logo no PDF:', err);
+                }
+                cursorY += logoHeight + 10;
+            }
 
             // Título
             pdf.setFontSize(18);

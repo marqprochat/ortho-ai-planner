@@ -173,6 +173,7 @@ model Treatment {
   deadline        DateTime? // Prazo final (convênio ou estipulado)
   endDate         DateTime? // Data de finalização real
   lastAppointment DateTime? // Data da última consulta/agendamento
+  nextAppointment DateTime? // Data da próxima consulta
   notes           String?   // Observações gerais
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

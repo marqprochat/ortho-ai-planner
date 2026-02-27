@@ -7,6 +7,8 @@ export interface Contract {
     patientId: string;
     content: string;
     logoUrl?: string;
+    isSigned: boolean;
+    signedAt?: string;
     createdAt: string;
     updatedAt: string;
     patient?: {
@@ -65,5 +67,18 @@ export const contractService = {
         if (!response.ok) {
             throw new Error('Erro ao excluir contrato');
         }
+    },
+
+    async signContract(id: string): Promise<Contract> {
+        const response = await fetch(`${API_URL}/contracts/${id}/sign`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao assinar contrato');
+        }
+
+        return response.json();
     }
 };
