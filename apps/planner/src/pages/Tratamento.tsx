@@ -27,10 +27,11 @@ const statusColors: Record<string, string> = {
 const Tratamento = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { planningId, patientName, patientId } = (location.state || {}) as {
+    const { planningId, patientName, patientId, treatmentId } = (location.state || {}) as {
         planningId?: string;
         patientName?: string;
         patientId?: string;
+        treatmentId?: string;
     };
 
     const [isLoading, setIsLoading] = useState(true);
@@ -46,13 +47,13 @@ const Tratamento = () => {
     const [notes, setNotes] = useState("");
 
     useEffect(() => {
-        if (!planningId) {
-            toast.error("Planejamento não encontrado");
+        if (!planningId && !patientId) {
+            toast.error("Referência do paciente ou planejamento não encontrada");
             navigate(-1);
             return;
         }
         loadTreatment();
-    }, [planningId]);
+    }, [planningId, patientId, treatmentId]);
 
     const formatDateForInput = (dateString?: string) => {
         if (!dateString) return "";
@@ -62,16 +63,34 @@ const Tratamento = () => {
     const loadTreatment = async () => {
         try {
             setIsLoading(true);
-            const treatment = await patientService.getTreatment(planningId!);
-            setExistingTreatment(treatment);
-            setStartDate(formatDateForInput(treatment.startDate));
-            setDeadline(formatDateForInput(treatment.deadline));
-            setEndDate(formatDateForInput(treatment.endDate));
-            setLastAppointment(formatDateForInput(treatment.lastAppointment));
-            setStatus(treatment.status);
-            setNotes(treatment.notes || "");
+            if (planningId || treatmentId) {
+                // To support both (for now if we only fetch via planningId)
+                // If it's a stand-alone treatment, we should ideally fetch it by ID but since we don't have that endpoint yet, 
+                // we assume stand-alone treatments are passed completely via state or fetched differently.
+                // For now, if planningId exists, fetch it.
+                if (treatmentId) {
+                    const treatment = await patientService.getTreatmentById(treatmentId);
+                    setExistingTreatment(treatment);
+                    setStartDate(formatDateForInput(treatment.startDate));
+                    setDeadline(formatDateForInput(treatment.deadline));
+                    setEndDate(formatDateForInput(treatment.endDate));
+                    setLastAppointment(formatDateForInput(treatment.lastAppointment));
+                    setStatus(treatment.status);
+                    setNotes(treatment.notes || "");
+                } else if (planningId) {
+                    const treatment = await patientService.getTreatment(planningId);
+                    setExistingTreatment(treatment);
+                    setStartDate(formatDateForInput(treatment.startDate));
+                    setDeadline(formatDateForInput(treatment.deadline));
+                    setEndDate(formatDateForInput(treatment.endDate));
+                    setLastAppointment(formatDateForInput(treatment.lastAppointment));
+                    setStatus(treatment.status);
+                    setNotes(treatment.notes || "");
+                }
+            } else {
+                setStartDate(new Date().toISOString().split("T")[0]);
+            }
         } catch {
-            // No treatment yet — set default startDate to today
             setStartDate(new Date().toISOString().split("T")[0]);
         } finally {
             setIsLoading(false);
@@ -79,10 +98,6 @@ const Tratamento = () => {
     };
 
     const handleSave = async () => {
-        if (!startDate) {
-            toast.error("A data de início é obrigatória");
-            return;
-        }
 
         setIsSaving(true);
         try {
@@ -101,7 +116,8 @@ const Tratamento = () => {
                 toast.success("Tratamento atualizado com sucesso!");
             } else {
                 const created = await patientService.createTreatment({
-                    planningId: planningId!,
+                    planningId: planningId || undefined,
+                    patientId: patientId!,
                     ...data,
                 });
                 setExistingTreatment(created);
@@ -115,7 +131,7 @@ const Tratamento = () => {
         }
     };
 
-    if (!planningId) return null;
+    if (!planningId && !patientId) return null;
 
     return (
         <div className="min-h-screen bg-background">
@@ -181,14 +197,13 @@ const Tratamento = () => {
                                     <div className="space-y-2">
                                         <Label htmlFor="startDate" className="flex items-center gap-1">
                                             <Calendar className="h-4 w-4 text-teal-500" />
-                                            Data de Início *
+                                            Data de Início
                                         </Label>
                                         <Input
                                             id="startDate"
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
-                                            required
                                         />
                                     </div>
 
@@ -251,7 +266,7 @@ const Tratamento = () => {
                                     </Button>
                                     <Button
                                         onClick={handleSave}
-                                        disabled={isSaving || !startDate}
+                                        disabled={isSaving}
                                         className="bg-teal-600 hover:bg-teal-700"
                                     >
                                         {isSaving ? (

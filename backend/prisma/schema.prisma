@@ -148,6 +148,7 @@ model Patient {
   tenant     Tenant     @relation(fields: [tenantId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
   plannings  Planning[]
+  treatments Treatment[]
 }
 
 model Planning {
@@ -167,9 +168,10 @@ model Planning {
 
 model Treatment {
   id              String    @id @default(uuid())
-  planningId      String    @unique
+  planningId      String?   @unique
+  patientId       String?
   status          String    @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDO | CANCELADO
-  startDate       DateTime  // Data de início do tratamento
+  startDate       DateTime  @default(now()) // Data de início do tratamento
   deadline        DateTime? // Prazo final (convênio ou estipulado)
   endDate         DateTime? // Data de finalização real
   lastAppointment DateTime? // Data da última consulta/agendamento
@@ -177,7 +179,8 @@ model Treatment {
   notes           String?   // Observações gerais
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  planning        Planning  @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  planning        Planning? @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 model Contract {

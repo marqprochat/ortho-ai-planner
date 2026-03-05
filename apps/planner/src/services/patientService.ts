@@ -23,6 +23,7 @@ export interface Patient {
     };
     plannings?: Planning[];
     contracts?: Contract[];
+    treatments?: Treatment[];
 }
 
 export interface Planning {
@@ -53,7 +54,8 @@ export interface Contract {
 
 export interface Treatment {
     id: string;
-    planningId: string;
+    planningId?: string;
+    patientId: string;
     status: string; // EM_ANDAMENTO | CONCLUIDO | CANCELADO
     startDate: string;
     deadline?: string;
@@ -263,6 +265,18 @@ export const patientService = {
         return response.json();
     },
 
+    async getTreatmentById(id: string): Promise<Treatment> {
+        const response = await fetch(`${API_URL}/treatments/${id}`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar tratamento');
+        }
+
+        return response.json();
+    },
+
     async getAllTreatments(): Promise<(Treatment & { planning: { id: string; title: string; patient: { id: string; name: string; patientNumber?: string; user?: { name: string } } } })[]> {
         const response = await fetch(`${API_URL}/treatments`, {
             headers: getAuthHeaders(),
@@ -275,7 +289,7 @@ export const patientService = {
         return response.json();
     },
 
-    async createTreatment(data: { planningId: string; startDate: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
+    async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
         const response = await fetch(`${API_URL}/treatments`, {
             method: 'POST',
             headers: getAuthHeaders(),

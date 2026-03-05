@@ -190,6 +190,13 @@ const PatientDetail = () => {
                                 Excluir
                             </Button>
                         )}
+                        <Button
+                            className="bg-teal-600 hover:bg-teal-700 text-white"
+                            onClick={() => navigate('/tratamento', { state: { patientId: patient.id, patientName: patient.name } })}
+                        >
+                            <Activity className="mr-2 h-4 w-4" />
+                            Iniciar Tratamento
+                        </Button>
                     </div>
 
                     {/* Process Stages removed from top - now inside Planning cards */}
@@ -233,6 +240,80 @@ const PatientDetail = () => {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Treatments Section */}
+                    {patient.treatments && patient.treatments.filter(t => !t.planningId).length > 0 && (
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-2xl font-bold flex items-center gap-2">
+                                    <Activity className="h-6 w-6 text-teal-600" />
+                                    Tratamentos
+                                </h2>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {patient.treatments.filter(t => !t.planningId).map((treatment) => (
+                                    <Card key={treatment.id} className="hover:shadow-lg transition-shadow border-teal-200">
+                                        <CardHeader className="pb-2">
+                                            <div className="flex justify-between items-start">
+                                                <CardTitle className="text-lg flex items-center gap-2">
+                                                    <Activity className="h-5 w-5 text-teal-600" />
+                                                    Tratamento em Andamento
+                                                </CardTitle>
+                                                <Badge className={{
+                                                    EM_ANDAMENTO: 'bg-blue-500',
+                                                    CONCLUIDO: 'bg-emerald-500',
+                                                    CANCELADO: 'bg-red-500'
+                                                }[treatment.status] || 'bg-gray-500'} >
+                                                    {{
+                                                        EM_ANDAMENTO: 'Em Andamento',
+                                                        CONCLUIDO: 'Concluído',
+                                                        CANCELADO: 'Cancelado'
+                                                    }[treatment.status] || treatment.status}
+                                                </Badge>
+                                            </div>
+                                            <CardDescription>
+                                                Iniciado em {formatDate(treatment.startDate)}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mt-2">
+                                                {treatment.deadline && <span>Prazo: {formatDate(treatment.deadline)}</span>}
+                                                {treatment.lastAppointment && <span>Última: {formatDate(treatment.lastAppointment)}</span>}
+                                                {treatment.nextAppointment && <span>Próxima: {formatDate(treatment.nextAppointment)}</span>}
+                                                {treatment.endDate && <span>Fim: {formatDate(treatment.endDate)}</span>}
+                                            </div>
+                                            {treatment.notes && (
+                                                <p className="mt-3 text-sm italic border-l-2 border-teal-200 pl-2">
+                                                    "{treatment.notes}"
+                                                </p>
+                                            )}
+                                        </CardContent>
+                                        <div className="px-6 pb-4 flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-300"
+                                                onClick={() => {
+                                                    // In order to edit an existing unlinked treatment, we'd need another endpoint
+                                                    // Since we only pass states right now, we can route it with treatmentId
+                                                    navigate('/tratamento', {
+                                                        state: {
+                                                            treatmentId: treatment.id,
+                                                            patientName: patient?.name,
+                                                            patientId: patient?.id
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                <Edit className="mr-1 h-4 w-4" />
+                                                Visualizar / Editar
+                                            </Button>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Plannings Section */}
                     <div className="mb-8">

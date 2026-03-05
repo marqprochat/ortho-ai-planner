@@ -161,6 +161,9 @@ export const getPatient = async (req: AuthRequest, res: Response) => {
                 },
                 contracts: {
                     orderBy: { createdAt: 'desc' }
+                },
+                treatments: {
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });

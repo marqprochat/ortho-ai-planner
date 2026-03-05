@@ -10,12 +10,10 @@ export const getAllTreatments = async (req: AuthRequest, res: Response) => {
 
         const treatments = await prisma.treatment.findMany({
             where: {
-                planning: {
-                    patient: {
-                        tenantId,
-                        clinicId,
-                        ...(canManageAll ? {} : { userId: req.userId })
-                    }
+                patient: {
+                    tenantId,
+                    clinicId,
+                    ...(canManageAll ? {} : { userId: req.userId })
                 }
             },
             include: {
@@ -56,24 +54,15 @@ export const getTreatment = async (req: AuthRequest, res: Response) => {
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
 
-        // Verify planning belongs to tenant/clinic
-        const planning = await prisma.planning.findFirst({
+        const treatment = await prisma.treatment.findFirst({
             where: {
-                id: planningId,
+                planningId,
                 patient: {
                     tenantId,
                     clinicId,
                     ...(canManageAll ? {} : { userId: req.userId })
                 }
             }
-        });
-
-        if (!planning) {
-            return res.status(404).json({ error: 'Planejamento não encontrado' });
-        }
-
-        const treatment = await prisma.treatment.findUnique({
-            where: { planningId }
         });
 
         if (!treatment) {
@@ -87,18 +76,17 @@ export const getTreatment = async (req: AuthRequest, res: Response) => {
     }
 };
 
-// Create treatment
-export const createTreatment = async (req: AuthRequest, res: Response) => {
+// Get treatment by ID
+export const getTreatmentById = async (req: AuthRequest, res: Response) => {
     try {
-        const { planningId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
+        const { id } = req.params;
         const { tenantId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
 
-        // Verify planning belongs to tenant/clinic
-        const planning = await prisma.planning.findFirst({
+        const treatment = await prisma.treatment.findFirst({
             where: {
-                id: planningId,
+                id,
                 patient: {
                     tenantId,
                     clinicId,
@@ -107,23 +95,76 @@ export const createTreatment = async (req: AuthRequest, res: Response) => {
             }
         });
 
-        if (!planning) {
-            return res.status(404).json({ error: 'Planejamento não encontrado' });
+        if (!treatment) {
+            return res.status(404).json({ error: 'Tratamento não encontrado' });
         }
 
-        // Check if treatment already exists
-        const existing = await prisma.treatment.findUnique({
-            where: { planningId }
-        });
+        res.json(treatment);
+    } catch (error) {
+        console.error('Error fetching treatment by string:', error);
+        res.status(500).json({ error: 'Erro ao buscar tratamento' });
+    }
+};
 
-        if (existing) {
-            return res.status(409).json({ error: 'Tratamento já existe para este planejamento' });
+// Create treatment
+export const createTreatment = async (req: AuthRequest, res: Response) => {
+    try {
+        const { planningId, patientId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
+        const { tenantId, clinicId } = req;
+
+        const canManageAll = hasPermission(req.user, 'manage', 'planning');
+
+        let validPatientId = patientId;
+
+        // Verify ownership/existence based on planningId or patientId
+        if (planningId) {
+            const planning = await prisma.planning.findFirst({
+                where: {
+                    id: planningId,
+                    patient: {
+                        tenantId,
+                        clinicId,
+                        ...(canManageAll ? {} : { userId: req.userId })
+                    }
+                }
+            });
+
+            if (!planning) {
+                return res.status(404).json({ error: 'Planejamento não encontrado' });
+            }
+
+            validPatientId = planning.patientId;
+
+            // Check if treatment already exists for this planning
+            const existing = await prisma.treatment.findFirst({
+                where: { planningId }
+            });
+
+            if (existing) {
+                return res.status(409).json({ error: 'Tratamento já existe para este planejamento' });
+            }
+        } else if (patientId) {
+            const patient = await prisma.patient.findFirst({
+                where: {
+                    id: patientId,
+                    tenantId,
+                    clinicId,
+                    ...(canManageAll ? {} : { userId: req.userId })
+                }
+            });
+
+            if (!patient) {
+                return res.status(404).json({ error: 'Paciente não encontrado' });
+            }
+        } else {
+            return res.status(400).json({ error: 'É necessário fornecer patientId ou planningId' });
         }
 
         const treatment = await prisma.treatment.create({
             data: {
-                planningId,
-                startDate: new Date(startDate),
+                planningId: planningId || null,
+                patientId: validPatientId,
+                startDate: startDate ? new Date(startDate) : new Date(),
                 deadline: deadline ? new Date(deadline) : null,
                 endDate: endDate ? new Date(endDate) : null,
                 lastAppointment: lastAppointment ? new Date(lastAppointment) : null,
@@ -149,16 +190,14 @@ export const updateTreatment = async (req: AuthRequest, res: Response) => {
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
 
-        // Verify ownership via planning -> patient -> tenant/clinic
+        // Verify ownership via patient -> tenant/clinic
         const treatment = await prisma.treatment.findFirst({
             where: {
                 id,
-                planning: {
-                    patient: {
-                        tenantId,
-                        clinicId,
-                        ...(canManageAll ? {} : { userId: req.userId })
-                    }
+                patient: {
+                    tenantId,
+                    clinicId,
+                    ...(canManageAll ? {} : { userId: req.userId })
                 }
             }
         });
@@ -198,12 +237,10 @@ export const deleteTreatment = async (req: AuthRequest, res: Response) => {
         const treatment = await prisma.treatment.findFirst({
             where: {
                 id,
-                planning: {
-                    patient: {
-                        tenantId,
-                        clinicId,
-                        ...(canManageAll ? {} : { userId: req.userId })
-                    }
+                patient: {
+                    tenantId,
+                    clinicId,
+                    ...(canManageAll ? {} : { userId: req.userId })
                 }
             }
         });
