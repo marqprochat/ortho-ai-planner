@@ -106,7 +106,7 @@ export const ContractViewer = ({
 
             // ── Assinaturas (blocos gráficos) ──
             const signatureLineWidth = 70;
-            cursorY += 25;
+            cursorY += 15;
             if (cursorY + 60 > pageHeight - margin) {
                 pdf.addPage();
                 cursorY = margin + 20;
@@ -124,7 +124,7 @@ export const ContractViewer = ({
             pdf.text("Assinatura do Responsável", rightX, cursorY + 5);
 
             // Dentista centralizado abaixo
-            cursorY += 30;
+            cursorY += 20;
             if (cursorY + 20 > pageHeight - margin) {
                 pdf.addPage();
                 cursorY = margin + 20;

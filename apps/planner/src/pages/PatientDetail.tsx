@@ -583,7 +583,8 @@ const PatientDetail = () => {
                                         state: {
                                             patientId: patient?.id,
                                             planningId: selectedPlanning.id,
-                                            patientName: patient?.name
+                                            patientName: patient?.name,
+                                            initialStructuredPlan: selectedPlanning.structuredPlan
                                         }
                                     });
                                 }}

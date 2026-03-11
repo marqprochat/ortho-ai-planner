@@ -88,22 +88,34 @@ const TermoDeCompromisso = () => {
         patientId?: string;
         planningId?: string;
         patientName?: string;
+        initialStructuredPlan?: any;
     };
 
-    // Auto-preencher dados do localStorage
+    // Auto-preencher dados do localStorage ou state
     useEffect(() => {
-        const savedFormData = localStorage.getItem("planejamentoFormData");
-        if (savedFormData) {
-            const parsed = JSON.parse(savedFormData);
+        let parsed: any = null;
+        
+        // Priorize state de navegação (novo fluxo)
+        if (location.state && (location.state as any).initialStructuredPlan) {
+            parsed = (location.state as any).initialStructuredPlan;
+        } else {
+            // Fallback para localStorage (fluxo antigo ou isolado)
+            const savedFormData = localStorage.getItem("planejamentoFormData");
+            if (savedFormData) {
+                parsed = JSON.parse(savedFormData);
+            }
+        }
+
+        if (parsed) {
             setContractData(prev => ({
                 ...prev,
-                nomePaciente: parsed.nomePaciente || "",
-                nomeDentista: parsed.nomeOrtodontista || "",
-                croDentista: parsed.croOrtodontista || "",
-                tempoEstimado: parsed.tempoEstimado || "",
-                frequenciaRetorno: parsed.frequenciaRetorno || "",
-                objetivo: parsed.objetivoTratamento || "",
-                paymentType: parsed.paymentType || "",
+                nomePaciente: parsed.nomePaciente || prev.nomePaciente,
+                nomeDentista: parsed.nomeOrtodontista || prev.nomeDentista,
+                croDentista: parsed.croOrtodontista || prev.croDentista,
+                tempoEstimado: parsed.tempoEstimado || prev.tempoEstimado,
+                frequenciaRetorno: parsed.frequenciaRetorno || prev.frequenciaRetorno,
+                objetivo: parsed.objetivoTratamento || prev.objetivo,
+                paymentType: parsed.paymentType || prev.paymentType,
             }));
         }
 
@@ -324,6 +336,7 @@ ${cidade}, ${dataContrato}.`;
                 logoUrl: contractData.logoPreview || undefined,
                 planningId: planningId || undefined,
             });
+            localStorage.removeItem("planejamentoFormData");
             toast.success("Contrato salvo com sucesso!");
         } catch (error) {
             console.error("Error saving contract:", error);
@@ -429,7 +442,7 @@ ${cidade}, ${dataContrato}.`;
 
             // ── Assinaturas (blocos gráficos) ──
             const signatureLineWidth = 70;
-            const signatureSpacing = 25;
+            const signatureSpacing = 15;
 
             // Verifica se cabe na página, senão adiciona nova
             if (cursorY + 60 > pageHeight - margin) {
@@ -458,7 +471,7 @@ ${cidade}, ${dataContrato}.`;
             pdf.text(`CPF: ${contractData.cpf}`, rightX, cursorY + 10);
 
             // Assinatura do Dentista (centralizada abaixo)
-            cursorY += signatureSpacing + 5;
+            cursorY += signatureSpacing + 2;
             if (cursorY + 20 > pageHeight - margin) {
                 pdf.addPage();
                 cursorY = margin + 20;
@@ -480,6 +493,7 @@ ${cidade}, ${dataContrato}.`;
             }
 
             pdf.save("termo-de-compromisso.pdf");
+            localStorage.removeItem("planejamentoFormData");
             toast.success("PDF exportado com sucesso!");
         } catch (error) {
             console.error("Error exporting PDF:", error);
