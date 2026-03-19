@@ -58,6 +58,12 @@ async function main() {
         { action: 'read', resource: 'contract', description: 'Visualizar contratos', appId: plannerApp.id },
         { action: 'write', resource: 'contract', description: 'Gerar contratos', appId: plannerApp.id },
         { action: 'delete', resource: 'contract', description: 'Excluir contratos', appId: plannerApp.id },
+
+        // --- Report Permissions ---
+        { action: 'read', resource: 'report_financeiro', description: 'Visualizar relatório financeiro', appId: plannerApp.id },
+        { action: 'read', resource: 'report_pacientes', description: 'Visualizar relatório de pacientes', appId: plannerApp.id },
+        { action: 'read', resource: 'report_agendamentos', description: 'Visualizar relatório de agendamentos', appId: plannerApp.id },
+        { action: 'read', resource: 'report_tratamentos', description: 'Visualizar relatório de tratamentos', appId: plannerApp.id },
     ];
 
     for (const p of permissions) {

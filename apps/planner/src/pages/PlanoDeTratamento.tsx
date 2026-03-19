@@ -15,7 +15,7 @@ interface Message {
   content: string | any[];
 }
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const PlanoDeTratamento = () => {

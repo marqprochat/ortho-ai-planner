@@ -16,6 +16,7 @@ import { getClinics, createClinic, updateClinic, deleteClinic } from './controll
 import { getUsers, createUser as createAdminUser, updateUser, deleteUser } from './controllers/userController';
 import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
 import { generateCompletion } from './controllers/aiController';
+import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -101,6 +102,12 @@ app.delete('/api/users/:id', authMiddleware, deleteUser);
 
 // AI Routes
 app.post('/api/ai/completion', authMiddleware, requireAppAccess('planner'), generateCompletion);
+
+// Report Routes
+app.get('/api/reports/patients', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'report_pacientes'), getPatientsReport);
+app.get('/api/reports/plannings', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'report_planejamentos'), getPlanningsReport);
+app.get('/api/reports/contracts', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'report_financeiro'), getContractsReport);
+app.get('/api/reports/treatments', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'report_tratamentos'), getTreatmentsReport);
 
 // AI API Key Routes (Super Admin)
 

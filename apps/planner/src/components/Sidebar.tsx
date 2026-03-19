@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList, Activity, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Plus, Users, FileText, Brain, FolderOpen, LogOut, Stethoscope, ClipboardList, Activity, Settings, BarChart3 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/useHasPermission";
 
@@ -8,6 +8,7 @@ import { ClinicSelector } from "./ClinicSelector";
 
 const Sidebar = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { user, logout } = useAuth();
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -15,6 +16,23 @@ const Sidebar = () => {
     const canReadPlannings = useHasPermission('read', 'planning');
     const canWritePlanning = useHasPermission('write', 'planning');
     const canReadContracts = useHasPermission('read', 'contract');
+    const canReadReports = useHasPermission('read', 'report_pacientes') || 
+                          useHasPermission('read', 'report_planejamentos') ||
+                          useHasPermission('read', 'report_financeiro') ||
+                          useHasPermission('read', 'report_tratamentos');
+
+    const canReportPacientes = useHasPermission('read', 'report_pacientes');
+    const canReportPlanejamentos = useHasPermission('read', 'report_planejamentos');
+    const canReportFinanceiro = useHasPermission('read', 'report_financeiro');
+    const canReportTratamentos = useHasPermission('read', 'report_tratamentos');
+
+    const [isReportsOpen, setIsReportsOpen] = useState(false);
+ 
+    useEffect(() => {
+        if (location.pathname.startsWith("/reports")) {
+            setIsReportsOpen(true);
+        }
+    }, [location.pathname]);
 
     const isActive = (path: string) => {
         if (path === "/") return location.pathname === "/";
@@ -26,6 +44,13 @@ const Sidebar = () => {
         } ${isActive(path)
             ? "bg-sidebar-primary text-sidebar-primary-foreground"
             : "text-sidebar-foreground hover:bg-sidebar-accent"
+        }`;
+    
+    const subLinkClass = (path: string) =>
+        `flex items-center rounded-lg py-2 pl-10 pr-3 transition-all duration-300 text-sm ${
+            isActive(path)
+            ? "text-sidebar-primary font-medium"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         }`;
 
     return (
@@ -89,6 +114,59 @@ const Sidebar = () => {
                         <Activity className="h-5 w-5 flex-shrink-0" />
                         {isExpanded && <span className="whitespace-nowrap">Tratamentos</span>}
                     </Link>
+                )}
+
+                {canReadReports && (
+                    <div className="relative">
+                        <button 
+                            onClick={() => {
+                                if (isExpanded) {
+                                    setIsReportsOpen(!isReportsOpen);
+                                } else {
+                                    navigate("/reports/patients");
+                                }
+                            }}
+                            className={`${linkClass("/reports")} w-full justify-between`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <BarChart3 className="h-5 w-5 flex-shrink-0" />
+                                {isExpanded && <span className="whitespace-nowrap">Relatórios</span>}
+                            </div>
+                            {isExpanded && (
+                                <svg 
+                                    className={`w-4 h-4 transition-transform duration-200 ${isReportsOpen ? 'rotate-180' : ''}`}
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            )}
+                        </button>
+                        
+                        {isExpanded && isReportsOpen && (
+                            <div className="mt-1 flex flex-col gap-1 overflow-hidden transition-all duration-300">
+                                {canReportPacientes && (
+                                    <Link to="/reports/patients" className={subLinkClass("/reports/patients")}>
+                                        Pacientes
+                                    </Link>
+                                )}
+                                {canReportPlanejamentos && (
+                                    <Link to="/reports/plannings" className={subLinkClass("/reports/plannings")}>
+                                        Planejamentos
+                                    </Link>
+                                )}
+                                {canReportFinanceiro && (
+                                    <Link to="/reports/contracts" className={subLinkClass("/reports/contracts")}>
+                                        Financeiro
+                                    </Link>
+                                )}
+                                {canReportTratamentos && (
+                                    <Link to="/reports/treatments" className={subLinkClass("/reports/treatments")}>
+                                        Tratamentos
+                                    </Link>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 <div className="pt-4 mt-4 border-t border-sidebar-border">

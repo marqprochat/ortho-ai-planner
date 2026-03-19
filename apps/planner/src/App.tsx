@@ -20,6 +20,10 @@ import { RequirePermission } from "./components/RequirePermission";
 import Login from "./pages/Login";
 import AccessDenied from "./pages/AccessDenied";
 import ClinicSettings from "./pages/ClinicSettings";
+import PatientsReport from "./pages/reports/PatientsReport";
+import PlanningsReport from "./pages/reports/PlanningsReport";
+import ContractsReport from "./pages/reports/ContractsReport";
+import TreatmentsReport from "./pages/reports/TreatmentsReport";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +64,20 @@ const App = () => (
                 <Route element={<RequirePermission action="read" resource="contract" />}>
                   <Route path="/termo-de-compromisso" element={<TermoDeCompromisso />} />
                   <Route path="/contracts" element={<Contracts />} />
+                </Route>
+
+                {/* Report Routes */}
+                <Route element={<RequirePermission action="read" resource="report_pacientes" />}>
+                  <Route path="/reports/patients" element={<PatientsReport />} />
+                </Route>
+                <Route element={<RequirePermission action="read" resource="report_planejamentos" />}>
+                  <Route path="/reports/plannings" element={<PlanningsReport />} />
+                </Route>
+                <Route element={<RequirePermission action="read" resource="report_financeiro" />}>
+                  <Route path="/reports/contracts" element={<ContractsReport />} />
+                </Route>
+                <Route element={<RequirePermission action="read" resource="report_tratamentos" />}>
+                  <Route path="/reports/treatments" element={<TreatmentsReport />} />
                 </Route>
 
                 <Route path="/settings/clinic" element={<ClinicSettings />} />

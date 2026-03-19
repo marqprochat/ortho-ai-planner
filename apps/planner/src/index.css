@@ -49,7 +49,7 @@ All colors MUST be HSL.
 
     --success: 142 71% 45%;
     --warning: 27 96% 61%;
-    --info: 199 89% 48%;
+    --info: 221 83% 53%;
   }
 
   .dark {
@@ -88,6 +88,7 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --info: 217.2 91.2% 60%;
   }
 }
 

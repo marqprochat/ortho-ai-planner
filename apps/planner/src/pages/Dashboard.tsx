@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Plus, Users, FileText, Brain, FolderOpen, ClipboardList, CheckCircle2, Clock } from "lucide-react";
+import { Plus, Users, UserPlus, FileText, Brain, FolderOpen, ClipboardList, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Sidebar from "@/components/Sidebar";
@@ -64,50 +64,71 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="border-l-4 border-l-warning">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Brain className="h-8 w-8 text-warning" />
-                <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">Pendentes</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingPlannings}</div>
-              <div className="text-sm text-muted-foreground">Aguardando planejamento</div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Link to="/reports/patients" className="block hover:scale-[1.02] transition-transform">
+            <Card className="border-l-4 border-l-info h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Users className="h-8 w-8 text-info" />
+                  <span className="text-sm font-medium text-info bg-info/10 px-2 py-1 rounded-full">Total</span>
+                </div>
+                <div className="text-3xl font-bold mb-1">{loading ? "..." : patients.length}</div>
+                <div className="text-sm text-muted-foreground">Usuários cadastrados</div>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="border-l-4 border-l-secondary">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <FileText className="h-8 w-8 text-secondary" />
-                <span className="text-sm font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full">Contratos</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingContracts}</div>
-              <div className="text-sm text-muted-foreground">Contratos pendentes</div>
-            </CardContent>
-          </Card>
+          <Link to="/reports/plannings?status=DRAFT" className="block hover:scale-[1.02] transition-transform">
+            <Card className="border-l-4 border-l-warning h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Brain className="h-8 w-8 text-warning" />
+                  <span className="text-sm font-medium text-warning bg-warning/10 px-2 py-1 rounded-full">Pendentes</span>
+                </div>
+                <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingPlannings}</div>
+                <div className="text-sm text-muted-foreground">Aguardando planejamento</div>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="border-l-4 border-l-primary">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Clock className="h-8 w-8 text-primary" />
-                <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Tratamento</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : activeTreatments}</div>
-              <div className="text-sm text-muted-foreground">Pacientes em tratamento</div>
-            </CardContent>
-          </Card>
+          <Link to="/reports/contracts?isSigned=false" className="block hover:scale-[1.02] transition-transform">
+            <Card className="border-l-4 border-l-secondary h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <FileText className="h-8 w-8 text-secondary" />
+                  <span className="text-sm font-medium text-secondary bg-secondary/10 px-2 py-1 rounded-full">Contratos</span>
+                </div>
+                <div className="text-3xl font-bold mb-1">{loading ? "..." : pendingContracts}</div>
+                <div className="text-sm text-muted-foreground">Contratos pendentes</div>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card className="border-l-4 border-l-success">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <Users className="h-8 w-8 text-success" />
-                <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">Novos</span>
-              </div>
-              <div className="text-3xl font-bold mb-1">{loading ? "..." : newTreatments}</div>
-              <div className="text-sm text-muted-foreground">Novos pacientes em tratamento</div>
-            </CardContent>
-          </Card>
+          <Link to="/reports/treatments?status=EM_ANDAMENTO" className="block hover:scale-[1.02] transition-transform">
+            <Card className="border-l-4 border-l-primary h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="h-8 w-8 text-primary" />
+                  <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Tratamento</span>
+                </div>
+                <div className="text-3xl font-bold mb-1">{loading ? "..." : activeTreatments}</div>
+                <div className="text-sm text-muted-foreground">Pacientes em tratamento</div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/reports/treatments?recent=true" className="block hover:scale-[1.02] transition-transform">
+            <Card className="border-l-4 border-l-success h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <UserPlus className="h-8 w-8 text-success" />
+                  <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded-full">Novos</span>
+                </div>
+                <div className="text-3xl font-bold mb-1">{loading ? "..." : newTreatments}</div>
+                <div className="text-sm text-muted-foreground">Novos pacientes em tratamento</div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Quick Actions */}
@@ -132,12 +153,14 @@ const Dashboard = () => {
               </Card>
             </Link>
 
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-accent text-accent-foreground">
-              <CardContent className="p-8 text-center">
-                <FileText className="h-12 w-12 mx-auto mb-3" />
-                <h4 className="font-semibold text-lg">Ver Relatórios</h4>
-              </CardContent>
-            </Card>
+            <Link to="/reports/patients">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow bg-accent text-accent-foreground">
+                <CardContent className="p-8 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-3" />
+                  <h4 className="font-semibold text-lg">Ver Relatórios</h4>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
 

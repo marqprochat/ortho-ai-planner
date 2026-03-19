@@ -17,7 +17,7 @@ import { patientService, Patient } from "@/services/patientService";
 import { PatientSelector } from "@/components/PatientSelector";
 import { getCookie } from "@/lib/cookieUtils";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 // Interfaces para o Chat com IA
 interface Message {
