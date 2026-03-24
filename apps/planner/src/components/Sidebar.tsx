@@ -55,14 +55,14 @@ const Sidebar = () => {
 
     return (
         <aside
-            className={`fixed left-0 top-0 h-full bg-sidebar p-4 z-50 transition-all duration-300 ease-in-out ${isExpanded ? "w-64" : "w-16"
+            className={`fixed left-0 top-0 h-full bg-sidebar p-4 z-50 transition-all duration-300 ease-in-out flex flex-col ${isExpanded ? "w-64" : "w-16"
                 }`}
             onMouseEnter={() => setIsExpanded(true)}
             onMouseLeave={() => setIsExpanded(false)}
         >
 
             {/* Logo */}
-            <div className={`mb-4 flex items-center overflow-hidden ${isExpanded ? "gap-3" : "justify-center"}`}>
+            <div className={`mb-4 flex items-center overflow-hidden shrink-0 ${isExpanded ? "gap-3" : "justify-center"}`}>
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                     <Stethoscope className="h-5 w-5 text-primary-foreground" />
                 </div>
@@ -72,10 +72,12 @@ const Sidebar = () => {
             </div>
 
             {/* Clinic Selector */}
-            <ClinicSelector isExpanded={isExpanded} />
+            <div className="shrink-0 mb-4">
+                <ClinicSelector isExpanded={isExpanded} />
+            </div>
 
             {/* Navigation */}
-            <nav className="space-y-2">
+            <nav className="space-y-2 flex-1 overflow-y-auto overflow-x-hidden pr-2 -mr-2 pb-2 mb-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-sidebar-border [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary/50 [&::-webkit-scrollbar-track]:bg-transparent">
                 <Link to="/" className={linkClass("/")}>
                     <FolderOpen className="h-5 w-5 flex-shrink-0" />
                     {isExpanded && <span className="whitespace-nowrap">Dashboard</span>}
@@ -178,7 +180,7 @@ const Sidebar = () => {
             </nav>
 
             {/* User Info at Bottom */}
-            <div className="absolute bottom-4 left-4 right-4">
+            <div className="mt-auto shrink-0 pt-2 border-t border-sidebar-border/50">
                 <div className={`flex items-center rounded-lg py-3 bg-sidebar-accent/50 ${isExpanded ? "px-3 gap-3" : "px-0 justify-center"
                     }`}>
                     <div className="flex-shrink-0 w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
