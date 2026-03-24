@@ -1,6 +1,8 @@
 # 📋 Ortho AI Planner — Documentação Completa
 
 > Sistema inteligente de planejamento ortodôntico assistido por IA, com gestão multi-tenant, multi-clínica, controle de permissões (RBAC) e geração automatizada de contratos.
+>
+> **Versão Atual**: `2.4.0` (Março 2026)
 
 ---
 
