@@ -73,7 +73,7 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-info bg-info/10 px-2 py-1 rounded-full">Total</span>
                 </div>
                 <div className="text-3xl font-bold mb-1">{loading ? "..." : patients.length}</div>
-                <div className="text-sm text-muted-foreground">Usuários cadastrados</div>
+                <div className="text-sm text-muted-foreground">Pacientes cadastrados</div>
               </CardContent>
             </Card>
           </Link>
