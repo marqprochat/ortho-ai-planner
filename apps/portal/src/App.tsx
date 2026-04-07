@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
@@ -7,6 +8,7 @@ import ClinicManagement from "./pages/admin/ClinicManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import RoleManagement from "./pages/admin/RoleManagement";
 import AiKeyManagement from "./pages/admin/AiKeyManagement";
+import NotificationConfig from "./pages/admin/NotificationConfig";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -96,6 +98,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <AiKeyManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/notifications"
+                element={
+                    <ProtectedRoute>
+                        <NotificationConfig />
                     </ProtectedRoute>
                 }
             />

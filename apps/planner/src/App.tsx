@@ -24,6 +24,7 @@ import PatientsReport from "./pages/reports/PatientsReport";
 import PlanningsReport from "./pages/reports/PlanningsReport";
 import ContractsReport from "./pages/reports/ContractsReport";
 import TreatmentsReport from "./pages/reports/TreatmentsReport";
+import NotificationsPage from "./pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const App = () => (
                 </Route>
 
                 <Route path="/settings/clinic" element={<ClinicSettings />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Search, Download, Filter, ArrowLeft, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +14,13 @@ import { Link } from "react-router-dom";
 import { jsPDF } from "jspdf";
 
 const TreatmentsReport = () => {
-    const [searchParams] = useSearchParams();
-    const [data, setData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [status, setStatus] = useState(searchParams.get("status") || "ALL");
-    const [dateRange, setDateRange] = useState({ start: "", end: "" });
+const [searchParams] = useSearchParams();
+const navigate = useNavigate();
+const [data, setData] = useState<any[]>([]);
+const [loading, setLoading] = useState(true);
+const [search, setSearch] = useState("");
+const [status, setStatus] = useState(searchParams.get("status") || "ALL");
+const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
     const fetchData = async () => {
         setLoading(true);
@@ -51,16 +52,16 @@ const TreatmentsReport = () => {
         fetchData();
     }, [search, status, dateRange]);
 
-    const downloadCSV = () => {
-        const headers = ["Nº", "Paciente", "Status", "Data Início", "Próxima Consulta", "Dentista"];
-        const rows = data.map(t => [
-            t.patient?.patientNumber || "-",
-            t.patient?.name || "-",
-            t.status,
-            format(new Date(t.startDate), "dd/MM/yyyy"),
-            t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-",
-            t.patient?.user?.name || "-"
-        ]);
+const downloadCSV = () => {
+const headers = ["Nº", "Paciente", "Status", "Data Início", "Próxima Consulta", "Dentista"];
+const rows = data.map(t => [
+t.patient?.patientNumber || "-",
+t.patient?.name || "-",
+t.status,
+format(new Date(t.startDate), "dd/MM/yyyy"),
+t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-",
+t.doctorName || "-"
+]);
 
         const csvContent = [
             headers.join(","),
@@ -188,34 +189,47 @@ const TreatmentsReport = () => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-10">Carregando tratamentos...</TableCell>
-                                    </TableRow>
-                                ) : data.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum dado encontrado</TableCell>
-                                    </TableRow>
+{loading ? (
+<TableRow>
+<TableCell colSpan={7} className="text-center py-10">Carregando tratamentos...</TableCell>
+</TableRow>
+) : data.length === 0 ? (
+<TableRow>
+<TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum dado encontrado</TableCell>
+</TableRow>
                                 ) : (
-                                    data.map((t) => (
-                                        <TableRow key={t.id}>
-                                            <TableCell className="font-medium text-muted-foreground text-xs">{t.patient?.patientNumber || "-"}</TableCell>
-                                            <TableCell>{t.patient?.name || "-"}</TableCell>
-                                            <TableCell>{format(new Date(t.startDate), "dd/MM/yyyy")}</TableCell>
-                                            <TableCell>
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : t.status === 'EM_ANDAMENTO'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>{t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-"}</TableCell>
-                                            <TableCell>{t.patient?.user?.name || "-"}</TableCell>
-                                        </TableRow>
-                                    ))
+data.map((t) => (
+<TableRow
+key={t.id}
+className="cursor-pointer hover:bg-muted/50"
+onClick={() =>
+navigate(`/tratamento`, {
+state: {
+planningId: t.planning?.id,
+patientName: t.patient?.name,
+patientId: t.patient?.id,
+treatmentId: t.id,
+}
+})
+}
+>
+<TableCell className="font-medium text-muted-foreground text-xs">{t.patient?.patientNumber || "-"}</TableCell>
+<TableCell>{t.patient?.name || "-"}</TableCell>
+<TableCell>{format(new Date(t.startDate), "dd/MM/yyyy")}</TableCell>
+<TableCell>
+<span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
+? 'bg-green-100 text-green-800'
+: t.status === 'EM_ANDAMENTO'
+? 'bg-blue-100 text-blue-800'
+: 'bg-yellow-100 text-yellow-800'
+}`}>
+{t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}
+</span>
+</TableCell>
+<TableCell>{t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-"}</TableCell>
+<TableCell>{t.doctorName || "-"}</TableCell>
+</TableRow>
+))
                                 )}
                             </TableBody>
                         </Table>

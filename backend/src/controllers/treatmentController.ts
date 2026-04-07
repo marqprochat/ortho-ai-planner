@@ -108,122 +108,124 @@ export const getTreatmentById = async (req: AuthRequest, res: Response) => {
 
 // Create treatment
 export const createTreatment = async (req: AuthRequest, res: Response) => {
-    try {
-        const { planningId, patientId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
-        const { tenantId, clinicId } = req;
+try {
+const { planningId, patientId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName } = req.body;
+const { tenantId, clinicId } = req;
 
-        const canManageAll = hasPermission(req.user, 'manage', 'planning');
+const canManageAll = hasPermission(req.user, 'manage', 'planning');
 
-        let validPatientId = patientId;
+let validPatientId = patientId;
 
-        // Verify ownership/existence based on planningId or patientId
-        if (planningId) {
-            const planning = await prisma.planning.findFirst({
-                where: {
-                    id: planningId,
-                    patient: {
-                        tenantId,
-                        clinicId,
-                        ...(canManageAll ? {} : { userId: req.userId })
-                    }
-                }
-            });
+// Verify ownership/existence based on planningId or patientId
+if (planningId) {
+const planning = await prisma.planning.findFirst({
+where: {
+id: planningId,
+patient: {
+tenantId,
+clinicId,
+...(canManageAll ? {} : { userId: req.userId })
+}
+}
+});
 
-            if (!planning) {
-                return res.status(404).json({ error: 'Planejamento não encontrado' });
-            }
+if (!planning) {
+return res.status(404).json({ error: 'Planejamento não encontrado' });
+}
 
-            validPatientId = planning.patientId;
+validPatientId = planning.patientId;
 
-            // Check if treatment already exists for this planning
-            const existing = await prisma.treatment.findFirst({
-                where: { planningId }
-            });
+// Check if treatment already exists for this planning
+const existing = await prisma.treatment.findFirst({
+where: { planningId }
+});
 
-            if (existing) {
-                return res.status(409).json({ error: 'Tratamento já existe para este planejamento' });
-            }
-        } else if (patientId) {
-            const patient = await prisma.patient.findFirst({
-                where: {
-                    id: patientId,
-                    tenantId,
-                    clinicId,
-                    ...(canManageAll ? {} : { userId: req.userId })
-                }
-            });
+if (existing) {
+return res.status(409).json({ error: 'Tratamento já existe para este planejamento' });
+}
+} else if (patientId) {
+const patient = await prisma.patient.findFirst({
+where: {
+id: patientId,
+tenantId,
+clinicId,
+...(canManageAll ? {} : { userId: req.userId })
+}
+});
 
-            if (!patient) {
-                return res.status(404).json({ error: 'Paciente não encontrado' });
-            }
-        } else {
-            return res.status(400).json({ error: 'É necessário fornecer patientId ou planningId' });
-        }
+if (!patient) {
+return res.status(404).json({ error: 'Paciente não encontrado' });
+}
+} else {
+return res.status(400).json({ error: 'É necessário fornecer patientId ou planningId' });
+}
 
-        const treatment = await prisma.treatment.create({
-            data: {
-                planningId: planningId || null,
-                patientId: validPatientId,
-                startDate: startDate ? new Date(startDate) : new Date(),
-                deadline: deadline ? new Date(deadline) : null,
-                endDate: endDate ? new Date(endDate) : null,
-                lastAppointment: lastAppointment ? new Date(lastAppointment) : null,
-                nextAppointment: nextAppointment ? new Date(nextAppointment) : null,
-                notes: notes || null,
-                status: status || 'EM_ANDAMENTO'
-            }
-        });
+const treatment = await prisma.treatment.create({
+data: {
+planningId: planningId || null,
+patientId: validPatientId,
+startDate: startDate ? new Date(startDate) : new Date(),
+deadline: deadline ? new Date(deadline) : null,
+endDate: endDate ? new Date(endDate) : null,
+lastAppointment: lastAppointment ? new Date(lastAppointment) : null,
+nextAppointment: nextAppointment ? new Date(nextAppointment) : null,
+notes: notes || null,
+status: status || 'EM_ANDAMENTO',
+doctorName: doctorName || null
+}
+});
 
-        res.status(201).json(treatment);
-    } catch (error) {
-        console.error('Error creating treatment:', error);
-        res.status(500).json({ error: 'Erro ao criar tratamento' });
-    }
+res.status(201).json(treatment);
+} catch (error) {
+console.error('Error creating treatment:', error);
+res.status(500).json({ error: 'Erro ao criar tratamento' });
+}
 };
 
 // Update treatment
 export const updateTreatment = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = req.params;
-        const { startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status } = req.body;
-        const { tenantId, clinicId } = req;
+try {
+const { id } = req.params;
+const { startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName } = req.body;
+const { tenantId, clinicId } = req;
 
-        const canManageAll = hasPermission(req.user, 'manage', 'planning');
+const canManageAll = hasPermission(req.user, 'manage', 'planning');
 
-        // Verify ownership via patient -> tenant/clinic
-        const treatment = await prisma.treatment.findFirst({
-            where: {
-                id,
-                patient: {
-                    tenantId,
-                    clinicId,
-                    ...(canManageAll ? {} : { userId: req.userId })
-                }
-            }
-        });
+// Verify ownership via patient -> tenant/clinic
+const treatment = await prisma.treatment.findFirst({
+where: {
+id,
+patient: {
+tenantId,
+clinicId,
+...(canManageAll ? {} : { userId: req.userId })
+}
+}
+});
 
-        if (!treatment) {
-            return res.status(404).json({ error: 'Tratamento não encontrado' });
-        }
+if (!treatment) {
+return res.status(404).json({ error: 'Tratamento não encontrado' });
+}
 
-        const updated = await prisma.treatment.update({
-            where: { id },
-            data: {
-                ...(startDate !== undefined && { startDate: new Date(startDate) }),
-                ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
-                ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
-                ...(lastAppointment !== undefined && { lastAppointment: lastAppointment ? new Date(lastAppointment) : null }),
-                ...(nextAppointment !== undefined && { nextAppointment: nextAppointment ? new Date(nextAppointment) : null }),
-                ...(notes !== undefined && { notes }),
-                ...(status !== undefined && { status })
-            }
-        });
+const updated = await prisma.treatment.update({
+where: { id },
+data: {
+...(startDate !== undefined && { startDate: new Date(startDate) }),
+...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+...(lastAppointment !== undefined && { lastAppointment: lastAppointment ? new Date(lastAppointment) : null }),
+...(nextAppointment !== undefined && { nextAppointment: nextAppointment ? new Date(nextAppointment) : null }),
+...(notes !== undefined && { notes }),
+...(status !== undefined && { status }),
+...(doctorName !== undefined && { doctorName })
+}
+});
 
-        res.json(updated);
-    } catch (error) {
-        console.error('Error updating treatment:', error);
-        res.status(500).json({ error: 'Erro ao atualizar tratamento' });
-    }
+res.json(updated);
+} catch (error) {
+console.error('Error updating treatment:', error);
+res.status(500).json({ error: 'Erro ao atualizar tratamento' });
+}
 };
 
 // Delete treatment

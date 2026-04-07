@@ -9,13 +9,15 @@ datasource db {
 }
 
 model Tenant {
-  id        String    @id @default(uuid())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  clinics   Clinic[]
-  patients  Patient[]
-  users     User[]
+  id                String                         @id @default(uuid())
+  name              String
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  clinics           Clinic[]
+  patients          Patient[]
+  users             User[]
+  notifications     Notification[]
+  automationConfigs NotificationAutomationConfig[]
 }
 
 model Clinic {
@@ -59,24 +61,25 @@ model UserClinic {
 }
 
 model User {
-  id           String          @id @default(uuid())
-  email        String          @unique
-  password     String
-  name         String
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  password           String
+  name               String
   // [NEW] Nickname for display
-  nickname     String?
+  nickname           String?
   // [NEW] CRO number
-  cro          String?
-  avatarUrl    String?
-  isSuperAdmin Boolean         @default(false)
-  tenantId     String
-  canTransferPatient Boolean @default(false)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  patients     Patient[]
-  tenant       Tenant          @relation(fields: [tenantId], references: [id])
-  appAccess    UserAppAccess[]
-  userClinics  UserClinic[]
+  cro                String?
+  avatarUrl          String?
+  isSuperAdmin       Boolean            @default(false)
+  tenantId           String
+  canTransferPatient Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  patients           Patient[]
+  tenant             Tenant             @relation(fields: [tenantId], references: [id])
+  appAccess          UserAppAccess[]
+  userClinics        UserClinic[]
+  notificationReads  NotificationRead[]
 }
 
 model Application {
@@ -129,26 +132,26 @@ model UserAppAccess {
 }
 
 model Patient {
-  id            String     @id @default(uuid())
-  patientNumber String?    // Patient registration number (número do paciente)
-  paymentType   String?    // Payment type: 'Convênio' or 'Particular'
-  insuranceCompany String?  // Insurance company name
-  name          String
-  birthDate  DateTime?
-  email      String?
-  phone      String?
-  externalId String?
-  tenantId   String
-  userId     String
-  clinicId   String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  contracts  Contract[]
-  clinic     Clinic     @relation(fields: [clinicId], references: [id])
-  tenant     Tenant     @relation(fields: [tenantId], references: [id])
-  user       User       @relation(fields: [userId], references: [id])
-  plannings  Planning[]
-  treatments Treatment[]
+  id               String      @id @default(uuid())
+  patientNumber    String? // Patient registration number (número do paciente)
+  paymentType      String? // Payment type: 'Convênio' or 'Particular'
+  insuranceCompany String? // Insurance company name
+  name             String
+  birthDate        DateTime?
+  email            String?
+  phone            String?
+  externalId       String?
+  tenantId         String
+  userId           String
+  clinicId         String
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  contracts        Contract[]
+  clinic           Clinic      @relation(fields: [clinicId], references: [id])
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  user             User        @relation(fields: [userId], references: [id])
+  plannings        Planning[]
+  treatments       Treatment[]
 }
 
 model Planning {
@@ -167,34 +170,35 @@ model Planning {
 }
 
 model Treatment {
-  id              String    @id @default(uuid())
-  planningId      String?   @unique
-  patientId       String?
-  status          String    @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDO | CANCELADO
-  startDate       DateTime  @default(now()) // Data de início do tratamento
-  deadline        DateTime? // Prazo final (convênio ou estipulado)
-  endDate         DateTime? // Data de finalização real
-  lastAppointment DateTime? // Data da última consulta/agendamento
-  nextAppointment DateTime? // Data da próxima consulta
-  notes           String?   // Observações gerais
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  planning        Planning? @relation(fields: [planningId], references: [id], onDelete: Cascade)
-  patient         Patient?  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+id String @id @default(uuid())
+planningId String? @unique
+patientId String?
+status String @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDO | CANCELADO
+startDate DateTime @default(now()) // Data de início do tratamento
+deadline DateTime? // Prazo final (convênio ou estipulado)
+endDate DateTime? // Data de finalização real
+lastAppointment DateTime? // Data da última consulta/agendamento
+nextAppointment DateTime? // Data da próxima consulta
+notes String? // Observações gerais
+doctorName String? // Nome do dentista responsável
+createdAt DateTime @default(now())
+updatedAt DateTime @updatedAt
+planning Planning? @relation(fields: [planningId], references: [id], onDelete: Cascade)
+patient Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 model Contract {
-  id        String    @id @default(uuid())
-  patientId String
-  content   String
-  logoUrl   String?
-  isSigned  Boolean   @default(false)
-  signedAt  DateTime?
+  id         String    @id @default(uuid())
+  patientId  String
+  content    String
+  logoUrl    String?
+  isSigned   Boolean   @default(false)
+  signedAt   DateTime?
   planningId String?
-  planning  Planning? @relation(fields: [planningId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  patient   Patient   @relation(fields: [patientId], references: [id])
+  planning   Planning? @relation(fields: [planningId], references: [id])
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  patient    Patient   @relation(fields: [patientId], references: [id])
 }
 
 model AiApiKey {
@@ -204,4 +208,42 @@ model AiApiKey {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  title     String
+  message   String
+  type      String // e.g., "GLOBAL", "AUTOMATION"
+  tenantId  String
+  clinicIds String[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  reads     NotificationRead[]
+  tenant    Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String
+  userId         String
+  readAt         DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+}
+
+model NotificationAutomationConfig {
+  id         String   @id @default(uuid())
+  type       String // "PAST_DUE_APPOINTMENT", "UPCOMING_APPOINTMENT", "TREATMENT_END_APPROACHING"
+  isActive   Boolean  @default(true)
+  daysConfig Int      @default(0)
+  tenantId   String
+  clinicIds  String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
 }

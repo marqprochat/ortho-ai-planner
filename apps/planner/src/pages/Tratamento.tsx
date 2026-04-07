@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Save, Activity, Calendar, Clock, FileText, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Activity, Calendar, Clock, FileText, AlertCircle, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,13 +38,15 @@ const Tratamento = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [existingTreatment, setExistingTreatment] = useState<Treatment | null>(null);
 
-    // Form fields
-    const [startDate, setStartDate] = useState("");
-    const [deadline, setDeadline] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [lastAppointment, setLastAppointment] = useState("");
-    const [status, setStatus] = useState("EM_ANDAMENTO");
-    const [notes, setNotes] = useState("");
+// Form fields
+const [startDate, setStartDate] = useState("");
+const [deadline, setDeadline] = useState("");
+const [endDate, setEndDate] = useState("");
+const [lastAppointment, setLastAppointment] = useState("");
+const [nextAppointment, setNextAppointment] = useState("");
+const [status, setStatus] = useState("EM_ANDAMENTO");
+const [notes, setNotes] = useState("");
+const [doctorName, setDoctorName] = useState("");
 
     useEffect(() => {
         if (!planningId && !patientId) {
@@ -60,55 +62,57 @@ const Tratamento = () => {
         return new Date(dateString).toISOString().split("T")[0];
     };
 
-    const loadTreatment = async () => {
-        try {
-            setIsLoading(true);
-            if (planningId || treatmentId) {
-                // To support both (for now if we only fetch via planningId)
-                // If it's a stand-alone treatment, we should ideally fetch it by ID but since we don't have that endpoint yet, 
-                // we assume stand-alone treatments are passed completely via state or fetched differently.
-                // For now, if planningId exists, fetch it.
-                if (treatmentId) {
-                    const treatment = await patientService.getTreatmentById(treatmentId);
-                    setExistingTreatment(treatment);
-                    setStartDate(formatDateForInput(treatment.startDate));
-                    setDeadline(formatDateForInput(treatment.deadline));
-                    setEndDate(formatDateForInput(treatment.endDate));
-                    setLastAppointment(formatDateForInput(treatment.lastAppointment));
-                    setStatus(treatment.status);
-                    setNotes(treatment.notes || "");
-                } else if (planningId) {
-                    const treatment = await patientService.getTreatment(planningId);
-                    setExistingTreatment(treatment);
-                    setStartDate(formatDateForInput(treatment.startDate));
-                    setDeadline(formatDateForInput(treatment.deadline));
-                    setEndDate(formatDateForInput(treatment.endDate));
-                    setLastAppointment(formatDateForInput(treatment.lastAppointment));
-                    setStatus(treatment.status);
-                    setNotes(treatment.notes || "");
-                }
-            } else {
-                setStartDate(new Date().toISOString().split("T")[0]);
-            }
-        } catch {
-            setStartDate(new Date().toISOString().split("T")[0]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+const loadTreatment = async () => {
+try {
+setIsLoading(true);
+if (planningId || treatmentId) {
+if (treatmentId) {
+const treatment = await patientService.getTreatmentById(treatmentId);
+setExistingTreatment(treatment);
+setStartDate(formatDateForInput(treatment.startDate));
+setDeadline(formatDateForInput(treatment.deadline));
+setEndDate(formatDateForInput(treatment.endDate));
+setLastAppointment(formatDateForInput(treatment.lastAppointment));
+setNextAppointment(formatDateForInput(treatment.nextAppointment));
+setStatus(treatment.status);
+setNotes(treatment.notes || "");
+setDoctorName(treatment.doctorName || "");
+} else if (planningId) {
+const treatment = await patientService.getTreatment(planningId);
+setExistingTreatment(treatment);
+setStartDate(formatDateForInput(treatment.startDate));
+setDeadline(formatDateForInput(treatment.deadline));
+setEndDate(formatDateForInput(treatment.endDate));
+setLastAppointment(formatDateForInput(treatment.lastAppointment));
+setNextAppointment(formatDateForInput(treatment.nextAppointment));
+setStatus(treatment.status);
+setNotes(treatment.notes || "");
+setDoctorName(treatment.doctorName || "");
+}
+} else {
+setStartDate(new Date().toISOString().split("T")[0]);
+}
+} catch {
+setStartDate(new Date().toISOString().split("T")[0]);
+} finally {
+setIsLoading(false);
+}
+};
 
-    const handleSave = async () => {
+const handleSave = async () => {
 
-        setIsSaving(true);
-        try {
-            const data = {
-                startDate,
-                deadline: deadline || undefined,
-                endDate: endDate || undefined,
-                lastAppointment: lastAppointment || undefined,
-                status,
-                notes: notes || undefined,
-            };
+setIsSaving(true);
+try {
+const data = {
+startDate,
+deadline: deadline || undefined,
+endDate: endDate || undefined,
+lastAppointment: lastAppointment || undefined,
+nextAppointment: nextAppointment || undefined,
+status,
+notes: notes || undefined,
+doctorName: doctorName || undefined,
+};
 
             if (existingTreatment) {
                 const updated = await patientService.updateTreatment(existingTreatment.id, data);
@@ -233,31 +237,58 @@ const Tratamento = () => {
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lastAppointment" className="flex items-center gap-1">
-                                            <Clock className="h-4 w-4 text-blue-500" />
-                                            Última Consulta / Agendamento
-                                        </Label>
-                                        <Input
-                                            id="lastAppointment"
-                                            type="date"
-                                            value={lastAppointment}
-                                            onChange={(e) => setLastAppointment(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
+<div className="space-y-2">
+<Label htmlFor="lastAppointment" className="flex items-center gap-1">
+<Clock className="h-4 w-4 text-blue-500" />
+Última Consulta / Agendamento
+</Label>
+<Input
+id="lastAppointment"
+type="date"
+value={lastAppointment}
+onChange={(e) => setLastAppointment(e.target.value)}
+/>
+</div>
 
-                                {/* Notes */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="notes">Observações</Label>
-                                    <Textarea
-                                        id="notes"
-                                        placeholder="Observações sobre o tratamento..."
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        rows={4}
-                                    />
-                                </div>
+<div className="space-y-2">
+<Label htmlFor="nextAppointment" className="flex items-center gap-1">
+<Calendar className="h-4 w-4 text-purple-500" />
+Próxima Consulta
+</Label>
+<Input
+id="nextAppointment"
+type="date"
+value={nextAppointment}
+onChange={(e) => setNextAppointment(e.target.value)}
+/>
+</div>
+</div>
+
+{/* Dentista */}
+<div className="space-y-2">
+<Label htmlFor="doctorName" className="flex items-center gap-1">
+<User className="h-4 w-4 text-teal-500" />
+Dentista Responsável
+</Label>
+<Input
+id="doctorName"
+placeholder="Nome do dentista"
+value={doctorName}
+onChange={(e) => setDoctorName(e.target.value)}
+/>
+</div>
+
+{/* Notes */}
+<div className="space-y-2">
+<Label htmlFor="notes">Observações</Label>
+<Textarea
+id="notes"
+placeholder="Observações sobre o tratamento..."
+value={notes}
+onChange={(e) => setNotes(e.target.value)}
+rows={4}
+/>
+</div>
 
                                 {/* Actions */}
                                 <div className="flex justify-end gap-3 pt-4">

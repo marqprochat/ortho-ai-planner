@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useHasPermission } from "../hooks/useHasPermission";
 
 import { ClinicSelector } from "./ClinicSelector";
+import { NotificationBell } from "./NotificationBell";
 
 const Sidebar = () => {
     const location = useLocation();
@@ -61,14 +62,17 @@ const Sidebar = () => {
             onMouseLeave={() => setIsExpanded(false)}
         >
 
-            {/* Logo */}
-            <div className={`mb-4 flex items-center overflow-hidden shrink-0 ${isExpanded ? "gap-3" : "justify-center"}`}>
-                <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <Stethoscope className="h-5 w-5 text-primary-foreground" />
+            {/* Logo and Notif */}
+            <div className={`mb-4 flex items-center shrink-0 ${isExpanded ? "gap-3 justify-between" : "flex-col gap-3 justify-center"}`}>
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <Stethoscope className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    {isExpanded && (
+                        <h1 className="text-xl font-bold text-sidebar-foreground whitespace-nowrap">OrtoPlan</h1>
+                    )}
                 </div>
-                {isExpanded && (
-                    <h1 className="text-xl font-bold text-sidebar-foreground whitespace-nowrap">OrtoPlan</h1>
-                )}
+                <NotificationBell isExpanded={isExpanded} />
             </div>
 
             {/* Clinic Selector */}

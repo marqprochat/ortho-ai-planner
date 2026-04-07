@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { authService } from "@/services/authService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key } from "lucide-react";
+import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key, Bell } from "lucide-react";
 import { ClinicSelector } from "@/components/ClinicSelector";
 
 // Default apps if user has no specific access configured
@@ -151,6 +151,18 @@ export default function DashboardPage() {
                                     </div>
                                     <CardTitle className="text-sidebar-foreground">Chaves IA</CardTitle>
                                     <CardDescription className="text-sidebar-foreground/60">Gerenciar chaves de API</CardDescription>
+                                </CardHeader>
+                            </Card>
+                            <Card
+                                className="bg-sidebar-accent/30 border-sidebar-border hover:bg-sidebar-accent/50 hover:border-primary/50 transition-all cursor-pointer group"
+                                onClick={() => navigate('/admin/notifications')}
+                            >
+                                <CardHeader>
+                                    <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-500 mb-4">
+                                        <Bell className="w-6 h-6" />
+                                    </div>
+                                    <CardTitle className="text-sidebar-foreground">Notificações</CardTitle>
+                                    <CardDescription className="text-sidebar-foreground/60">Automações e Avisos</CardDescription>
                                 </CardHeader>
                             </Card>
                         </div>

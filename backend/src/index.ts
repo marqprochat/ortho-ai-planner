@@ -17,6 +17,8 @@ import { getUsers, createUser as createAdminUser, updateUser, deleteUser } from 
 import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyController';
 import { generateCompletion } from './controllers/aiController';
 import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
+import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
+import { initCronJobs } from './jobs/notificationCron';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -116,6 +118,13 @@ app.post('/api/ai-keys', authMiddleware, requireSuperAdmin, createKey);
 app.put('/api/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
 app.delete('/api/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
 
+// Notification Routes
+app.get('/api/notifications', authMiddleware, getMyNotifications);
+app.post('/api/notifications/:id/read', authMiddleware, markAsRead);
+app.post('/api/admin/notifications/broadcast', authMiddleware, requireSuperAdmin, broadcastGlobal);
+app.get('/api/admin/notifications/config', authMiddleware, requireSuperAdmin, getAutomationConfigs);
+app.put('/api/admin/notifications/config/:type', authMiddleware, requireSuperAdmin, updateAutomationConfig);
+
 // Legacy routes (for older frontend builds)
 app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
 app.post('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, createKey);
@@ -128,6 +137,9 @@ app.listen(PORT, async () => {
     try {
         await prisma.$connect();
         console.log('✅ Database connected successfully');
+        
+        // Initialize jobs
+        initCronJobs();
     } catch (error) {
         console.error('❌ Database connection failed', error);
     }

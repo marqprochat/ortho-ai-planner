@@ -12,6 +12,27 @@ import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { jsPDF } from "jspdf";
 
+const formatPhone = (phone: string) => {
+  if (!phone) return "-";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.length === 10) {
+    return cleaned.replace(/(\d{2})(\d{2})(\d{4})(\d{4})/, "+55 ($2) $3-$4");
+  }
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, "+55 ($2) $3-$4");
+  }
+  if (cleaned.length === 8 || cleaned.length === 9) {
+    return cleaned.replace(/(\d{4,5})(\d{4})/, "$1-$2");
+  }
+  if (cleaned.length === 10) {
+    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  }
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  }
+  return phone;
+};
+
 const PatientsReport = () => {
     const [searchParams] = useSearchParams();
     const [data, setData] = useState<any[]>([]);
@@ -39,16 +60,15 @@ const PatientsReport = () => {
         fetchData();
     }, [search, dateRange]);
 
-    const downloadCSV = () => {
-        const headers = ["ID", "Nome", "Email", "Telefone", "Data Cadastro", "Dentista Responsável"];
-        const rows = data.map(p => [
-            p.patientNumber || p.id,
-            p.name,
-            p.email || "-",
-            p.phone || "-",
-            format(new Date(p.createdAt), "dd/MM/yyyy"),
-            p.user?.name || "-"
-        ]);
+const downloadCSV = () => {
+const headers = ["ID", "Nome", "Telefone", "Data Cadastro", "Dentista Responsável"];
+const rows = data.map(p => [
+p.patientNumber || p.id,
+p.name,
+formatPhone(p.phone),
+format(new Date(p.createdAt), "dd/MM/yyyy"),
+p.user?.name || "-"
+]);
 
         const csvContent = [
             headers.join(","),
@@ -87,10 +107,10 @@ const PatientsReport = () => {
                 doc.addPage();
                 y = 20;
             }
-            doc.text(p.name.substring(0, 25), 14, y);
-            doc.text((p.email || "-").substring(0, 25), 70, y);
-            doc.text(p.phone || "-", 120, y);
-            doc.text(format(new Date(p.createdAt), "dd/MM"), 160, y);
+doc.text(p.name.substring(0, 25), 14, y);
+doc.text((p.email || "-").substring(0, 25), 70, y);
+doc.text(formatPhone(p.phone), 120, y);
+doc.text(format(new Date(p.createdAt), "dd/MM"), 160, y);
             y += 8;
         });
 
@@ -154,17 +174,16 @@ const PatientsReport = () => {
                 <Card>
                     <CardContent className="p-0">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Nº</TableHead>
-                                    <TableHead>Nome</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Telefone</TableHead>
-                                    <TableHead>Convênio</TableHead>
-                                    <TableHead>Cadastro</TableHead>
-                                    <TableHead>Responsável</TableHead>
-                                </TableRow>
-                            </TableHeader>
+<TableHeader>
+<TableRow>
+<TableHead>Nº</TableHead>
+<TableHead>Nome</TableHead>
+<TableHead>Telefone</TableHead>
+<TableHead>Convênio</TableHead>
+<TableHead>Cadastro</TableHead>
+<TableHead>Responsável</TableHead>
+</TableRow>
+</TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
@@ -175,17 +194,16 @@ const PatientsReport = () => {
                                         <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum dado encontrado</TableCell>
                                     </TableRow>
                                 ) : (
-                                    data.map((p) => (
-                                        <TableRow key={p.id}>
-                                            <TableCell className="font-medium">{p.patientNumber || "-"}</TableCell>
-                                            <TableCell>{p.name}</TableCell>
-                                            <TableCell>{p.email || "-"}</TableCell>
-                                            <TableCell>{p.phone || "-"}</TableCell>
-                                            <TableCell>{p.paymentType || "-"}</TableCell>
-                                            <TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy")}</TableCell>
-                                            <TableCell>{p.user?.name || "-"}</TableCell>
-                                        </TableRow>
-                                    ))
+data.map((p) => (
+<TableRow key={p.id}>
+<TableCell className="font-medium">{p.patientNumber || "-"}</TableCell>
+<TableCell>{p.name}</TableCell>
+<TableCell>{formatPhone(p.phone)}</TableCell>
+<TableCell>{p.paymentType || "-"}</TableCell>
+<TableCell>{format(new Date(p.createdAt), "dd/MM/yyyy")}</TableCell>
+<TableCell>{p.user?.name || "-"}</TableCell>
+</TableRow>
+))
                                 )}
                             </TableBody>
                         </Table>

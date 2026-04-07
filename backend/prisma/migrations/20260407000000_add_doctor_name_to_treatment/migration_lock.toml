@@ -1,0 +1,7 @@
+{
+  "migration": "20260407000000_add_doctor_name_to_treatment",
+  "name": "20260407000000_add_doctor_name_to_treatment",
+  "startedAt": "2026-04-07T00:00:00.000Z",
+  "finishedAt": "2026-04-07T00:00:00.000Z",
+  "applied_steps_count": 0
+}

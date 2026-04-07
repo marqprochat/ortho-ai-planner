@@ -53,18 +53,19 @@ export interface Contract {
 }
 
 export interface Treatment {
-    id: string;
-    planningId?: string;
-    patientId: string;
-    status: string; // EM_ANDAMENTO | CONCLUIDO | CANCELADO
-    startDate: string;
-    deadline?: string;
-    endDate?: string;
-    lastAppointment?: string;
-    nextAppointment?: string;
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
+id: string;
+planningId?: string;
+patientId: string;
+status: string; // EM_ANDAMENTO | CONCLUIDO | CANCELADO
+startDate: string;
+deadline?: string;
+endDate?: string;
+lastAppointment?: string;
+nextAppointment?: string;
+notes?: string;
+doctorName?: string;
+createdAt: string;
+updatedAt: string;
 }
 const getAuthHeaders = () => {
     const token = getCookie('token');
@@ -289,33 +290,33 @@ export const patientService = {
         return response.json();
     },
 
-    async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
-        const response = await fetch(`${API_URL}/treatments`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(data),
-        });
+async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+const response = await fetch(`${API_URL}/treatments`, {
+method: 'POST',
+headers: getAuthHeaders(),
+body: JSON.stringify(data),
+});
 
-        if (!response.ok) {
-            throw new Error('Erro ao criar tratamento');
-        }
+if (!response.ok) {
+throw new Error('Erro ao criar tratamento');
+}
 
-        return response.json();
-    },
+return response.json();
+},
 
-    async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string }): Promise<Treatment> {
-        const response = await fetch(`${API_URL}/treatments/${id}`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(data),
-        });
+async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+const response = await fetch(`${API_URL}/treatments/${id}`, {
+method: 'PUT',
+headers: getAuthHeaders(),
+body: JSON.stringify(data),
+});
 
-        if (!response.ok) {
-            throw new Error('Erro ao atualizar tratamento');
-        }
+if (!response.ok) {
+throw new Error('Erro ao atualizar tratamento');
+}
 
-        return response.json();
-    },
+return response.json();
+},
 
     async deleteTreatment(id: string): Promise<void> {
         const response = await fetch(`${API_URL}/treatments/${id}`, {
