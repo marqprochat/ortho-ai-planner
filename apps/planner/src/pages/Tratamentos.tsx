@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { patientService, Treatment } from "../services/patientService";
+import { formatDateOnlyAsPTBR } from "@/lib/dateUtils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -71,7 +72,7 @@ const Tratamentos = () => {
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return "—";
-        return new Date(dateString).toLocaleDateString("pt-BR");
+        return formatDateOnlyAsPTBR(dateString);
     };
 
     return (

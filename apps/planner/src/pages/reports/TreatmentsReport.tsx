@@ -9,9 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { reportService } from "@/services/reportService";
 import Sidebar from "@/components/Sidebar";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import { formatDateOnlyAsPTBR, getUtcDateOnlyTimestamp } from "@/lib/dateUtils";
 
 const TreatmentsReport = () => {
 const [searchParams] = useSearchParams();
@@ -40,7 +40,12 @@ const [dateRange, setDateRange] = useState({ start: "", end: "" });
                 filteredResults = results.filter(t => new Date(t.createdAt) > thirtyDaysAgo);
             }
             
-            setData(filteredResults);
+            const sorted = [...filteredResults].sort((a, b) => {
+                const dateA = a.nextAppointment ? getUtcDateOnlyTimestamp(a.nextAppointment) ?? Infinity : Infinity;
+                const dateB = b.nextAppointment ? getUtcDateOnlyTimestamp(b.nextAppointment) ?? Infinity : Infinity;
+                return dateA - dateB;
+            });
+            setData(sorted);
         } catch (error) {
             console.error("Error fetching report:", error);
         } finally {
@@ -53,15 +58,16 @@ const [dateRange, setDateRange] = useState({ start: "", end: "" });
     }, [search, status, dateRange]);
 
 const downloadCSV = () => {
-const headers = ["Nº", "Paciente", "Status", "Data Início", "Próxima Consulta", "Dentista"];
-const rows = data.map(t => [
-t.patient?.patientNumber || "-",
-t.patient?.name || "-",
-t.status,
-format(new Date(t.startDate), "dd/MM/yyyy"),
-t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-",
-t.doctorName || "-"
-]);
+        const headers = ["Nº", "Paciente", "Status", "Data Início", "Última Consulta", "Próxima Consulta", "Dentista"];
+        const rows = data.map(t => [
+            t.patient?.patientNumber || "-",
+            t.patient?.name || "-",
+            t.status,
+            formatDateOnlyAsPTBR(t.startDate),
+            t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-",
+            t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-",
+            t.doctorName || "-"
+        ]);
 
         const csvContent = [
             headers.join(","),
@@ -89,9 +95,10 @@ t.doctorName || "-"
         let y = 40;
         doc.setFontSize(10);
         doc.text("Paciente", 14, y);
-        doc.text("Status", 70, y);
-        doc.text("Início", 110, y);
-        doc.text("Próx. Consulta", 150, y);
+        doc.text("Status", 60, y);
+        doc.text("Início", 95, y);
+        doc.text("Última", 125, y);
+        doc.text("Próx.", 155, y);
         doc.line(14, y + 2, 196, y + 2);
         y += 10;
 
@@ -101,13 +108,27 @@ t.doctorName || "-"
                 y = 20;
             }
             doc.text((t.patient?.name || "-").substring(0, 25), 14, y);
-            doc.text(t.status === 'EM_ANDAMENTO' ? 'Em andamento' : t.status === 'CONCLUIDO' ? 'Concluído' : 'Pausado', 70, y);
-            doc.text(format(new Date(t.startDate), "dd/MM/yyyy"), 110, y);
-            doc.text(t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-", 150, y);
+            doc.text(t.status === 'EM_ANDAMENTO' ? 'Em andamento' : t.status === 'CONCLUIDO' ? 'Concluído' : 'Pausado', 60, y);
+            doc.text(formatDateOnlyAsPTBR(t.startDate), 95, y);
+            doc.text(t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-", 125, y);
+            doc.text(t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-", 155, y);
             y += 8;
         });
 
         doc.save(`relatorio_tratamentos_${format(new Date(), "yyyyMMdd")}.pdf`);
+    };
+
+    const getNextAppointmentColor = (nextAppointment: string | null) => {
+        if (!nextAppointment) return "text-muted-foreground";
+        const now = new Date();
+        const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+        const appointmentTimestamp = getUtcDateOnlyTimestamp(nextAppointment);
+        if (appointmentTimestamp === null) return "text-muted-foreground";
+        const diffDays = Math.floor((appointmentTimestamp - nowUtc) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) return "text-red-600 font-semibold";
+        if (diffDays <= 7) return "text-orange-500 font-semibold";
+        return "text-green-600 font-semibold";
     };
 
     return (
@@ -184,6 +205,7 @@ t.doctorName || "-"
                                     <TableHead>Paciente</TableHead>
                                     <TableHead>Início</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Última Consulta</TableHead>
                                     <TableHead>Próx. Consulta</TableHead>
                                     <TableHead>Dentista</TableHead>
                                 </TableRow>
@@ -203,19 +225,19 @@ data.map((t) => (
 key={t.id}
 className="cursor-pointer hover:bg-muted/50"
 onClick={() =>
-navigate(`/tratamento`, {
-state: {
-planningId: t.planning?.id,
-patientName: t.patient?.name,
-patientId: t.patient?.id,
-treatmentId: t.id,
-}
-})
+    navigate(`/tratamento`, {
+        state: {
+            planningId: t.planning?.id,
+            patientName: t.patient?.name,
+            patientId: t.patient?.id,
+            treatmentId: t.id,
+        }
+    })
 }
 >
 <TableCell className="font-medium text-muted-foreground text-xs">{t.patient?.patientNumber || "-"}</TableCell>
 <TableCell>{t.patient?.name || "-"}</TableCell>
-<TableCell>{format(new Date(t.startDate), "dd/MM/yyyy")}</TableCell>
+<TableCell>{formatDateOnlyAsPTBR(t.startDate)}</TableCell>
 <TableCell>
 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
 ? 'bg-green-100 text-green-800'
@@ -226,7 +248,8 @@ treatmentId: t.id,
 {t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}
 </span>
 </TableCell>
-<TableCell>{t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy") : "-"}</TableCell>
+<TableCell className={getNextAppointmentColor(t.lastAppointment)}>{t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-"}</TableCell>
+<TableCell className={getNextAppointmentColor(t.nextAppointment)}>{t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-"}</TableCell>
 <TableCell>{t.doctorName || "-"}</TableCell>
 </TableRow>
 ))

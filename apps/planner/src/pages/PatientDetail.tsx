@@ -14,6 +14,7 @@ import { EditPatientDialog } from "@/components/EditPatientDialog";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { useHasPermission } from "../hooks/useHasPermission";
 import { ProcessStages, computePlanningStage } from "@/components/ProcessStages";
+import { formatDateOnlyAsPTBR, formatDateTimeAsPTBR, formatDateForInput } from "@/lib/dateUtils";
 
 const statusColors: Record<string, string> = {
     DRAFT: "bg-gray-500",
@@ -71,9 +72,14 @@ const PatientDetail = () => {
         }
     };
 
-    const formatDate = (dateString?: string) => {
+    const formatDateOnly = (dateString?: string) => {
         if (!dateString) return "-";
-        return new Date(dateString).toLocaleDateString('pt-BR');
+        return formatDateOnlyAsPTBR(dateString);
+    };
+
+    const formatDateTime = (dateString?: string) => {
+        if (!dateString) return "-";
+        return formatDateTimeAsPTBR(dateString);
     };
 
     const handleNewPlanning = () => {
@@ -81,7 +87,7 @@ const PatientDetail = () => {
         if (patient) {
             const formData = {
                 nomePaciente: patient.name,
-                dataNascimento: patient.birthDate ? patient.birthDate.split('T')[0] : "",
+                dataNascimento: formatDateForInput(patient.birthDate),
                 telefone: patient.phone || "",
                 patientId: patient.id,
             };
@@ -177,7 +183,7 @@ const PatientDetail = () => {
                                 {patient.name}
                             </h1>
                             <p className="text-muted-foreground">
-                                Cadastrado em {formatDate(patient.createdAt)}
+                                Cadastrado em {formatDateTime(patient.createdAt)}
                             </p>
                         </div>
                         <Button variant="outline" onClick={() => setIsEditOpen(true)}>
@@ -225,7 +231,7 @@ const PatientDetail = () => {
                                 <Calendar className="h-5 w-5 text-muted-foreground" />
                                 <div>
                                     <p className="text-sm font-medium">Data de Nascimento</p>
-                                    <p className="text-muted-foreground">{formatDate(patient.birthDate)}</p>
+                                    <p className="text-muted-foreground">{formatDateOnly(patient.birthDate)}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -272,15 +278,15 @@ const PatientDetail = () => {
                                                 </Badge>
                                             </div>
                                             <CardDescription>
-                                                Iniciado em {formatDate(treatment.startDate)}
+                                                Iniciado em {formatDateOnly(treatment.startDate)}
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
                                             <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mt-2">
-                                                {treatment.deadline && <span>Prazo: {formatDate(treatment.deadline)}</span>}
-                                                {treatment.lastAppointment && <span>Última: {formatDate(treatment.lastAppointment)}</span>}
-                                                {treatment.nextAppointment && <span>Próxima: {formatDate(treatment.nextAppointment)}</span>}
-                                                {treatment.endDate && <span>Fim: {formatDate(treatment.endDate)}</span>}
+                                                {treatment.deadline && <span>Prazo: {formatDateOnly(treatment.deadline)}</span>}
+                                                {treatment.lastAppointment && <span>Última: {formatDateOnly(treatment.lastAppointment)}</span>}
+                                                {treatment.nextAppointment && <span>Próxima: {formatDateOnly(treatment.nextAppointment)}</span>}
+                                                {treatment.endDate && <span>Fim: {formatDateOnly(treatment.endDate)}</span>}
                                             </div>
                                             {treatment.notes && (
                                                 <p className="mt-3 text-sm italic border-l-2 border-teal-200 pl-2">
@@ -348,7 +354,7 @@ const PatientDetail = () => {
                                                 </Badge>
                                             </div>
                                             <CardDescription>
-                                                Criado em {formatDate(planning.createdAt)}
+                                                Criado em {formatDateTime(planning.createdAt)}
                                             </CardDescription>
                                         </CardHeader>
                                         <div className="mb-4">
@@ -379,10 +385,10 @@ const PatientDetail = () => {
                                                         </Badge>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                                                        <span>Início: {formatDate(planning.treatment.startDate)}</span>
-                                                        {planning.treatment.deadline && <span>Prazo: {formatDate(planning.treatment.deadline)}</span>}
-                                                        {planning.treatment.lastAppointment && <span>Última consulta: {formatDate(planning.treatment.lastAppointment)}</span>}
-                                                        {planning.treatment.endDate && <span>Finalizado: {formatDate(planning.treatment.endDate)}</span>}
+                                                        <span>Início: {formatDateOnly(planning.treatment.startDate)}</span>
+                                                        {planning.treatment.deadline && <span>Prazo: {formatDateOnly(planning.treatment.deadline)}</span>}
+                                                        {planning.treatment.lastAppointment && <span>Última consulta: {formatDateOnly(planning.treatment.lastAppointment)}</span>}
+                                                        {planning.treatment.endDate && <span>Finalizado: {formatDateOnly(planning.treatment.endDate)}</span>}
                                                     </div>
                                                 </div>
                                             )}
@@ -523,10 +529,10 @@ const PatientDetail = () => {
                                                 )}
                                             </div>
                                             <CardDescription>
-                                                Gerado em {formatDate(contract.createdAt)}
+                                                Gerado em {formatDateTime(contract.createdAt)}
                                                 {contract.signedAt && (
                                                     <span className="block text-emerald-600">
-                                                        Assinado em {formatDate(contract.signedAt)}
+                                                        Assinado em {formatDateTime(contract.signedAt)}
                                                     </span>
                                                 )}
                                             </CardDescription>

@@ -183,7 +183,7 @@ export const getTreatmentsReport = async (req: AuthRequest, res: Response) => {
                 },
                 planning: { select: { title: true } }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { nextAppointment: 'asc' }
         });
 
         res.json(treatments);

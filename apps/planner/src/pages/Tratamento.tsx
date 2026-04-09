@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { patientService, Treatment } from "@/services/patientService";
+import { formatDateForInput as formatDateInputValue } from "@/lib/dateUtils";
 
 const statusLabels: Record<string, string> = {
     EM_ANDAMENTO: "Em Andamento",
@@ -57,11 +58,6 @@ const [doctorName, setDoctorName] = useState("");
         loadTreatment();
     }, [planningId, patientId, treatmentId]);
 
-    const formatDateForInput = (dateString?: string) => {
-        if (!dateString) return "";
-        return new Date(dateString).toISOString().split("T")[0];
-    };
-
 const loadTreatment = async () => {
 try {
 setIsLoading(true);
@@ -69,22 +65,22 @@ if (planningId || treatmentId) {
 if (treatmentId) {
 const treatment = await patientService.getTreatmentById(treatmentId);
 setExistingTreatment(treatment);
-setStartDate(formatDateForInput(treatment.startDate));
-setDeadline(formatDateForInput(treatment.deadline));
-setEndDate(formatDateForInput(treatment.endDate));
-setLastAppointment(formatDateForInput(treatment.lastAppointment));
-setNextAppointment(formatDateForInput(treatment.nextAppointment));
+setStartDate(formatDateInputValue(treatment.startDate));
+setDeadline(formatDateInputValue(treatment.deadline));
+setEndDate(formatDateInputValue(treatment.endDate));
+setLastAppointment(formatDateInputValue(treatment.lastAppointment));
+setNextAppointment(formatDateInputValue(treatment.nextAppointment));
 setStatus(treatment.status);
 setNotes(treatment.notes || "");
 setDoctorName(treatment.doctorName || "");
 } else if (planningId) {
 const treatment = await patientService.getTreatment(planningId);
 setExistingTreatment(treatment);
-setStartDate(formatDateForInput(treatment.startDate));
-setDeadline(formatDateForInput(treatment.deadline));
-setEndDate(formatDateForInput(treatment.endDate));
-setLastAppointment(formatDateForInput(treatment.lastAppointment));
-setNextAppointment(formatDateForInput(treatment.nextAppointment));
+setStartDate(formatDateInputValue(treatment.startDate));
+setDeadline(formatDateInputValue(treatment.deadline));
+setEndDate(formatDateInputValue(treatment.endDate));
+setLastAppointment(formatDateInputValue(treatment.lastAppointment));
+setNextAppointment(formatDateInputValue(treatment.nextAppointment));
 setStatus(treatment.status);
 setNotes(treatment.notes || "");
 setDoctorName(treatment.doctorName || "");

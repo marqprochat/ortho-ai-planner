@@ -132,9 +132,9 @@ const Sidebar = () => {
                                     navigate("/reports/patients");
                                 }
                             }}
-                            className={`${linkClass("/reports")} w-full justify-between`}
+                            className={`${linkClass("/reports")} w-full ${isExpanded ? 'justify-between' : 'justify-center'}`}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center ${isExpanded ? 'gap-3' : ''}`}>
                                 <BarChart3 className="h-5 w-5 flex-shrink-0" />
                                 {isExpanded && <span className="whitespace-nowrap">Relatórios</span>}
                             </div>

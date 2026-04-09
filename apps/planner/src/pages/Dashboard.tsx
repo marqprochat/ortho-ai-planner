@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { patientService, Patient } from "@/services/patientService";
 import { planningService, Planning } from "@/services/planningService";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateOnlyAsPTBR, getUtcDateOnlyTimestamp } from "@/lib/dateUtils";
 
 const Dashboard = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -51,6 +51,19 @@ const Dashboard = () => {
 
   const pendingPlannings = plannings.filter(p => p.status === 'DRAFT').length;
   const recentTreatments = treatments.slice(0, 5);
+
+  const getNextAppointmentColor = (nextAppointment: string | null) => {
+    if (!nextAppointment) return "text-muted-foreground";
+    const now = new Date();
+    const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const appointmentTimestamp = getUtcDateOnlyTimestamp(nextAppointment);
+    if (appointmentTimestamp === null) return "text-muted-foreground";
+    const diffDays = Math.floor((appointmentTimestamp - nowUtc) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return "text-red-600 font-semibold";
+    if (diffDays <= 7) return "text-orange-500 font-semibold";
+    return "text-green-600 font-semibold";
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,13 +195,14 @@ const Dashboard = () => {
                       <th className="p-4 font-semibold text-sm">Paciente</th>
                       <th className="p-4 font-semibold text-sm">Dentista</th>
                       <th className="p-4 font-semibold text-sm">Status</th>
-                      <th className="p-4 font-semibold text-sm whitespace-nowrap">prox. consulta</th>
+                      <th className="p-4 font-semibold text-sm whitespace-nowrap">Última consulta</th>
+                      <th className="p-4 font-semibold text-sm whitespace-nowrap">Próx. consulta</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
                           Carregando...
                         </td>
                       </tr>
@@ -209,13 +223,16 @@ const Dashboard = () => {
                             </span>
                           </td>
                           <td className="p-4 text-muted-foreground text-sm whitespace-nowrap">
-                            {t.nextAppointment ? format(new Date(t.nextAppointment), "dd/MM/yyyy", { locale: ptBR }) : '-'}
+                            {t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : '-'}
+                          </td>
+                          <td className={`p-4 text-sm whitespace-nowrap ${getNextAppointmentColor(t.nextAppointment)}`}>
+                            {t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : '-'}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
                           Nenhum caso recente para exibir
                         </td>
                       </tr>
