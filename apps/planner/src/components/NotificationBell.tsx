@@ -18,7 +18,7 @@ export const NotificationBell = ({ isExpanded }: { isExpanded: boolean }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const navigate = useNavigate();
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+    const API_URL = import.meta.env.VITE_API_URL || "";
 
     const fetchNotifications = async () => {
         try {

@@ -35,7 +35,6 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
         const clinicIds = userClinics.map(uc => uc.clinicId);
 
         // Fetch notifications for the tenant that are either global (empty clinicIds) or match user's clinics
-        // and have NOT been read by this user.
         const notifications = await prisma.notification.findMany({
             where: {
                 tenantId,
@@ -43,17 +42,23 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
                     { clinicIds: { isEmpty: true } },
                     { clinicIds: { hasSome: clinicIds } },
                     { clinicIds: { equals: [] } } // Postgres fallback
-                ],
-                NOT: {
-                    reads: {
-                        some: { userId }
-                    }
+                ]
+            },
+            include: {
+                reads: {
+                    where: { userId }
                 }
             },
             orderBy: { createdAt: 'desc' }
         });
 
-        res.json(notifications);
+        // Map to include isRead flag
+        const notificationsWithReadStatus = notifications.map(n => ({
+            ...n,
+            isRead: n.reads.length > 0
+        }));
+
+        res.json(notificationsWithReadStatus);
     } catch (error) {
         console.error('Error fetching notifications:', error);
         res.status(500).json({ error: 'Failed to fetch notifications' });

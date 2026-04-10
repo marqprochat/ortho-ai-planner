@@ -9,6 +9,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import RoleManagement from "./pages/admin/RoleManagement";
 import AiKeyManagement from "./pages/admin/AiKeyManagement";
 import NotificationConfig from "./pages/admin/NotificationConfig";
+import { Toaster } from "sonner";
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -124,6 +125,7 @@ function App() {
             <AuthProvider>
                 <ClinicProvider>
                     <AppRoutes />
+                    <Toaster position="top-right" />
                 </ClinicProvider>
             </AuthProvider>
         </BrowserRouter>

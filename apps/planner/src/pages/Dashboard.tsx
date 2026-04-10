@@ -207,29 +207,36 @@ const Dashboard = () => {
                         </td>
                       </tr>
                     ) : recentTreatments.length > 0 ? (
-                      recentTreatments.map((t) => (
-                        <tr key={t.id} className="border-b hover:bg-muted/30 transition-colors">
-                          <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || '-'}</td>
-                          <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || '-'}</td>
-                          <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || '-'}</td>
-                          <td className="p-4">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : t.status === 'EM_ANDAMENTO'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              }`}>
-                              {t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Pausado'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-muted-foreground text-sm whitespace-nowrap">
-                            {t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : '-'}
-                          </td>
-                          <td className={`p-4 text-sm whitespace-nowrap ${getNextAppointmentColor(t.nextAppointment)}`}>
-                            {t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : '-'}
-                          </td>
-                        </tr>
-                      ))
+                      recentTreatments.map((t) => {
+                        const patientId = t.planning?.patient?.id;
+                        return (
+                          <tr 
+                            key={t.id} 
+                            className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
+                            onClick={() => patientId && (window.location.href = `/patients/${patientId}`)}
+                          >
+                            <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || '-'}</td>
+                            <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || '-'}</td>
+                            <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || '-'}</td>
+                            <td className="p-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                : t.status === 'EM_ANDAMENTO'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                }`}>
+                                {t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Pausado'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-muted-foreground text-sm whitespace-nowrap">
+                              {t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : '-'}
+                            </td>
+                            <td className={`p-4 text-sm whitespace-nowrap ${getNextAppointmentColor(t.nextAppointment)}`}>
+                              {t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={6} className="p-8 text-center text-muted-foreground">
