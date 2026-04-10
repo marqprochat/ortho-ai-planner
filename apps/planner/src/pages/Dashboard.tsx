@@ -208,16 +208,16 @@ const Dashboard = () => {
                       </tr>
                     ) : recentTreatments.length > 0 ? (
                       recentTreatments.map((t) => {
-                        const patientId = t.planning?.patient?.id;
+                        const patientId = t.planning?.patient?.id || t.patient?.id;
                         return (
                           <tr 
                             key={t.id} 
                             className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
                             onClick={() => patientId && (window.location.href = `/patients/${patientId}`)}
                           >
-                            <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || '-'}</td>
-                            <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || '-'}</td>
-                            <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || '-'}</td>
+                            <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || t.patient?.patientNumber || '-'}</td>
+                            <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || t.patient?.name || '-'}</td>
+                            <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || t.patient?.user?.name || t.doctorName || '-'}</td>
                             <td className="p-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'

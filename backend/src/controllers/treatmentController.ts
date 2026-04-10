@@ -39,7 +39,12 @@ export const getAllTreatments = async (req: AuthRequest, res: Response) => {
                     select: {
                         id: true,
                         name: true,
-                        patientNumber: true
+                        patientNumber: true,
+                        user: {
+                            select: {
+                                name: true
+                            }
+                        }
                     }
                 }
             },
