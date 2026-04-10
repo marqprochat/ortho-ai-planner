@@ -17,11 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type TreatmentWithPlanning = Treatment & {
-    planning: {
+    planning?: {
         id: string;
         title: string;
         patient: { id: string; name: string };
     };
+    patient?: { id: string; name: string; patientNumber?: string };
 };
 
 const statusLabels: Record<string, string> = {
@@ -61,9 +62,12 @@ const Tratamentos = () => {
     };
 
     const filteredTreatments = treatments.filter((t) => {
+        const title = t.planning?.title || "Tratamento";
+        const patientName = t.planning?.patient?.name || t.patient?.name || "";
+        
         const matchesSearch =
-            t.planning?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            t.planning?.patient?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+            title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            patientName.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus = statusFilter === "ALL" || t.status === statusFilter;
 
@@ -144,8 +148,8 @@ const Tratamentos = () => {
                                         navigate("/tratamento", {
                                             state: {
                                                 planningId: treatment.planningId,
-                                                patientName: treatment.planning?.patient?.name,
-                                                patientId: treatment.planning?.patient?.id,
+                                                patientName: treatment.planning?.patient?.name || treatment.patient?.name,
+                                                patientId: treatment.planning?.patient?.id || treatment.patient?.id,
                                             },
                                         })
                                     }
@@ -161,7 +165,7 @@ const Tratamentos = () => {
                                     <CardContent className="space-y-3">
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                             <User className="h-4 w-4" />
-                                            <span className="font-medium text-foreground">{treatment.planning?.patient?.name}</span>
+                                            <span className="font-medium text-foreground">{treatment.planning?.patient?.name || treatment.patient?.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                             <Calendar className="h-4 w-4" />

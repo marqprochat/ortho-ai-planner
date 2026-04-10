@@ -176,12 +176,13 @@ export const getTreatmentsReport = async (req: AuthRequest, res: Response) => {
             include: {
                 patient: { 
                     select: { 
+                        id: true,
                         name: true, 
                         patientNumber: true,
                         user: { select: { name: true } }
                     } 
                 },
-                planning: { select: { title: true } }
+                planning: { select: { id: true, title: true } }
             },
             orderBy: { nextAppointment: 'asc' }
         });

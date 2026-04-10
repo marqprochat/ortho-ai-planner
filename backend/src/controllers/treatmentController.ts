@@ -34,6 +34,13 @@ export const getAllTreatments = async (req: AuthRequest, res: Response) => {
                             }
                         }
                     }
+                },
+                patient: {
+                    select: {
+                        id: true,
+                        name: true,
+                        patientNumber: true
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }
@@ -172,6 +179,20 @@ nextAppointment: nextAppointment ? new Date(nextAppointment) : null,
 notes: notes || null,
 status: status || 'EM_ANDAMENTO',
 doctorName: doctorName || null
+},
+include: {
+planning: {
+select: {
+id: true,
+title: true,
+patient: {
+select: {
+id: true,
+name: true
+}
+}
+}
+}
 }
 });
 
