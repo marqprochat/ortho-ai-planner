@@ -19,6 +19,8 @@ import { generateCompletion } from './controllers/aiController';
 import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { initCronJobs } from './jobs/notificationCron';
+import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF } from './controllers/easydentalController';
+import { sendMessage, getMessageConfig } from './controllers/messageController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -130,6 +132,16 @@ app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
 app.post('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, createKey);
 app.put('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
 app.delete('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
+
+// EasyDental RPC Proxy Routes
+app.get('/api/easydental/unidades', authMiddleware, getUnidadesAtendimento);
+app.post('/api/easydental/agendamentos', authMiddleware, getAgendamentos);
+app.post('/api/easydental/kpi', authMiddleware, getKPIPrd);
+app.post('/api/easydental/prestador', authMiddleware, getPrestadorCPF);
+
+// Message Dispatch Routes (BotConversa)
+app.post('/api/messages/send', authMiddleware, sendMessage);
+app.get('/api/messages/config', authMiddleware, getMessageConfig);
 
 // Start Server
 app.listen(PORT, async () => {

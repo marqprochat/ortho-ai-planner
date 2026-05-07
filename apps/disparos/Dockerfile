@@ -2,13 +2,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Add build arguments for environment variables
+# Build arguments for environment variables
 ARG VITE_API_URL
-ARG VITE_PLANNER_URL
-ARG VITE_DISPAROS_APP_URL
 ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_PLANNER_URL=$VITE_PLANNER_URL
-ENV VITE_DISPAROS_APP_URL=$VITE_DISPAROS_APP_URL
 
 COPY package*.json ./
 RUN npm ci

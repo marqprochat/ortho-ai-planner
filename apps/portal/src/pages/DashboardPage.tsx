@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { authService } from "@/services/authService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key, Bell } from "lucide-react";
+import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key, Bell, MessageSquare } from "lucide-react";
 import { ClinicSelector } from "@/components/ClinicSelector";
 
 // Default apps if user has no specific access configured
@@ -16,6 +16,14 @@ const defaultApps = [
         icon: "ClipboardList",
         url: import.meta.env.VITE_PLANNER_APP_URL || import.meta.env.VITE_PLANNER_URL || "http://localhost:8080",
     },
+    {
+        id: "disparos",
+        name: "disparos",
+        displayName: "Disparos WhatsApp",
+        description: "Envio de mensagens WhatsApp para pacientes",
+        icon: "MessageSquare",
+        url: import.meta.env.VITE_DISPAROS_APP_URL || "http://localhost:5175",
+    },
 ];
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -23,6 +31,7 @@ const iconMap: Record<string, React.ReactNode> = {
     Users: <Users className="w-8 h-8" />,
     Calendar: <Calendar className="w-8 h-8" />,
     Settings: <Settings className="w-8 h-8" />,
+    MessageSquare: <MessageSquare className="w-8 h-8" />,
 };
 
 export default function DashboardPage() {
@@ -45,20 +54,31 @@ export default function DashboardPage() {
         }
     };
 
-    // Get the planner URL from environment variable
+    // Get the URLs from environment variables
     const plannerUrl = import.meta.env.VITE_PLANNER_APP_URL || import.meta.env.VITE_PLANNER_URL || "http://localhost:8080";
+    const disparosUrl = import.meta.env.VITE_DISPAROS_APP_URL || "http://localhost:5175";
 
     // Use user's app access or default apps, filtering out the portal (we're already in it)
-    const apps = user?.appAccess?.length
+    let apps: any[] = user?.appAccess?.length
         ? user.appAccess
             .filter((access) => access.application.name !== 'portal') // Remove portal from listing
             .map((access) => ({
                 ...access.application,
-                // Override URL for planner with environment variable
-                url: access.application.name === 'planner' ? plannerUrl : access.application.url,
+                // Override URLs with environment variables
+                url: access.application.name === 'planner' ? plannerUrl : 
+                     access.application.name === 'disparos' ? disparosUrl : access.application.url,
                 role: access.role.name,
             }))
-        : defaultApps;
+        : [...defaultApps];
+
+    // Ensure disparos app is present even if not in database yet
+    const hasDisparos = apps.some(app => app.name === 'disparos');
+    if (!hasDisparos) {
+        const disparosApp = defaultApps.find(a => a.name === 'disparos');
+        if (disparosApp) {
+            apps.push({ ...disparosApp, role: 'Admin' });
+        }
+    }
 
     return (
         <div className="min-h-screen bg-sidebar">

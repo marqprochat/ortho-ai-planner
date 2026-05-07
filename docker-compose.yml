@@ -28,6 +28,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-your-secret-key}
       PORT: 3000
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      EASYDENTAL_API_URL: ${EASYDENTAL_API_URL:-https://prsrb.onrender.com/v1/rpc}
+      EASYDENTAL_API_KEY: ${EASYDENTAL_API_KEY:-c5dd1e822c6c6d33ea712b756d9176ac}
+      EASYDENTAL_CLIENT_ID: ${EASYDENTAL_CLIENT_ID:-5C9KnPvhhmQh}
+      BOTCONVERSA_WEBHOOK_URL: ${BOTCONVERSA_WEBHOOK_URL:-https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/181779/Io6W5mCqt2UU/}
+      MESSAGE_DELAY_MS: ${MESSAGE_DELAY_MS:-1000}
+      MESSAGE_CONCURRENT_LIMIT: ${MESSAGE_CONCURRENT_LIMIT:-5}
     ports:
       - "5174:3000"
 
@@ -37,6 +43,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-}
         VITE_PLANNER_URL: ${VITE_PLANNER_URL:-http://localhost:5172}
+        VITE_DISPAROS_APP_URL: ${VITE_DISPAROS_APP_URL:-http://localhost:5175}
     restart: always
     ports:
       - "5173:80"
@@ -56,6 +63,20 @@ services:
     restart: always
     ports:
       - "5172:80"
+    environment:
+      INTERNAL_BACKEND_URL: ${INTERNAL_BACKEND_URL:-http://backend:3000}
+      API_HOST: ${API_HOST:-apiportal.dentalkids.com.br}
+    depends_on:
+      - backend
+
+  disparos:
+    build:
+      context: ./apps/disparos
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    restart: always
+    ports:
+      - "5175:80"
     environment:
       INTERNAL_BACKEND_URL: ${INTERNAL_BACKEND_URL:-http://backend:3000}
       API_HOST: ${API_HOST:-apiportal.dentalkids.com.br}

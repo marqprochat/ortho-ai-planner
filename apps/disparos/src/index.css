@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 220 20% 97%;
+        --foreground: 220 25% 10%;
+        --card: 0 0% 100%;
+        --card-foreground: 220 25% 10%;
+        --primary: 152 68% 40%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 199 89% 48%;
+        --secondary-foreground: 0 0% 100%;
+        --muted: 220 15% 93%;
+        --muted-foreground: 220 10% 45%;
+        --accent: 152 68% 40%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 220 15% 88%;
+        --input: 220 15% 92%;
+        --ring: 152 68% 40%;
+        --radius: 0.75rem;
+        --success: 152 68% 40%;
+        --warning: 38 92% 50%;
+        --info: 199 89% 48%;
+    }
+
+    * {
+        @apply border-border;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--muted)); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }
+
+/* Glass card utility */
+.glass-card {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px hsl(var(--foreground) / 0.04), 0 4px 12px hsl(var(--foreground) / 0.02);
+}
+
+/* Status badges */
+.badge-pending { @apply bg-yellow-100 text-yellow-800 border border-yellow-200; }
+.badge-sending { @apply bg-blue-100 text-blue-800 border border-blue-200; }
+.badge-sent { @apply bg-emerald-100 text-emerald-800 border border-emerald-200; }
+.badge-error { @apply bg-red-100 text-red-800 border border-red-200; }
+
+/* Checkbox custom */
+.filter-checkbox {
+    @apply w-4 h-4 rounded border-2 border-gray-300 text-emerald-600 focus:ring-emerald-500 focus:ring-2 cursor-pointer;
+    accent-color: hsl(var(--primary));
+}
+
+/* Pulse ring for sending status */
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 hsl(var(--info) / 0.4); }
+    70% { box-shadow: 0 0 0 6px hsl(var(--info) / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--info) / 0); }
+}
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
