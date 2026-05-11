@@ -134,14 +134,14 @@ app.put('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
 app.delete('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
 
 // EasyDental RPC Proxy Routes
-app.get('/api/easydental/unidades', authMiddleware, getUnidadesAtendimento);
-app.post('/api/easydental/agendamentos', authMiddleware, getAgendamentos);
-app.post('/api/easydental/kpi', authMiddleware, getKPIPrd);
-app.post('/api/easydental/prestador', authMiddleware, getPrestadorCPF);
+app.get('/api/easydental/unidades', authMiddleware, requireSuperAdmin, getUnidadesAtendimento);
+app.post('/api/easydental/agendamentos', authMiddleware, requireSuperAdmin, getAgendamentos);
+app.post('/api/easydental/kpi', authMiddleware, requireSuperAdmin, getKPIPrd);
+app.post('/api/easydental/prestador', authMiddleware, requireSuperAdmin, getPrestadorCPF);
 
 // Message Dispatch Routes (BotConversa)
-app.post('/api/messages/send', authMiddleware, sendMessage);
-app.get('/api/messages/config', authMiddleware, getMessageConfig);
+app.post('/api/messages/send', authMiddleware, requireSuperAdmin, sendMessage);
+app.get('/api/messages/config', authMiddleware, requireSuperAdmin, getMessageConfig);
 
 // Start Server
 app.listen(PORT, async () => {

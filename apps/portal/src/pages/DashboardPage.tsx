@@ -71,13 +71,19 @@ export default function DashboardPage() {
             }))
         : [...defaultApps];
 
-    // Ensure disparos app is present even if not in database yet
+    // Ensure disparos app is present even if not in database yet (ONLY for Super Admins)
     const hasDisparos = apps.some(app => app.name === 'disparos');
-    if (!hasDisparos) {
+    if (!hasDisparos && user?.isSuperAdmin) {
         const disparosApp = defaultApps.find(a => a.name === 'disparos');
         if (disparosApp) {
             apps.push({ ...disparosApp, role: 'Admin' });
         }
+    }
+
+    // Double check: remove disparos from the list if the user is NOT a Super Admin
+    // (This handles cases where it might be in user.appAccess)
+    if (!user?.isSuperAdmin) {
+        apps = apps.filter(app => app.name !== 'disparos');
     }
 
     return (
