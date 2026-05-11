@@ -12,7 +12,14 @@ function getFirstName(fullName: string): string {
 }
 
 function extractPhone(ag: Agendamento): string {
-    return ag.CELULAR || ag.nr_celular || ag.nr_fone || ag.telefone || ag.celular || ag.fone || '';
+    const raw = ag.CELULAR || ag.nr_celular || ag.nr_fone || ag.telefone || ag.celular || ag.fone || '';
+    if (!raw) return '';
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('55') && digits.length >= 12) {
+        return `+${digits}`;
+    }
+    return `+55${digits}`;
 }
 
 function extractUnit(ag: Agendamento): string {
@@ -61,6 +68,7 @@ export default function App() {
     const [sentCount, setSentCount] = useState(0);
     const [errorCount, setErrorCount] = useState(0);
     const [currentSendName, setCurrentSendName] = useState('');
+    const [selectedModel, setSelectedModel] = useState('22180');
     const abortRef = useRef(false);
 
     // Auth: read token from URL or sessionStorage
@@ -224,7 +232,7 @@ export default function App() {
             // Send batch
             const results = await Promise.allSettled(
                 batch.map(msg =>
-                    api.sendMessage(msg.nome, msg.telefone, msg.unidade)
+                    api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel)
                         .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
                         .catch(err => ({ id: msg.id, success: false, error: err.message }))
                 )
@@ -430,6 +438,15 @@ export default function App() {
                             </div>
 
                             <div className="flex items-center gap-3 pt-4 border-t border-border">
+                                <select
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground shadow-sm outline-none cursor-pointer hover:border-emerald-400 transition-colors h-[38px]"
+                                    disabled={isSending}
+                                >
+                                    <option value="22180">consulta 1</option>
+                                    <option value="19872">Avaliação</option>
+                                </select>
                                 <button
                                     onClick={() => { setSentCount(0); setErrorCount(0); setShowSendModal(true); }}
                                     disabled={selectedCount === 0 || isSending}
