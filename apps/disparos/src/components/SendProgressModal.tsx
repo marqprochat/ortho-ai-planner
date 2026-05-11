@@ -21,7 +21,7 @@ export default function SendProgressModal({
     if (!open) return null;
 
     const progress = totalMessages > 0 ? ((sentCount + errorCount) / totalMessages) * 100 : 0;
-    const isDone = sentCount + errorCount === totalMessages && totalMessages > 0 && isSending;
+    const isDone = totalMessages > 0 && (sentCount + errorCount === totalMessages);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget && !isSending) onClose(); }}>
@@ -34,7 +34,7 @@ export default function SendProgressModal({
                         </div>
                         <div>
                             <h3 className="font-bold text-foreground">
-                                {isSending ? 'Enviando mensagens...' : 'Confirmar envio'}
+                                {isSending ? 'Enviando mensagens...' : isDone ? 'Envio concluído' : 'Confirmar envio'}
                             </h3>
                             <p className="text-xs text-muted-foreground">
                                 {totalMessages} mensagen{totalMessages !== 1 ? 's' : ''} selecionada{totalMessages !== 1 ? 's' : ''}
@@ -48,8 +48,8 @@ export default function SendProgressModal({
                     )}
                 </div>
 
-                {/* Config (before sending) */}
-                {!isSending && (
+                {/* Config (before sending and NOT done) */}
+                {!isSending && !isDone && (
                     <div className="space-y-4 mb-6">
                         <div className="flex items-center gap-2 text-sm font-semibold text-foreground/80">
                             <Settings2 className="w-4 h-4 text-primary" />
@@ -92,8 +92,8 @@ export default function SendProgressModal({
                     </div>
                 )}
 
-                {/* Progress (during sending) */}
-                {isSending && (
+                {/* Progress (during sending or done) */}
+                {(isSending || isDone) && (
                     <div className="space-y-4 mb-6">
                         {/* Progress bar */}
                         <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
@@ -108,7 +108,7 @@ export default function SendProgressModal({
                         </div>
 
                         {/* Current */}
-                        {currentName && !isDone && (
+                        {isSending && currentName && !isDone && (
                             <div className="flex items-center gap-2 text-sm text-info">
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 <span>Enviando para <strong>{currentName}</strong>...</span>
@@ -139,7 +139,7 @@ export default function SendProgressModal({
 
                 {/* Actions */}
                 <div className="flex justify-end gap-3">
-                    {!isSending && (
+                    {!isSending && !isDone && (
                         <>
                             <button
                                 onClick={onClose}
@@ -156,7 +156,15 @@ export default function SendProgressModal({
                             </button>
                         </>
                     )}
-                    {isDone && (
+                    {isSending && (
+                        <button
+                            onClick={onClose}
+                            className="px-5 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-medium transition-colors"
+                        >
+                            Parar envio
+                        </button>
+                    )}
+                    {isDone && !isSending && (
                         <button
                             onClick={onClose}
                             className="px-5 py-2 text-sm rounded-lg bg-gradient-to-r from-primary to-emerald-600 text-white font-medium hover:opacity-90 transition-opacity"

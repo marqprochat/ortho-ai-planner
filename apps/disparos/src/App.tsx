@@ -12,10 +12,16 @@ function getFirstName(fullName: string): string {
 }
 
 function extractPhone(ag: Agendamento): string {
-    const raw = ag.CELULAR || ag.nr_celular || ag.nr_fone || ag.telefone || ag.celular || ag.fone || '';
+    const raw = (ag.CELULAR || ag.nr_celular || ag.nr_fone || ag.telefone || ag.celular || ag.fone || ag.nr_fone_celular || ag.celular_paciente || '').toString();
     if (!raw) return '';
-    const digits = raw.replace(/\D/g, '');
+    let digits = raw.replace(/\D/g, '');
     if (!digits) return '';
+    
+    // Remove leading zero if present and it's not a 55 prefix already
+    if (digits.length >= 11 && digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+    
     if (digits.startsWith('55') && digits.length >= 12) {
         return `+${digits}`;
     }
@@ -23,7 +29,7 @@ function extractPhone(ag: Agendamento): string {
 }
 
 function extractUnit(ag: Agendamento): string {
-    return ag.UNIDADE || ag.TX_UNIDADE_ATENDIMENTO || ag.nm_unidade || ag.unidade || '';
+    return ag.UNIDADE || ag.TX_UNIDADE_ATENDIMENTO || ag.nm_unidade || ag.unidade || ag.NM_UNIDADE_ATENDIMENTO || '';
 }
 
 function extractStatus(ag: Agendamento): string {
@@ -40,6 +46,33 @@ function getTimeSlot(ag: Agendamento): string {
     const h = parseInt(hour.split(':')[0], 10);
     if (isNaN(h)) return '';
     return h < 12 ? 'Manhã' : 'Tarde';
+}
+
+function formatAgendamento(data: string, hora: string): string {
+    if (!data || !hora) return '';
+    
+    let dateObj: Date;
+    let formattedDate = data;
+
+    if (data.includes('-')) {
+        const [y, m, d] = data.split('-');
+        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+        formattedDate = `${d}/${m}/${y}`;
+    } else if (data.includes('/')) {
+        const [d, m, y] = data.split('/');
+        dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+        formattedDate = `${d}/${m}/${y}`;
+    } else {
+        return `${data} ás ${hora}`;
+    }
+
+    const daysOfWeek = [
+        'domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 
+        'quinta-feira', 'sexta-feira', 'sábado'
+    ];
+    const dayName = daysOfWeek[dateObj.getDay()];
+    
+    return `${dayName} ${formattedDate} às ${hora}`;
 }
 
 const today = new Date();
@@ -69,6 +102,7 @@ export default function App() {
     const [errorCount, setErrorCount] = useState(0);
     const [currentSendName, setCurrentSendName] = useState('');
     const [selectedModel, setSelectedModel] = useState('22180');
+    const [totalToProcess, setTotalToProcess] = useState(0);
     const abortRef = useRef(false);
 
     // Auth: read token from URL or sessionStorage
@@ -168,8 +202,8 @@ export default function App() {
                 const phone = extractPhone(ag);
                 const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
                 const code = ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || '';
-                const dataAg = ag.DATA || ag.dt_agendamento || '';
-                const horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || '';
+                const dataAg = ag.DATA || ag.dt_agendamento || ag.data || ag.dt_agenda || '';
+                const horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || ag.hr_agenda || '';
                 const key = `${phone}-${code}-${dataAg}-${horaAg}`;
 
                 if (seen.has(key)) return;
@@ -213,6 +247,7 @@ export default function App() {
         setIsSending(true);
         setSentCount(0);
         setErrorCount(0);
+        setTotalToProcess(toSend.length);
         abortRef.current = false;
 
         const { delayMs, concurrentLimit } = sendConfig;
@@ -231,11 +266,12 @@ export default function App() {
 
             // Send batch
             const results = await Promise.allSettled(
-                batch.map(msg =>
-                    api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel)
+                batch.map(msg => {
+                    const formattedDate = formatAgendamento(msg.data, msg.hora);
+                    return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate)
                         .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
-                        .catch(err => ({ id: msg.id, success: false, error: err.message }))
-                )
+                        .catch(err => ({ id: msg.id, success: false, error: err.message }));
+                })
             );
 
             // Update statuses
@@ -262,8 +298,9 @@ export default function App() {
         }
 
         setCurrentSendName('');
+        setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -482,7 +519,7 @@ export default function App() {
                 onConfirm={handleSend}
                 config={sendConfig}
                 onConfigChange={setSendConfig}
-                totalMessages={selectedCount}
+                totalMessages={isSending ? totalToProcess : selectedCount}
                 sentCount={sentCount}
                 errorCount={errorCount}
                 isSending={isSending}

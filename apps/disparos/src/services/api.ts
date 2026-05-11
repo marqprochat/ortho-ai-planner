@@ -47,10 +47,10 @@ export const api = {
         }),
 
     // Messages
-    sendMessage: (nome: string, telefone: string, unidade: string, modelo: string) =>
+    sendMessage: (nome: string, telefone: string, unidade: string, modelo: string, dataAgendamento: string) =>
         request<{ status: string; error?: string }>('/messages/send', {
             method: 'POST',
-            body: JSON.stringify({ nome, telefone, unidade, modelo }),
+            body: JSON.stringify({ nome, telefone, unidade, modelo, data_agendamento: dataAgendamento }),
         }),
 
     getMessageConfig: () => request<{ delayMs: number; concurrentLimit: number }>('/messages/config'),

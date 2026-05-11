@@ -7,7 +7,7 @@ const MAX_CONCURRENT = parseInt(process.env.MESSAGE_CONCURRENT_LIMIT || '5', 10)
 // Enviar uma única mensagem para o BotConversa
 export const sendMessage = async (req: Request, res: Response) => {
     try {
-        const { nome, telefone, unidade } = req.body;
+        const { nome, telefone, unidade, modelo, data_agendamento } = req.body;
 
         if (!telefone) {
             return res.status(400).json({
@@ -30,6 +30,8 @@ export const sendMessage = async (req: Request, res: Response) => {
                 nome: nome || '',
                 telefone,
                 unidade: unidade || '',
+                modelo: modelo || '',
+                data_agendamento: data_agendamento || '',
             }),
         });
 
