@@ -16,12 +16,12 @@ function extractPhone(ag: Agendamento): string {
     if (!raw) return '';
     let digits = raw.replace(/\D/g, '');
     if (!digits) return '';
-    
+
     // Remove leading zero if present and it's not a 55 prefix already
     if (digits.length >= 11 && digits.startsWith('0')) {
         digits = digits.substring(1);
     }
-    
+
     if (digits.startsWith('55') && digits.length >= 12) {
         return `+${digits}`;
     }
@@ -50,7 +50,7 @@ function getTimeSlot(ag: Agendamento): string {
 
 function formatAgendamento(data: string, hora: string): string {
     if (!data || !hora) return '';
-    
+
     let dateObj: Date;
     let formattedDate = data;
 
@@ -67,11 +67,11 @@ function formatAgendamento(data: string, hora: string): string {
     }
 
     const daysOfWeek = [
-        'domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 
+        'domingo', 'segunda-feira', 'terça-feira', 'quarta-feira',
         'quinta-feira', 'sexta-feira', 'sábado'
     ];
     const dayName = daysOfWeek[dateObj.getDay()];
-    
+
     return `${dayName} ${formattedDate} às ${hora}`;
 }
 
@@ -135,7 +135,7 @@ export default function App() {
 
         api.getMessageConfig()
             .then(cfg => setSendConfig(cfg))
-            .catch(() => {});
+            .catch(() => { });
     }, [authenticated]);
 
     // Apply frontend filters
@@ -221,6 +221,11 @@ export default function App() {
                     hora: horaAg,
                     status: hasPhone ? 'pending' : 'error',
                     errorMessage: hasPhone ? undefined : 'Sem telefone',
+                    dentista: extractProvider(ag),
+                    motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
+                    statusAgendamento: extractStatus(ag),
+                    idAgendaItem: ag.ID_AGENDA_ITEM?.toString() || '',
+                    txCodigoPaciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || ''
                 });
             });
 
@@ -268,7 +273,17 @@ export default function App() {
             const results = await Promise.allSettled(
                 batch.map(msg => {
                     const formattedDate = formatAgendamento(msg.data, msg.hora);
-                    return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate)
+                    return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate, {
+                        dentista: msg.dentista,
+                        motivo: msg.motivo,
+                        status: msg.statusAgendamento,
+                        id_agenda_item: msg.idAgendaItem,
+                        tx_codigo_paciente: msg.txCodigoPaciente,
+                        paciente: msg.nomeCompleto,
+                        celular: msg.telefone,
+                        data: msg.data,
+                        inicio: msg.hora
+                    })
                         .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
                         .catch(err => ({ id: msg.id, success: false, error: err.message }));
                 })
@@ -421,8 +436,8 @@ export default function App() {
                                     <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
                                         <Building2 className="w-4 h-4 text-secondary" />
                                         <span className="text-sm font-medium">
-                                            {filters.unidades.length === 0 
-                                                ? 'Selecionar Unidades' 
+                                            {filters.unidades.length === 0
+                                                ? 'Selecionar Unidades'
                                                 : `${filters.unidades.length} unidade(s) selecionada(s)`}
                                         </span>
                                     </div>
@@ -450,8 +465,8 @@ export default function App() {
                                                             className="filter-checkbox"
                                                             checked={filters.unidades.includes(opt)}
                                                             onChange={() => {
-                                                                const next = filters.unidades.includes(opt) 
-                                                                    ? filters.unidades.filter(v => v !== opt) 
+                                                                const next = filters.unidades.includes(opt)
+                                                                    ? filters.unidades.filter(v => v !== opt)
                                                                     : [...filters.unidades, opt];
                                                                 setFilters({ ...filters, unidades: next });
                                                             }}
@@ -481,7 +496,7 @@ export default function App() {
                                     className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground shadow-sm outline-none cursor-pointer hover:border-emerald-400 transition-colors h-[38px]"
                                     disabled={isSending}
                                 >
-                                    <option value="22180">consulta 1</option>
+                                    <option value="22180">Confirmação de Consulta</option>
                                     <option value="19872">Avaliação</option>
                                 </select>
                                 <button

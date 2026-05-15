@@ -39,6 +39,11 @@ export interface MessageItem {
     status: MessageStatus;
     errorMessage?: string;
     sentAt?: string;
+    dentista?: string;
+    motivo?: string;
+    statusAgendamento?: string;
+    idAgendaItem?: string;
+    txCodigoPaciente?: string;
 }
 
 export interface Filters {
