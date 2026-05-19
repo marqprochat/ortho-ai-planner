@@ -247,3 +247,39 @@ model NotificationAutomationConfig {
 
   @@unique([tenantId, type])
 }
+
+model ScheduledDisparo {
+  id                String               @id @default(uuid())
+  name              String
+  description       String?
+  cronExpression    String               // e.g. "0 8 * * *" = daily at 08:00
+  isActive          Boolean              @default(true)
+  unidades          String[]             @default([])
+  agendas           String[]             @default([])
+  statusAgendamento String[]             @default([])
+  periodos          String[]             @default([])
+  motivo            String               @default("")
+  dtInicioOffset    Int                  @default(1)
+  dtTerminoOffset   Int                  @default(1)
+  modelo            String               @default("22180")
+  delayMs           Int                  @default(1000)
+  concurrentLimit   Int                  @default(5)
+  createdBy         String
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  logs              ScheduledDisparoLog[]
+}
+
+model ScheduledDisparoLog {
+  id             String           @id @default(uuid())
+  scheduleId     String
+  executedAt     DateTime         @default(now())
+  status         String           // "running" | "completed" | "failed"
+  totalSent      Int              @default(0)
+  totalErrors    Int              @default(0)
+  totalProcessed Int              @default(0)
+  errorMessage   String?
+  dtInicio       String
+  dtTermino      String
+  schedule       ScheduledDisparo @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+}

@@ -60,3 +60,40 @@ export interface SendConfig {
     delayMs: number;
     concurrentLimit: number;
 }
+
+export interface ScheduledDisparoLog {
+    id: string;
+    scheduleId: string;
+    executedAt: string;
+    status: 'running' | 'completed' | 'failed';
+    totalSent: number;
+    totalErrors: number;
+    totalProcessed: number;
+    errorMessage?: string;
+    dtInicio: string;
+    dtTermino: string;
+}
+
+export interface ScheduledDisparo {
+    id: string;
+    name: string;
+    description?: string;
+    cronExpression: string;
+    isActive: boolean;
+    unidades: string[];
+    agendas: string[];
+    statusAgendamento: string[];
+    periodos: string[];
+    motivo: string;
+    dtInicioOffset: number;
+    dtTerminoOffset: number;
+    modelo: string;
+    delayMs: number;
+    concurrentLimit: number;
+    createdBy: string;
+    createdAt: string;
+    updatedAt: string;
+    logs?: ScheduledDisparoLog[];
+}
+
+export type ScheduledDisparoFormData = Omit<ScheduledDisparo, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'logs'>;

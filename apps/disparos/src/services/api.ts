@@ -54,4 +54,24 @@ export const api = {
         }),
 
     getMessageConfig: () => request<{ delayMs: number; concurrentLimit: number }>('/messages/config'),
+
+    // Scheduled Disparos
+    listScheduledDisparos: () => request<any[]>('/scheduled-disparos'),
+
+    getScheduledDisparo: (id: string) => request<any>(`/scheduled-disparos/${id}`),
+
+    createScheduledDisparo: (data: any) =>
+        request<any>('/scheduled-disparos', { method: 'POST', body: JSON.stringify(data) }),
+
+    updateScheduledDisparo: (id: string, data: any) =>
+        request<any>(`/scheduled-disparos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+    deleteScheduledDisparo: (id: string) =>
+        request<any>(`/scheduled-disparos/${id}`, { method: 'DELETE' }),
+
+    triggerScheduledDisparo: (id: string) =>
+        request<any>(`/scheduled-disparos/${id}/trigger`, { method: 'POST' }),
+
+    getScheduledDisparoLogs: (id: string) =>
+        request<any[]>(`/scheduled-disparos/${id}/logs`),
 };

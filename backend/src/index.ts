@@ -19,8 +19,10 @@ import { generateCompletion } from './controllers/aiController';
 import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { initCronJobs } from './jobs/notificationCron';
+import { initDisparoCron } from './jobs/disparoCron';
 import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF } from './controllers/easydentalController';
 import { sendMessage, getMessageConfig } from './controllers/messageController';
+import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs } from './controllers/scheduledDisparoController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -143,6 +145,15 @@ app.post('/api/easydental/prestador', authMiddleware, requireSuperAdmin, getPres
 app.post('/api/messages/send', authMiddleware, requireSuperAdmin, sendMessage);
 app.get('/api/messages/config', authMiddleware, requireSuperAdmin, getMessageConfig);
 
+// Scheduled Disparos Routes
+app.get('/api/scheduled-disparos', authMiddleware, requireSuperAdmin, listScheduledDisparos);
+app.post('/api/scheduled-disparos', authMiddleware, requireSuperAdmin, createScheduledDisparo);
+app.get('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, getScheduledDisparo);
+app.put('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, updateScheduledDisparo);
+app.delete('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, deleteScheduledDisparo);
+app.post('/api/scheduled-disparos/:id/trigger', authMiddleware, requireSuperAdmin, triggerScheduledDisparo);
+app.get('/api/scheduled-disparos/:id/logs', authMiddleware, requireSuperAdmin, getScheduledDisparoLogs);
+
 // Start Server
 app.listen(PORT, async () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
@@ -152,6 +163,7 @@ app.listen(PORT, async () => {
         
         // Initialize jobs
         initCronJobs();
+        await initDisparoCron();
     } catch (error) {
         console.error('❌ Database connection failed', error);
     }

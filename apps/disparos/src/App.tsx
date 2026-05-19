@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toaster, toast } from 'sonner';
-import { Search, Send, MessageSquare, Wifi, WifiOff, LogOut, Calendar, Building2 } from 'lucide-react';
+import { Search, Send, MessageSquare, Wifi, WifiOff, LogOut, Calendar, Building2, Clock } from 'lucide-react';
 import { api } from './services/api';
 import FilterPanel from './components/FilterPanel';
 import MessageTable from './components/MessageTable';
 import SendProgressModal from './components/SendProgressModal';
+import ScheduledDisparos from './components/ScheduledDisparos';
 import type { Filters, Agendamento, MessageItem, SendConfig } from './types';
+
+type Tab = 'manual' | 'agendados';
 
 function getFirstName(fullName: string): string {
     return (fullName || '').trim().split(/\s+/)[0] || '';
@@ -88,6 +91,7 @@ const defaultFilters: Filters = {
 
 export default function App() {
     const [authenticated, setAuthenticated] = useState(false);
+    const [activeTab, setActiveTab] = useState<Tab>('manual');
     const [filters, setFilters] = useState<Filters>(defaultFilters);
     const [filterCollapsed, setFilterCollapsed] = useState(false);
     const [unidadeOptions, setUnidadeOptions] = useState<string[]>([]);
@@ -379,7 +383,25 @@ export default function App() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
+                        {/* Tab navigation */}
+                        <div className="flex items-center bg-muted/60 rounded-lg p-1 gap-1">
+                            <button
+                                onClick={() => setActiveTab('manual')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'manual' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <Send className="w-3.5 h-3.5" />
+                                Manual
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('agendados')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'agendados' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <Clock className="w-3.5 h-3.5" />
+                                Agendados
+                            </button>
+                        </div>
+
                         <div className="flex items-center gap-1.5 text-xs text-emerald-600">
                             <Wifi className="w-3.5 h-3.5" />
                             <span>Conectado</span>
@@ -393,7 +415,13 @@ export default function App() {
 
             {/* Main */}
             <main className="max-w-[1600px] mx-auto px-6 py-6">
-                <div className="flex gap-6">
+                {/* Agendados Tab */}
+                {activeTab === 'agendados' && (
+                    <ScheduledDisparos unidadeOptions={unidadeOptions} />
+                )}
+
+                {/* Manual Tab */}
+                {activeTab === 'manual' && <div className="flex gap-6">
                     {/* Sidebar Filters */}
                     <div className={`transition-all duration-300 ${filterCollapsed ? 'w-14' : 'w-80'} shrink-0`}>
                         <div className="sticky top-20">
@@ -524,7 +552,7 @@ export default function App() {
                             isSending={isSending}
                         />
                     </div>
-                </div>
+                </div>}
             </main>
 
             {/* Send Modal */}
