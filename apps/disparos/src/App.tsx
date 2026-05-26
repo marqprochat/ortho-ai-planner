@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toaster, toast } from 'sonner';
-import { Search, Send, MessageSquare, Wifi, WifiOff, LogOut, Calendar, Building2, Clock } from 'lucide-react';
-import { api } from './services/api';
+import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock } from 'lucide-react';
+import { api, login, getMe } from './services/api';
 import FilterPanel from './components/FilterPanel';
 import MessageTable from './components/MessageTable';
 import SendProgressModal from './components/SendProgressModal';
 import ScheduledDisparos from './components/ScheduledDisparos';
+import DentalConnectIcon from './components/DentalConnectIcon';
 import type { Filters, Agendamento, MessageItem, SendConfig } from './types';
 
 type Tab = 'manual' | 'agendados';
@@ -78,10 +79,16 @@ function formatAgendamento(data: string, hora: string): string {
     return `${dayName} ${formattedDate} às ${hora}`;
 }
 
-const today = new Date();
+function dateOffset(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+}
+
+// Default model is "Confirmação de Consulta" → tomorrow
 const defaultFilters: Filters = {
-    dtInicio: today.toISOString().split('T')[0],
-    dtTermino: today.toISOString().split('T')[0],
+    dtInicio: dateOffset(1),
+    dtTermino: dateOffset(1),
     unidades: [],
     agendas: [],
     statusAgendamento: [],
@@ -89,8 +96,17 @@ const defaultFilters: Filters = {
     motivo: '',
 };
 
+const MODEL_PRESETS: Record<string, { label: string; dayOffset: number; statusKeyword: string; hint: string }> = {
+    '22180': { label: 'Confirmação de Consulta', dayOffset: 1,  statusKeyword: 'agenda', hint: 'Amanhã · Status: Agendado' },
+    '19872': { label: 'Avaliação',               dayOffset: -1, statusKeyword: 'atend',  hint: 'Ontem · Status: Atendido' },
+};
+
 export default function App() {
     const [authenticated, setAuthenticated] = useState(false);
+    const [loginEmail, setLoginEmail] = useState('');
+    const [loginPassword, setLoginPassword] = useState('');
+    const [loginLoading, setLoginLoading] = useState(false);
+    const [loginError, setLoginError] = useState('');
     const [activeTab, setActiveTab] = useState<Tab>('manual');
     const [filters, setFilters] = useState<Filters>(defaultFilters);
     const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -109,7 +125,7 @@ export default function App() {
     const [totalToProcess, setTotalToProcess] = useState(0);
     const abortRef = useRef(false);
 
-    // Auth: read token from URL or sessionStorage
+    // Auth: read token from URL or sessionStorage, then verify with backend
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const urlToken = params.get('token');
@@ -118,9 +134,23 @@ export default function App() {
             window.history.replaceState({}, '', window.location.pathname);
         }
         const token = sessionStorage.getItem('auth_token');
-        if (token) {
-            setAuthenticated(true);
-        }
+        if (!token) return;
+
+        getMe(token)
+            .then(({ user }) => {
+                const hasAccess = user.isSuperAdmin ||
+                    user.appAccess?.some((a: any) => a.application?.name === 'disparos');
+                if (hasAccess) {
+                    setAuthenticated(true);
+                } else {
+                    sessionStorage.removeItem('auth_token');
+                    setLoginError('Seu usuário não tem permissão para acessar o Dental Connect. Solicite ao administrador.');
+                }
+            })
+            .catch(() => {
+                // Token expirado ou inválido — limpa e mostra login
+                sessionStorage.removeItem('auth_token');
+            });
     }, []);
 
     // Load unidades and send config
@@ -236,6 +266,18 @@ export default function App() {
             setMessages(msgs);
             setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
+            // Auto-select statuses matching the chosen model
+            const preset = MODEL_PRESETS[selectedModel];
+            if (preset) {
+                const uniqueStatuses = Array.from(new Set(
+                    agendamentos.map(a => a.STATUS || a.ds_status || a.status_agendamento || a.status).filter(Boolean) as string[]
+                ));
+                const matching = uniqueStatuses.filter(s => new RegExp(preset.statusKeyword, 'i').test(s));
+                if (matching.length > 0) {
+                    setFilters(prev => ({ ...prev, statusAgendamento: matching }));
+                }
+            }
+
             const errCount = msgs.filter(m => m.status === 'error').length;
             toast.success(`${msgs.length} paciente(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
         } catch (err: any) {
@@ -243,7 +285,7 @@ export default function App() {
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [filters, selectedModel]);
 
     // Send messages
     const handleSend = useCallback(async () => {
@@ -338,28 +380,100 @@ export default function App() {
         else setSelectedIds(new Set(pendingIds));
     };
 
+    const handleModelChange = useCallback((newModel: string) => {
+        setSelectedModel(newModel);
+        const preset = MODEL_PRESETS[newModel];
+        if (preset) {
+            const dateStr = dateOffset(preset.dayOffset);
+            setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
+        }
+        setMessages([]);
+        setRawAgendamentos([]);
+    }, []);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoginLoading(true);
+        setLoginError('');
+        try {
+            const { token } = await login(loginEmail, loginPassword);
+            const { user } = await getMe(token);
+            const hasDisparosAccess = user.isSuperAdmin ||
+                user.appAccess?.some((a: any) => a.application?.name === 'disparos');
+            if (!hasDisparosAccess) {
+                setLoginError('Seu usuário não tem permissão para acessar o Dental Connect. Solicite ao administrador.');
+                return;
+            }
+            sessionStorage.setItem('auth_token', token);
+            setAuthenticated(true);
+        } catch (err: any) {
+            setLoginError(err.message || 'Erro ao fazer login');
+        } finally {
+            setLoginLoading(false);
+        }
+    };
+
     const handleLogout = () => {
         sessionStorage.removeItem('auth_token');
         setAuthenticated(false);
-        window.location.href = '/';
+        setLoginEmail('');
+        setLoginPassword('');
+        setLoginError('');
     };
 
-    // Not authenticated
+    // Not authenticated — show login form
     if (!authenticated) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
-                <div className="glass-card p-8 max-w-sm w-full text-center space-y-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center mx-auto">
-                        <MessageSquare className="w-8 h-8 text-white" />
+                <div className="glass-card p-8 max-w-sm w-full space-y-6">
+                    <div className="text-center space-y-2">
+                        <DentalConnectIcon className="w-16 h-16 mx-auto drop-shadow-lg" />
+                        <h1 className="text-xl font-bold text-foreground">Dental Connect</h1>
+                        <p className="text-sm text-muted-foreground">Faça login para continuar</p>
                     </div>
-                    <h1 className="text-xl font-bold text-foreground">Disparos WhatsApp</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Acesse pelo <strong>Portal</strong> para autenticar
-                    </p>
-                    <div className="flex items-center gap-2 justify-center text-red-500 text-sm">
-                        <WifiOff className="w-4 h-4" />
-                        <span>Não autenticado</span>
-                    </div>
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+                            <input
+                                type="email"
+                                autoComplete="email"
+                                required
+                                value={loginEmail}
+                                onChange={e => setLoginEmail(e.target.value)}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="seu@email.com"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">Senha</label>
+                            <input
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                                value={loginPassword}
+                                onChange={e => setLoginPassword(e.target.value)}
+                                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="••••••••"
+                            />
+                        </div>
+
+                        {loginError && (
+                            <div className="flex items-start gap-2 text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <WifiOff className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                <span>{loginError}</span>
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loginLoading}
+                            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-primary to-emerald-600 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
+                        >
+                            <Lock className="w-4 h-4" />
+                            {loginLoading ? 'Entrando...' : 'Entrar'}
+                        </button>
+                    </form>
                 </div>
                 <Toaster position="top-right" />
             </div>
@@ -374,12 +488,10 @@ export default function App() {
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border shadow-sm">
                 <div className="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-lg shadow-primary/20">
-                            <MessageSquare className="w-5 h-5 text-white" />
-                        </div>
+                        <DentalConnectIcon className="w-9 h-9 drop-shadow" />
                         <div>
-                            <h1 className="text-lg font-bold text-foreground leading-tight">Disparos WhatsApp</h1>
-                            <p className="text-xs text-muted-foreground">Sistema de mensagens para pacientes</p>
+                            <h1 className="text-lg font-bold text-foreground leading-tight">Dental Connect</h1>
+                            <p className="text-xs text-muted-foreground">Comunicação inteligente com pacientes</p>
                         </div>
                     </div>
 
@@ -440,106 +552,122 @@ export default function App() {
                     <div className="flex-1 min-w-0 space-y-4">
                         {/* Action bar */}
                         <div className="glass-card px-5 py-4 flex flex-col gap-4 relative z-10">
+                            {/* Row 1: Message model selector (top — defines context) */}
                             <div className="flex items-center gap-3 flex-wrap">
-                                {/* Date Range */}
-                                <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm">
-                                    <Calendar className="w-4 h-4 text-primary" />
-                                    <input
-                                        type="date"
-                                        className="bg-transparent text-sm outline-none text-foreground"
-                                        value={filters.dtInicio}
-                                        onChange={e => setFilters({ ...filters, dtInicio: e.target.value })}
-                                    />
-                                    <span className="text-muted-foreground text-xs font-medium">até</span>
-                                    <input
-                                        type="date"
-                                        className="bg-transparent text-sm outline-none text-foreground"
-                                        value={filters.dtTermino}
-                                        onChange={e => setFilters({ ...filters, dtTermino: e.target.value })}
-                                    />
+                                <div className="flex flex-col gap-0.5">
+                                    <label className="text-xs font-medium text-muted-foreground">Mensagem</label>
+                                    <select
+                                        value={selectedModel}
+                                        onChange={(e) => handleModelChange(e.target.value)}
+                                        className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground shadow-sm outline-none cursor-pointer hover:border-primary transition-colors h-[38px] font-medium"
+                                        disabled={isSending}
+                                    >
+                                        {Object.entries(MODEL_PRESETS).map(([id, p]) => (
+                                            <option key={id} value={id}>{p.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
-
-                                {/* Unidades Dropdown */}
-                                <div className="relative group">
-                                    <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <Building2 className="w-4 h-4 text-secondary" />
-                                        <span className="text-sm font-medium">
-                                            {filters.unidades.length === 0
-                                                ? 'Selecionar Unidades'
-                                                : `${filters.unidades.length} unidade(s) selecionada(s)`}
-                                        </span>
+                                {MODEL_PRESETS[selectedModel] && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium mt-4">
+                                        <Search className="w-3.5 h-3.5 opacity-70" />
+                                        Padrão: {MODEL_PRESETS[selectedModel].hint}
                                     </div>
-                                    <div className="absolute top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 p-2 max-h-64 overflow-y-auto">
-                                        {unidadeOptions.length === 0 ? (
-                                            <p className="text-xs text-muted-foreground italic p-2">Nenhuma unidade disponível</p>
-                                        ) : (
-                                            <>
-                                                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground pb-2 border-b border-border mb-2 px-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        className="filter-checkbox"
-                                                        checked={filters.unidades.length === unidadeOptions.length && unidadeOptions.length > 0}
-                                                        onChange={() => {
-                                                            const all = filters.unidades.length === unidadeOptions.length;
-                                                            setFilters({ ...filters, unidades: all ? [] : [...unidadeOptions] });
-                                                        }}
-                                                    />
-                                                    {filters.unidades.length === unidadeOptions.length ? 'Desmarcar todas' : 'Selecionar todas'}
-                                                </label>
-                                                {unidadeOptions.map(opt => (
-                                                    <label key={opt} className="flex items-center gap-2 text-sm p-1.5 hover:bg-muted rounded cursor-pointer">
+                                )}
+                            </div>
+
+                            <div className="border-t border-border pt-4 flex flex-col gap-3">
+                                {/* Row 2: Date range + units + search */}
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    {/* Date Range */}
+                                    <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm">
+                                        <Calendar className="w-4 h-4 text-primary" />
+                                        <input
+                                            type="date"
+                                            className="bg-transparent text-sm outline-none text-foreground"
+                                            value={filters.dtInicio}
+                                            onChange={e => setFilters({ ...filters, dtInicio: e.target.value })}
+                                        />
+                                        <span className="text-muted-foreground text-xs font-medium">até</span>
+                                        <input
+                                            type="date"
+                                            className="bg-transparent text-sm outline-none text-foreground"
+                                            value={filters.dtTermino}
+                                            onChange={e => setFilters({ ...filters, dtTermino: e.target.value })}
+                                        />
+                                    </div>
+
+                                    {/* Unidades Dropdown */}
+                                    <div className="relative group">
+                                        <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors h-[38px]">
+                                            <Building2 className="w-4 h-4 text-secondary" />
+                                            <span className="text-sm font-medium">
+                                                {filters.unidades.length === 0
+                                                    ? 'Selecionar Unidades'
+                                                    : `${filters.unidades.length} unidade(s)`}
+                                            </span>
+                                        </div>
+                                        <div className="absolute top-full left-0 mt-1 w-64 bg-card border border-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 p-2 max-h-64 overflow-y-auto">
+                                            {unidadeOptions.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground italic p-2">Nenhuma unidade disponível</p>
+                                            ) : (
+                                                <>
+                                                    <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground pb-2 border-b border-border mb-2 px-1">
                                                         <input
                                                             type="checkbox"
                                                             className="filter-checkbox"
-                                                            checked={filters.unidades.includes(opt)}
+                                                            checked={filters.unidades.length === unidadeOptions.length && unidadeOptions.length > 0}
                                                             onChange={() => {
-                                                                const next = filters.unidades.includes(opt)
-                                                                    ? filters.unidades.filter(v => v !== opt)
-                                                                    : [...filters.unidades, opt];
-                                                                setFilters({ ...filters, unidades: next });
+                                                                const all = filters.unidades.length === unidadeOptions.length;
+                                                                setFilters({ ...filters, unidades: all ? [] : [...unidadeOptions] });
                                                             }}
                                                         />
-                                                        <span className="truncate">{opt}</span>
+                                                        {filters.unidades.length === unidadeOptions.length ? 'Desmarcar todas' : 'Selecionar todas'}
                                                     </label>
-                                                ))}
-                                            </>
-                                        )}
+                                                    {unidadeOptions.map(opt => (
+                                                        <label key={opt} className="flex items-center gap-2 text-sm p-1.5 hover:bg-muted rounded cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="filter-checkbox"
+                                                                checked={filters.unidades.includes(opt)}
+                                                                onChange={() => {
+                                                                    const next = filters.unidades.includes(opt)
+                                                                        ? filters.unidades.filter(v => v !== opt)
+                                                                        : [...filters.unidades, opt];
+                                                                    setFilters({ ...filters, unidades: next });
+                                                                }}
+                                                            />
+                                                            <span className="truncate">{opt}</span>
+                                                        </label>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
+
+                                    <button
+                                        onClick={handleSearch}
+                                        disabled={loading}
+                                        className="px-5 py-2 rounded-lg bg-gradient-to-r from-secondary to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-secondary/20 disabled:opacity-50 h-[38px]"
+                                    >
+                                        {loading ? <Search className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                        Pesquisar
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setSentCount(0); setErrorCount(0); setShowSendModal(true); }}
+                                        disabled={selectedCount === 0 || isSending}
+                                        className="px-5 py-2 rounded-lg bg-gradient-to-r from-primary to-emerald-600 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none h-[38px]"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        Enviar ({selectedCount})
+                                    </button>
+
+                                    {messages.length > 0 && (
+                                        <span className="ml-auto text-xs text-muted-foreground">
+                                            Mostrando {filteredMessages.length} de {messages.length} pacientes
+                                        </span>
+                                    )}
                                 </div>
-
-                                <button
-                                    onClick={handleSearch}
-                                    disabled={loading}
-                                    className="px-5 py-2 rounded-lg bg-gradient-to-r from-secondary to-blue-500 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-secondary/20 disabled:opacity-50 h-[38px]"
-                                >
-                                    {loading ? <Search className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                                    Pesquisar
-                                </button>
-                            </div>
-
-                            <div className="flex items-center gap-3 pt-4 border-t border-border">
-                                <select
-                                    value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground shadow-sm outline-none cursor-pointer hover:border-emerald-400 transition-colors h-[38px]"
-                                    disabled={isSending}
-                                >
-                                    <option value="22180">Confirmação de Consulta</option>
-                                    <option value="19872">Avaliação</option>
-                                </select>
-                                <button
-                                    onClick={() => { setSentCount(0); setErrorCount(0); setShowSendModal(true); }}
-                                    disabled={selectedCount === 0 || isSending}
-                                    className="px-5 py-2 rounded-lg bg-gradient-to-r from-primary to-emerald-600 text-white text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none h-[38px]"
-                                >
-                                    <Send className="w-4 h-4" />
-                                    Enviar ({selectedCount})
-                                </button>
-                                {messages.length > 0 && (
-                                    <span className="ml-auto text-xs text-muted-foreground">
-                                        Mostrando {filteredMessages.length} de {messages.length} pacientes
-                                    </span>
-                                )}
                             </div>
                         </div>
 

@@ -50,6 +50,91 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
 });
 
+// One-time DB setup: creates missing tables and seed data
+// Protected by SETUP_SECRET env var — call once then remove the secret
+app.post('/api/setup', async (req, res) => {
+    const secret = req.headers['x-setup-secret'];
+    if (!secret || secret !== process.env.SETUP_SECRET) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    try {
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "ScheduledDisparo" (
+                "id" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT,
+                "cronExpression" TEXT NOT NULL, "isActive" BOOLEAN NOT NULL DEFAULT true,
+                "unidades" TEXT[] NOT NULL DEFAULT '{}', "agendas" TEXT[] NOT NULL DEFAULT '{}',
+                "statusAgendamento" TEXT[] NOT NULL DEFAULT '{}', "periodos" TEXT[] NOT NULL DEFAULT '{}',
+                "motivo" TEXT NOT NULL DEFAULT '', "dtInicioOffset" INTEGER NOT NULL DEFAULT 1,
+                "dtTerminoOffset" INTEGER NOT NULL DEFAULT 1, "modelo" TEXT NOT NULL DEFAULT '22180',
+                "delayMs" INTEGER NOT NULL DEFAULT 1000, "concurrentLimit" INTEGER NOT NULL DEFAULT 5,
+                "createdBy" TEXT NOT NULL,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "ScheduledDisparo_pkey" PRIMARY KEY ("id")
+            );
+        `);
+        await prisma.$executeRawUnsafe(`
+            CREATE TABLE IF NOT EXISTS "ScheduledDisparoLog" (
+                "id" TEXT NOT NULL, "scheduleId" TEXT NOT NULL,
+                "executedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "status" TEXT NOT NULL, "totalSent" INTEGER NOT NULL DEFAULT 0,
+                "totalErrors" INTEGER NOT NULL DEFAULT 0, "totalProcessed" INTEGER NOT NULL DEFAULT 0,
+                "errorMessage" TEXT, "dtInicio" TEXT NOT NULL, "dtTermino" TEXT NOT NULL,
+                CONSTRAINT "ScheduledDisparoLog_pkey" PRIMARY KEY ("id")
+            );
+        `);
+        await prisma.$executeRawUnsafe(`
+            ALTER TABLE "ScheduledDisparoLog"
+                DROP CONSTRAINT IF EXISTS "ScheduledDisparoLog_scheduleId_fkey";
+            ALTER TABLE "ScheduledDisparoLog"
+                ADD CONSTRAINT "ScheduledDisparoLog_scheduleId_fkey"
+                FOREIGN KEY ("scheduleId") REFERENCES "ScheduledDisparo"("id")
+                ON DELETE CASCADE ON UPDATE CASCADE;
+        `);
+        // Upsert Dental Connect application
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO "Application" ("id","name","displayName","description","icon","url","createdAt","updatedAt")
+            VALUES (gen_random_uuid()::text,'disparos','Dental Connect',
+                    'Comunicação inteligente com pacientes via WhatsApp','DentalConnect',
+                    'http://localhost:5176',NOW(),NOW())
+            ON CONFLICT ("name") DO UPDATE
+                SET "displayName"='Dental Connect',"updatedAt"=NOW();
+        `);
+        // Upsert OPERADOR_DISPAROS role
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO "Role" ("id","name","description")
+            VALUES (gen_random_uuid()::text,'OPERADOR_DISPAROS','Operador do Dental Connect')
+            ON CONFLICT ("name") DO NOTHING;
+        `);
+        // Upsert access:disparos permission
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO "Permission" ("id","action","resource","description","applicationId","createdAt","updatedAt")
+            VALUES (gen_random_uuid()::text,'access','disparos','Acessar o Dental Connect',
+                    (SELECT "id" FROM "Application" WHERE "name"='disparos'),NOW(),NOW())
+            ON CONFLICT ("action","resource") DO UPDATE
+                SET "applicationId"=(SELECT "id" FROM "Application" WHERE "name"='disparos'),"updatedAt"=NOW();
+        `);
+        // Link permission to OPERADOR_DISPAROS and ADMIN roles
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO "_PermissionToRole" ("A","B")
+            SELECT p."id", r."id" FROM "Permission" p, "Role" r
+            WHERE p."action"='access' AND p."resource"='disparos' AND r."name" IN ('OPERADOR_DISPAROS','ADMIN')
+            ON CONFLICT DO NOTHING;
+        `);
+        // Grant SuperAdmin access to disparos app
+        await prisma.$executeRawUnsafe(`
+            INSERT INTO "UserAppAccess" ("id","userId","applicationId","roleId","createdAt","updatedAt")
+            SELECT gen_random_uuid()::text, u."id", a."id", r."id", NOW(), NOW()
+            FROM "User" u, "Application" a, "Role" r
+            WHERE u."isSuperAdmin"=true AND a."name"='disparos' AND r."name"='ADMIN'
+            ON CONFLICT ("userId","applicationId") DO UPDATE SET "updatedAt"=NOW();
+        `);
+        res.json({ ok: true, message: 'Setup concluído com sucesso' });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Auth Routes
 app.post('/api/auth/register', register);
 app.post('/api/auth/login', login);
@@ -136,23 +221,23 @@ app.put('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
 app.delete('/api/admin/ai-keys/:id', authMiddleware, requireSuperAdmin, deleteKey);
 
 // EasyDental RPC Proxy Routes
-app.get('/api/easydental/unidades', authMiddleware, requireSuperAdmin, getUnidadesAtendimento);
-app.post('/api/easydental/agendamentos', authMiddleware, requireSuperAdmin, getAgendamentos);
-app.post('/api/easydental/kpi', authMiddleware, requireSuperAdmin, getKPIPrd);
-app.post('/api/easydental/prestador', authMiddleware, requireSuperAdmin, getPrestadorCPF);
+app.get('/api/easydental/unidades', authMiddleware, requireAppAccess('disparos'), getUnidadesAtendimento);
+app.post('/api/easydental/agendamentos', authMiddleware, requireAppAccess('disparos'), getAgendamentos);
+app.post('/api/easydental/kpi', authMiddleware, requireAppAccess('disparos'), getKPIPrd);
+app.post('/api/easydental/prestador', authMiddleware, requireAppAccess('disparos'), getPrestadorCPF);
 
 // Message Dispatch Routes (BotConversa)
-app.post('/api/messages/send', authMiddleware, requireSuperAdmin, sendMessage);
-app.get('/api/messages/config', authMiddleware, requireSuperAdmin, getMessageConfig);
+app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sendMessage);
+app.get('/api/messages/config', authMiddleware, requireAppAccess('disparos'), getMessageConfig);
 
 // Scheduled Disparos Routes
-app.get('/api/scheduled-disparos', authMiddleware, requireSuperAdmin, listScheduledDisparos);
-app.post('/api/scheduled-disparos', authMiddleware, requireSuperAdmin, createScheduledDisparo);
-app.get('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, getScheduledDisparo);
-app.put('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, updateScheduledDisparo);
-app.delete('/api/scheduled-disparos/:id', authMiddleware, requireSuperAdmin, deleteScheduledDisparo);
-app.post('/api/scheduled-disparos/:id/trigger', authMiddleware, requireSuperAdmin, triggerScheduledDisparo);
-app.get('/api/scheduled-disparos/:id/logs', authMiddleware, requireSuperAdmin, getScheduledDisparoLogs);
+app.get('/api/scheduled-disparos', authMiddleware, requireAppAccess('disparos'), listScheduledDisparos);
+app.post('/api/scheduled-disparos', authMiddleware, requireAppAccess('disparos'), createScheduledDisparo);
+app.get('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparos'), getScheduledDisparo);
+app.put('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparos'), updateScheduledDisparo);
+app.delete('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparos'), deleteScheduledDisparo);
+app.post('/api/scheduled-disparos/:id/trigger', authMiddleware, requireAppAccess('disparos'), triggerScheduledDisparo);
+app.get('/api/scheduled-disparos/:id/logs', authMiddleware, requireAppAccess('disparos'), getScheduledDisparoLogs);
 
 // Start Server
 app.listen(PORT, async () => {

@@ -540,8 +540,8 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-lg font-bold text-foreground">Disparos Agendados</h2>
-                    <p className="text-sm text-muted-foreground">Configure disparos automáticos recorrentes por horário</p>
+                    <h2 className="text-lg font-bold text-foreground">Envios Automáticos</h2>
+                    <p className="text-sm text-muted-foreground">Configure mensagens automáticas recorrentes por horário</p>
                 </div>
                 {formMode === null && (
                     <button
@@ -580,7 +580,7 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
                 <div className="glass-card p-10 text-center space-y-3">
                     <Clock className="w-10 h-10 text-muted-foreground/40 mx-auto" />
                     <p className="text-muted-foreground font-medium">Nenhum agendamento configurado</p>
-                    <p className="text-sm text-muted-foreground">Crie seu primeiro agendamento para automatizar os disparos</p>
+                    <p className="text-sm text-muted-foreground">Crie seu primeiro agendamento para automatizar o envio de mensagens</p>
                     <button
                         onClick={() => setFormMode('create')}
                         className="mt-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"

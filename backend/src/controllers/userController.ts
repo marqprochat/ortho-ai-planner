@@ -20,11 +20,13 @@ export const getUsers = async (req: Request, res: Response) => {
             const { password, ...rest } = u;
             // Get planner role if exists
             const plannerAccess = u.appAccess.find(a => a.application.name === 'planner');
+            const disparosAccess = u.appAccess.find(a => a.application.name === 'disparos');
 
             return {
                 ...rest,
                 roleId: plannerAccess?.roleId,
                 canTransferPatient: u.canTransferPatient,
+                canAccessDisparos: !!disparosAccess,
                 // Flatten clinic list for easier frontend use
                 clinics: u.userClinics.map(uc => uc.clinic)
             };
@@ -37,7 +39,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient, canAccessDisparos } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -48,10 +50,9 @@ export const createUser = async (req: Request, res: Response) => {
                 password: hashedPassword,
                 tenantId,
                 isSuperAdmin: isSuperAdmin || false,
-                nickname, // Add nickname
-                cro, // Add cro
+                nickname,
+                cro,
                 canTransferPatient: canTransferPatient || false,
-                // Create UserClinic records if clinicIds provided
                 userClinics: clinicIds?.length ? {
                     create: clinicIds.map((clinicId: string) => ({ clinicId }))
                 } : undefined
@@ -66,11 +67,18 @@ export const createUser = async (req: Request, res: Response) => {
             const plannerApp = await prisma.application.findUnique({ where: { name: 'planner' } });
             if (plannerApp) {
                 await prisma.userAppAccess.create({
-                    data: {
-                        userId: user.id,
-                        applicationId: plannerApp.id,
-                        roleId: roleId
-                    }
+                    data: { userId: user.id, applicationId: plannerApp.id, roleId }
+                });
+            }
+        }
+
+        // Grant disparos access if requested
+        if (canAccessDisparos) {
+            const disparosApp = await prisma.application.findUnique({ where: { name: 'disparos' } });
+            const operadorRole = await prisma.role.findUnique({ where: { name: 'OPERADOR_DISPAROS' } });
+            if (disparosApp && operadorRole) {
+                await prisma.userAppAccess.create({
+                    data: { userId: user.id, applicationId: disparosApp.id, roleId: operadorRole.id }
                 });
             }
         }
@@ -78,6 +86,7 @@ export const createUser = async (req: Request, res: Response) => {
         const { password: _, ...userWithoutPassword } = user;
         const responseData = {
             ...userWithoutPassword,
+            canAccessDisparos: !!canAccessDisparos,
             clinics: (user as any).userClinics?.map((uc: any) => uc.clinic) || []
         };
         res.json(responseData);
@@ -90,7 +99,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient } = req.body;
+        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient, canAccessDisparos } = req.body;
 
         // Update user basic info
         const updateData: any = {
@@ -155,6 +164,25 @@ export const updateUser = async (req: Request, res: Response) => {
             }
         }
 
+        // Sync disparos app access
+        if (canAccessDisparos !== undefined) {
+            const disparosApp = await prisma.application.findUnique({ where: { name: 'disparos' } });
+            const operadorRole = await prisma.role.findUnique({ where: { name: 'OPERADOR_DISPAROS' } });
+            if (disparosApp && operadorRole) {
+                if (canAccessDisparos) {
+                    await prisma.userAppAccess.upsert({
+                        where: { userId_applicationId: { userId: id, applicationId: disparosApp.id } },
+                        update: { roleId: operadorRole.id },
+                        create: { userId: id, applicationId: disparosApp.id, roleId: operadorRole.id }
+                    });
+                } else {
+                    await prisma.userAppAccess.deleteMany({
+                        where: { userId: id, applicationId: disparosApp.id }
+                    });
+                }
+            }
+        }
+
         // Fetch updated user with clinics and app access
         const updated = await prisma.user.findUnique({
             where: { id },
@@ -170,11 +198,13 @@ export const updateUser = async (req: Request, res: Response) => {
 
         const { password: _, ...userWithoutPassword } = updated;
         const plannerAccess = updated.appAccess.find(a => a.application.name === 'planner');
+        const disparosAccessUpdated = updated.appAccess.find(a => a.application.name === 'disparos');
 
         res.json({
             ...userWithoutPassword,
             roleId: plannerAccess?.roleId,
             canTransferPatient: updated.canTransferPatient,
+            canAccessDisparos: !!disparosAccessUpdated,
             clinics: updated.userClinics.map(uc => uc.clinic)
         });
     } catch (error) {

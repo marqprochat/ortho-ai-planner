@@ -61,7 +61,8 @@ export default function UserManagement() {
     const handleEdit = (user: User) => {
         setFormData({
             ...user,
-            clinicIds: user.clinics?.map(c => c.id) || []
+            clinicIds: user.clinics?.map(c => c.id) || [],
+            canAccessDisparos: user.canAccessDisparos || false
         });
         setIsEditing(true);
         setShowPassword(false);
@@ -167,13 +168,18 @@ export default function UserManagement() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {roles.find(r => r.id === user.roleId)?.name || (
-                                            user.isSuperAdmin ? (
-                                                <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs border border-primary/30">Super Admin</span>
-                                            ) : (
-                                                <span className="text-sidebar-foreground/40 text-xs italic">Sem perfil</span>
-                                            )
-                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            {roles.find(r => r.id === user.roleId)?.name || (
+                                                user.isSuperAdmin ? (
+                                                    <span className="px-2 py-1 bg-primary/20 text-primary rounded text-xs border border-primary/30">Super Admin</span>
+                                                ) : (
+                                                    <span className="text-sidebar-foreground/40 text-xs italic">Sem perfil</span>
+                                                )
+                                            )}
+                                            {user.canAccessDisparos && (
+                                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-xs border border-emerald-500/30 w-fit">Dental Connect</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-right space-x-2">
                                         <button onClick={() => handleEdit(user)} className="text-info hover:text-info/80 transition font-medium">
@@ -278,6 +284,16 @@ export default function UserManagement() {
                                     className="rounded bg-sidebar-accent border-sidebar-border text-primary focus:ring-primary"
                                 />
                                 <label htmlFor="canTransferPatient" className="text-sm text-sidebar-foreground/60">Pode transferir pacientes?</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="canAccessDisparos"
+                                    checked={formData.canAccessDisparos || false}
+                                    onChange={(e) => setFormData({ ...formData, canAccessDisparos: e.target.checked })}
+                                    className="rounded bg-sidebar-accent border-sidebar-border text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="canAccessDisparos" className="text-sm text-sidebar-foreground/60">Acesso ao Dental Connect?</label>
                             </div>
 
                             {!formData.isSuperAdmin && (

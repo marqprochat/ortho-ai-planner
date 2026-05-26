@@ -32,7 +32,19 @@ async function main() {
         }
     });
 
-    console.log(`✅ Applications ensured: ${portalApp.name}, ${plannerApp.name}`);
+    const disparosApp = await prisma.application.upsert({
+        where: { name: 'disparos' },
+        update: { displayName: 'Dental Connect', description: 'Comunicação inteligente com pacientes via WhatsApp' },
+        create: {
+            name: 'disparos',
+            displayName: 'Dental Connect',
+            description: 'Comunicação inteligente com pacientes via WhatsApp',
+            icon: 'DentalConnect',
+            url: 'http://localhost:5176'
+        }
+    });
+
+    console.log(`✅ Applications ensured: ${portalApp.name}, ${plannerApp.name}, ${disparosApp.name}`);
 
     // 2. Permissions
     console.log('Upserting permissions...');
@@ -64,6 +76,9 @@ async function main() {
         { action: 'read', resource: 'report_pacientes', description: 'Visualizar relatório de pacientes', appId: plannerApp.id },
         { action: 'read', resource: 'report_agendamentos', description: 'Visualizar relatório de agendamentos', appId: plannerApp.id },
         { action: 'read', resource: 'report_tratamentos', description: 'Visualizar relatório de tratamentos', appId: plannerApp.id },
+
+        // --- Disparos Permissions ---
+        { action: 'access', resource: 'disparos', description: 'Acessar o sistema de disparos WhatsApp', appId: disparosApp.id },
     ];
 
     for (const p of permissions) {
@@ -96,6 +111,7 @@ async function main() {
         { name: 'ADMIN', description: 'Administrador total do sistema' },
         { name: 'DENTISTA', description: 'Profissional de odontologia' },
         { name: 'ASSISTENTE', description: 'Assistente clínico' },
+        { name: 'OPERADOR_DISPAROS', description: 'Operador do sistema de disparos WhatsApp' },
     ];
 
     const roles: any = {};
@@ -121,6 +137,18 @@ async function main() {
         }
     });
     console.log('✅ ADMIN role updated with all permissions.');
+
+    // 4b. Link access:disparos permission to OPERADOR_DISPAROS role
+    const disparosPermission = await prisma.permission.findUnique({
+        where: { action_resource: { action: 'access', resource: 'disparos' } }
+    });
+    if (disparosPermission) {
+        await prisma.role.update({
+            where: { name: 'OPERADOR_DISPAROS' },
+            data: { permissions: { set: [{ id: disparosPermission.id }] } }
+        });
+        console.log('✅ OPERADOR_DISPAROS role linked to access:disparos permission.');
+    }
 
     // 5. Promote first user to SuperAdmin if exists and none exists
     console.log('Checking for SuperAdmin...');

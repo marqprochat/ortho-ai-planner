@@ -24,6 +24,30 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     return res.json();
 }
 
+export async function login(email: string, password: string): Promise<{ token: string; user: any }> {
+    const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Falha no login');
+    }
+    return res.json();
+}
+
+export async function getMe(token: string): Promise<{ user: any }> {
+    const res = await fetch(`${API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Falha ao verificar usuário');
+    }
+    return res.json();
+}
+
 // EasyDental
 export const api = {
     getUnidades: () => request<any[]>('/easydental/unidades'),

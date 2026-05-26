@@ -46,6 +46,7 @@ export interface User {
     tenantId: string;
     isSuperAdmin?: boolean;
     canTransferPatient?: boolean;
+    canAccessDisparos?: boolean;
     appAccess?: any[];
     clinics?: Clinic[]; // Assigned clinics
     clinicIds?: string[]; // For create/update payload
