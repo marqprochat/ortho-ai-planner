@@ -85,11 +85,13 @@ app.post('/api/setup', async (req, res) => {
         `);
         await prisma.$executeRawUnsafe(`
             ALTER TABLE "ScheduledDisparoLog"
-                DROP CONSTRAINT IF EXISTS "ScheduledDisparoLog_scheduleId_fkey";
+                DROP CONSTRAINT IF EXISTS "ScheduledDisparoLog_scheduleId_fkey"
+        `);
+        await prisma.$executeRawUnsafe(`
             ALTER TABLE "ScheduledDisparoLog"
                 ADD CONSTRAINT "ScheduledDisparoLog_scheduleId_fkey"
                 FOREIGN KEY ("scheduleId") REFERENCES "ScheduledDisparo"("id")
-                ON DELETE CASCADE ON UPDATE CASCADE;
+                ON DELETE CASCADE ON UPDATE CASCADE
         `);
         // Upsert Dental Connect application
         await prisma.$executeRawUnsafe(`
