@@ -7,7 +7,8 @@ echo "🚀 Starting deployment script..."
 
 # 1. Fix failed migrations (if any)
 echo "🔧 Checking for failed migrations..."
-npx prisma migrate resolve --rolled-back 20260206130541_replace_insurance_with_payment_type 2>/dev/null && echo "✅ Resolved failed migration 20260206130541_replace_insurance_with_payment_type" || echo "ℹ️ No failed migration to resolve (or already resolved)"
+npx prisma migrate resolve --rolled-back 20260206130541_replace_insurance_with_payment_type 2>/dev/null && echo "✅ Resolved 20260206130541" || echo "ℹ️ 20260206130541 already resolved"
+npx prisma migrate resolve --rolled-back 20260603000000_add_scheduled_disparos 2>/dev/null && echo "✅ Resolved 20260603000000" || echo "ℹ️ 20260603000000 already resolved"
 
 # 2. Migrations (Critical - if this fails, we should probably stop)
 echo "📦 Running database migrations..."
