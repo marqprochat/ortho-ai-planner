@@ -21,6 +21,22 @@ const MODELO_OPTIONS = [
     { value: '19872', label: 'Avaliação' },
 ];
 
+const STATUS_OPTIONS = [
+    { code: 'AEX', label: 'Agendado externo',                   color: '#F59E0B' },
+    { code: 'AGD', label: 'Agendado',                           color: '#FDE68A' },
+    { code: 'AGP', label: 'Aguardando confirmação profissional', color: '#06B6D4' },
+    { code: 'AGU', label: 'Aguardando confirmação paciente',     color: '#67E8F9' },
+    { code: 'ATE', label: 'Atendido',                           color: '#9CA3AF' },
+    { code: 'CON', label: 'Confirmado',                         color: '#16A34A' },
+    { code: 'DCA', label: 'Desmarcado pelo Paciente',           color: '#F97316' },
+    { code: 'DPP', label: 'Desmarcado pelo Dentista',           color: '#C4B5FD' },
+    { code: 'FAL', label: 'Faltou',                             color: '#EF4444' },
+    { code: 'MDA', label: 'Mudar horario (desmarcar)',          color: '#1D4ED8' },
+    { code: 'NAT', label: 'Não atendido',                       color: '#7C2D12' },
+    { code: 'PRE', label: 'Pré Agendado',                       color: '#D1D5DB' },
+    { code: 'RCP', label: 'Recepção',                           color: '#EC4899' },
+];
+
 const DEFAULT_FORM: ScheduledDisparoFormData = {
     name: '',
     description: '',
@@ -182,31 +198,43 @@ function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: 
 
             {/* Offset de datas */}
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">Buscar consultas dos próximos dias</label>
-                <div className="flex items-center gap-4">
+                <label className="text-xs font-semibold text-foreground">Período de consultas (relativo a hoje)</label>
+                <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">De</span>
                         <input
-                            type="number" min={0} max={30}
+                            type="number" min={-30} max={30}
                             className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
                             value={form.dtInicioOffset}
                             onChange={e => set({ dtInicioOffset: parseInt(e.target.value) || 0 })}
                         />
-                        <span className="text-xs text-muted-foreground">dia(s) à frente</span>
+                        <span className="text-xs text-muted-foreground">
+                            {form.dtInicioOffset < 0
+                                ? `dia(s) atrás`
+                                : form.dtInicioOffset === 0
+                                    ? 'hoje'
+                                    : 'dia(s) à frente'}
+                        </span>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">até</span>
                         <input
-                            type="number" min={0} max={30}
+                            type="number" min={-30} max={30}
                             className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
                             value={form.dtTerminoOffset}
                             onChange={e => set({ dtTerminoOffset: parseInt(e.target.value) || 0 })}
                         />
-                        <span className="text-xs text-muted-foreground">dia(s) à frente</span>
+                        <span className="text-xs text-muted-foreground">
+                            {form.dtTerminoOffset < 0
+                                ? `dia(s) atrás`
+                                : form.dtTerminoOffset === 0
+                                    ? 'hoje'
+                                    : 'dia(s) à frente'}
+                        </span>
                     </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                    Ex: "De 1 até 1" = busca consultas de amanhã. "De 1 até 3" = busca consultas nos próximos 3 dias.
+                    Negativo = dias passados. Ex: <strong>-1 até -1</strong> = ontem · <strong>1 até 1</strong> = amanhã · <strong>-1 até 1</strong> = ontem, hoje e amanhã.
                 </p>
             </div>
 
@@ -231,6 +259,35 @@ function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: 
                     </div>
                 </div>
             )}
+
+            {/* Status de Agendamento */}
+            <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground">
+                    Status de agendamento{' '}
+                    <span className="font-normal text-muted-foreground">(vazio = todos)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                    {STATUS_OPTIONS.map(s => {
+                        const selected = form.statusAgendamento.includes(s.code);
+                        return (
+                            <label
+                                key={s.code}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${selected
+                                    ? 'border-primary bg-primary/10 text-primary font-semibold'
+                                    : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
+                            >
+                                <input type="checkbox" className="sr-only" checked={selected} onChange={() => toggleArray('statusAgendamento', s.code)} />
+                                <span
+                                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: s.color, border: s.color === '#D1D5DB' ? '1px solid #9CA3AF' : undefined }}
+                                />
+                                <span className="font-mono font-bold">{s.code}</span>
+                                <span className="hidden sm:inline">— {s.label}</span>
+                            </label>
+                        );
+                    })}
+                </div>
+            </div>
 
             {/* Período */}
             <div className="space-y-2">
@@ -331,9 +388,13 @@ function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: Sched
     const [showLogs, setShowLogs] = useState(false);
     const lastLog = schedule.logs?.[0];
 
+    function fmtOffset(n: number) {
+        if (n === 0) return 'hoje';
+        return n > 0 ? `+${n}d` : `${n}d`;
+    }
     const offsetLabel = schedule.dtInicioOffset === schedule.dtTerminoOffset
-        ? `+${schedule.dtInicioOffset} dia(s)`
-        : `+${schedule.dtInicioOffset} a +${schedule.dtTerminoOffset} dia(s)`;
+        ? fmtOffset(schedule.dtInicioOffset)
+        : `${fmtOffset(schedule.dtInicioOffset)} a ${fmtOffset(schedule.dtTerminoOffset)}`;
 
     const modeloLabel = MODELO_OPTIONS.find(o => o.value === schedule.modelo)?.label || schedule.modelo;
 
@@ -364,6 +425,19 @@ function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: Sched
                         <span>{modeloLabel}</span>
                         {schedule.unidades.length > 0 && (
                             <span>{schedule.unidades.length} unidade(s)</span>
+                        )}
+                        {schedule.statusAgendamento.length > 0 && (
+                            <span className="flex items-center gap-1">
+                                {schedule.statusAgendamento.map(code => {
+                                    const opt = STATUS_OPTIONS.find(s => s.code === code);
+                                    return (
+                                        <span key={code} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono font-bold" title={opt?.label}>
+                                            <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: opt?.color ?? '#9CA3AF' }} />
+                                            {code}
+                                        </span>
+                                    );
+                                })}
+                            </span>
                         )}
                         {schedule.periodos.length > 0 && (
                             <span>{schedule.periodos.join(', ')}</span>

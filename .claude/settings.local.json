@@ -6,7 +6,8 @@
       "Bash(Select-Object Name, PSIsContainer)",
       "Bash(Format-Table -AutoSize)",
       "Bash(grep -E \"\\\\.\\(tsx?|jsx?|sql\\)$\")",
-      "Bash(npx prisma *)"
+      "Bash(npx prisma *)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }
