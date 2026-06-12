@@ -40,6 +40,31 @@ function extractUnit(ag: any): string {
     return ag.UNIDADE || ag.TX_UNIDADE_ATENDIMENTO || ag.nm_unidade || ag.unidade || ag.NM_UNIDADE_ATENDIMENTO || '';
 }
 
+// Maps schedule status codes (stored in DB) to all possible API return values
+const STATUS_ALIASES: Record<string, string[]> = {
+    AEX: ['AEX', 'Agendado externo'],
+    AGD: ['AGD', 'Agendado'],
+    AGP: ['AGP', 'Aguardando confirmação profissional', 'Aguardando confirmacao profissional'],
+    AGU: ['AGU', 'Aguardando confirmação paciente', 'Aguardando confirmacao paciente'],
+    ATE: ['ATE', 'Atendido'],
+    CON: ['CON', 'Confirmado'],
+    DCA: ['DCA', 'Desmarcado pelo Paciente'],
+    DPP: ['DPP', 'Desmarcado pelo Dentista'],
+    FAL: ['FAL', 'Faltou'],
+    MDA: ['MDA', 'Mudar horario (desmarcar)'],
+    NAT: ['NAT', 'Não atendido', 'Nao atendido'],
+    PRE: ['PRE', 'Pré Agendado', 'Pre Agendado'],
+    RCP: ['RCP', 'Recepção', 'Recepcao'],
+};
+
+function statusMatchesFilter(apiStatus: string, configuredStatuses: string[]): boolean {
+    return configuredStatuses.some(cfg => {
+        if (apiStatus === cfg) return true;
+        const aliases = STATUS_ALIASES[cfg];
+        return aliases ? aliases.some(a => a.toLowerCase() === apiStatus.toLowerCase()) : false;
+    });
+}
+
 function extractStatus(ag: any): string {
     return ag.STATUS || ag.ds_status || ag.status_agendamento || ag.status || '';
 }
@@ -170,7 +195,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             }
             if (schedule.statusAgendamento.length > 0) {
                 const st = extractStatus(ag);
-                if (st && !schedule.statusAgendamento.includes(st)) { filteredStatus++; continue; }
+                if (st && !statusMatchesFilter(st, schedule.statusAgendamento)) { filteredStatus++; continue; }
             }
             if (schedule.periodos.length > 0) {
                 const slot = getTimeSlot(ag);
