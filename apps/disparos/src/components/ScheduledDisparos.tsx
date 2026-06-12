@@ -91,21 +91,39 @@ function LogsPanel({ scheduleId }: { scheduleId: string }) {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Últimas execuções</p>
             <div className="divide-y divide-border">
                 {logs.map(log => (
-                    <div key={log.id} className="py-2.5 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <StatusBadge status={log.status} />
-                            <span className="text-xs text-muted-foreground">
-                                {new Date(log.executedAt).toLocaleString('pt-BR')}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                {log.dtInicio} → {log.dtTermino}
-                            </span>
+                    <div key={log.id} className="py-2.5 space-y-1">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={log.status} />
+                                <span className="text-xs text-muted-foreground">
+                                    {new Date(log.executedAt).toLocaleString('pt-BR')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    {log.dtInicio} → {log.dtTermino}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="text-emerald-600 font-medium">{log.totalSent} enviados</span>
+                                {log.totalErrors > 0 && <span className="text-red-500 font-medium">{log.totalErrors} erros</span>}
+                                <span className="text-muted-foreground">{log.totalProcessed} filtrados</span>
+                                <span className="text-blue-500 font-medium">{log.totalFetched ?? '—'} buscados</span>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs">
-                            <span className="text-emerald-600 font-medium">{log.totalSent} enviados</span>
-                            {log.totalErrors > 0 && <span className="text-red-500 font-medium">{log.totalErrors} erros</span>}
-                            <span className="text-muted-foreground">{log.totalProcessed} total</span>
-                        </div>
+                        {log.errorMessage && (
+                            <p className="text-xs text-red-500 pl-1 truncate" title={log.errorMessage}>
+                                Erro: {log.errorMessage}
+                            </p>
+                        )}
+                        {log.status === 'completed' && log.totalFetched > 0 && log.totalProcessed === 0 && (
+                            <p className="text-xs text-amber-600 pl-1">
+                                ⚠ {log.totalFetched} registros buscados mas nenhum passou pelos filtros — verifique os filtros de status/agenda/período configurados.
+                            </p>
+                        )}
+                        {log.status === 'completed' && log.totalFetched === 0 && (
+                            <p className="text-xs text-muted-foreground pl-1">
+                                Nenhum agendamento encontrado para o período {log.dtInicio} → {log.dtTermino}.
+                            </p>
+                        )}
                     </div>
                 ))}
             </div>
@@ -448,8 +466,13 @@ function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: Sched
                     {lastLog && (
                         <div className="mt-2 text-xs text-muted-foreground">
                             Última execução: {new Date(lastLog.executedAt).toLocaleString('pt-BR')}
-                            {' — '}<span className="text-emerald-600">{lastLog.totalSent} enviados</span>
-                            {lastLog.totalErrors > 0 && <span className="text-red-500 ml-1">{lastLog.totalErrors} erros</span>}
+                            {' — '}
+                            <span className="text-blue-500">{lastLog.totalFetched ?? '—'} buscados</span>
+                            {' · '}
+                            <span className="text-muted-foreground">{lastLog.totalProcessed} filtrados</span>
+                            {' · '}
+                            <span className="text-emerald-600">{lastLog.totalSent} enviados</span>
+                            {lastLog.totalErrors > 0 && <span className="text-red-500 ml-1">· {lastLog.totalErrors} erros</span>}
                         </div>
                     )}
                 </div>

@@ -7,7 +7,10 @@
       "Bash(Format-Table -AutoSize)",
       "Bash(grep -E \"\\\\.\\(tsx?|jsx?|sql\\)$\")",
       "Bash(npx prisma *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(Get-ChildItem -Path \"p:\\\\APPS\\\\ortho-ai-planner\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('DB:', process.env.DATABASE_URL ? process.env.DATABASE_URL.replace\\(/:\\\\/\\\\/.*@/, '://***@'\\) : 'not set'\\)\")"
     ]
   }
 }

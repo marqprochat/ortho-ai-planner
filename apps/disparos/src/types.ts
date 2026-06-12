@@ -66,6 +66,7 @@ export interface ScheduledDisparoLog {
     scheduleId: string;
     executedAt: string;
     status: 'running' | 'completed' | 'failed';
+    totalFetched: number;
     totalSent: number;
     totalErrors: number;
     totalProcessed: number;

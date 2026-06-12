@@ -275,6 +275,7 @@ model ScheduledDisparoLog {
   scheduleId     String
   executedAt     DateTime         @default(now())
   status         String           // "running" | "completed" | "failed"
+  totalFetched   Int              @default(0)
   totalSent      Int              @default(0)
   totalErrors    Int              @default(0)
   totalProcessed Int              @default(0)

@@ -107,6 +107,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
         },
     });
 
+    let totalFetched = 0;
     let totalSent = 0;
     let totalErrors = 0;
     let totalProcessed = 0;
@@ -129,9 +130,27 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             agendamentos = Array.isArray(data) ? data : [];
         }
 
+        totalFetched = agendamentos.length;
+        console.log(`[DisparoCron] "${schedule.name}" — ${totalFetched} registros buscados da API`);
+
+        // Log unique status values found in data for diagnostics
+        const uniqueStatuses = [...new Set(agendamentos.map(ag => extractStatus(ag)).filter(Boolean))];
+        if (uniqueStatuses.length > 0) {
+            console.log(`[DisparoCron] "${schedule.name}" — status encontrados na API: [${uniqueStatuses.join(', ')}]`);
+        }
+        if (schedule.statusAgendamento.length > 0) {
+            console.log(`[DisparoCron] "${schedule.name}" — filtro de status configurado: [${schedule.statusAgendamento.join(', ')}]`);
+        }
+
         // Deduplicate by phone + appointment key
         const seen = new Set<string>();
         const toSend: any[] = [];
+        let filteredNoPhone = 0;
+        let filteredDuplicate = 0;
+        let filteredAgenda = 0;
+        let filteredStatus = 0;
+        let filteredPeriodo = 0;
+        let filteredMotivo = 0;
 
         for (const ag of agendamentos) {
             const phone = extractPhone(ag);
@@ -140,32 +159,41 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             const horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || ag.hr_agenda || '';
             const key = `${phone}-${code}-${dataAg}-${horaAg}`;
 
-            if (seen.has(key) || !phone) continue;
+            if (!phone) { filteredNoPhone++; continue; }
+            if (seen.has(key)) { filteredDuplicate++; continue; }
             seen.add(key);
 
             // Apply filters
             if (schedule.agendas.length > 0) {
                 const prov = extractProvider(ag);
-                if (prov && !schedule.agendas.includes(prov)) continue;
+                if (prov && !schedule.agendas.includes(prov)) { filteredAgenda++; continue; }
             }
             if (schedule.statusAgendamento.length > 0) {
                 const st = extractStatus(ag);
-                if (st && !schedule.statusAgendamento.includes(st)) continue;
+                if (st && !schedule.statusAgendamento.includes(st)) { filteredStatus++; continue; }
             }
             if (schedule.periodos.length > 0) {
                 const slot = getTimeSlot(ag);
-                if (slot && !schedule.periodos.includes(slot)) continue;
+                if (slot && !schedule.periodos.includes(slot)) { filteredPeriodo++; continue; }
             }
             if (schedule.motivo) {
                 const motivo = ag.ds_motivo || ag.motivo || '';
-                if (!motivo.toLowerCase().includes(schedule.motivo.toLowerCase())) continue;
+                if (!motivo.toLowerCase().includes(schedule.motivo.toLowerCase())) { filteredMotivo++; continue; }
             }
 
             toSend.push(ag);
         }
 
         totalProcessed = toSend.length;
-        console.log(`[DisparoCron] "${schedule.name}" — ${totalProcessed} messages to send`);
+        console.log(
+            `[DisparoCron] "${schedule.name}" — pós-filtro: ${totalProcessed} para enviar` +
+            (filteredNoPhone  ? ` | ${filteredNoPhone} sem telefone`  : '') +
+            (filteredDuplicate ? ` | ${filteredDuplicate} duplicados`   : '') +
+            (filteredAgenda   ? ` | ${filteredAgenda} filtro agenda`   : '') +
+            (filteredStatus   ? ` | ${filteredStatus} filtro status`   : '') +
+            (filteredPeriodo  ? ` | ${filteredPeriodo} filtro período` : '') +
+            (filteredMotivo   ? ` | ${filteredMotivo} filtro motivo`   : '')
+        );
 
         // Send in batches with delay
         for (let i = 0; i < toSend.length; i += schedule.concurrentLimit) {
@@ -209,15 +237,15 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
 
         await prisma.scheduledDisparoLog.update({
             where: { id: log.id },
-            data: { status: 'completed', totalSent, totalErrors, totalProcessed },
+            data: { status: 'completed', totalFetched, totalSent, totalErrors, totalProcessed },
         });
 
-        console.log(`[DisparoCron] "${schedule.name}" done — sent: ${totalSent}, errors: ${totalErrors}`);
+        console.log(`[DisparoCron] "${schedule.name}" concluído — buscados: ${totalFetched}, enviados: ${totalSent}, erros: ${totalErrors}`);
     } catch (error: any) {
-        console.error(`[DisparoCron] "${schedule.name}" failed:`, error.message);
+        console.error(`[DisparoCron] "${schedule.name}" falhou:`, error.message);
         await prisma.scheduledDisparoLog.update({
             where: { id: log.id },
-            data: { status: 'failed', totalSent, totalErrors, totalProcessed, errorMessage: error.message },
+            data: { status: 'failed', totalFetched, totalSent, totalErrors, totalProcessed, errorMessage: error.message },
         });
     }
 }
