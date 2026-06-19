@@ -6,15 +6,8 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import type { ScheduledDisparo, ScheduledDisparoLog, ScheduledDisparoFormData } from '../types';
+import CronBuilder, { cronToHuman } from './CronBuilder';
 
-const CRON_PRESETS = [
-    { label: 'Todo dia às 08:00', value: '0 8 * * *' },
-    { label: 'Todo dia às 09:00', value: '0 9 * * *' },
-    { label: 'Todo dia às 18:00', value: '0 18 * * *' },
-    { label: 'Dias úteis às 08:00', value: '0 8 * * 1-5' },
-    { label: 'Todo dia às 07:00', value: '0 7 * * *' },
-    { label: 'Personalizado', value: 'custom' },
-];
 
 const MODELO_OPTIONS = [
     { value: '22180', label: 'Confirmação de Consulta' },
@@ -141,17 +134,8 @@ interface ScheduleFormProps {
 
 function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: ScheduleFormProps) {
     const [form, setForm] = useState<ScheduledDisparoFormData>(initial);
-    const [cronPreset, setCronPreset] = useState(() => {
-        const match = CRON_PRESETS.find(p => p.value === initial.cronExpression && p.value !== 'custom');
-        return match ? match.value : 'custom';
-    });
 
     const set = (patch: Partial<ScheduledDisparoFormData>) => setForm(prev => ({ ...prev, ...patch }));
-
-    const handlePreset = (val: string) => {
-        setCronPreset(val);
-        if (val !== 'custom') set({ cronExpression: val });
-    };
 
     const toggleArray = (field: keyof Pick<ScheduledDisparoFormData, 'unidades' | 'agendas' | 'statusAgendamento' | 'periodos'>, value: string) => {
         const arr = form[field] as string[];
@@ -183,35 +167,13 @@ function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: 
                 </div>
             </div>
 
-            {/* Horário */}
+            {/* Horário — CronBuilder visual */}
             <div className="space-y-2">
                 <label className="text-xs font-semibold text-foreground">Horário de execução *</label>
-                <div className="flex flex-wrap gap-2">
-                    {CRON_PRESETS.map(p => (
-                        <button
-                            key={p.value}
-                            type="button"
-                            onClick={() => handlePreset(p.value)}
-                            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${cronPreset === p.value
-                                ? 'border-primary bg-primary/10 text-primary font-semibold'
-                                : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
-                        >
-                            {p.label}
-                        </button>
-                    ))}
-                </div>
-                {cronPreset === 'custom' && (
-                    <div className="space-y-1">
-                        <input
-                            required
-                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary font-mono"
-                            value={form.cronExpression}
-                            onChange={e => set({ cronExpression: e.target.value })}
-                            placeholder="Ex: 0 8 * * * (min hora dia mês dia-semana)"
-                        />
-                        <p className="text-xs text-muted-foreground">Formato cron: minuto hora dia-do-mês mês dia-da-semana. Fuso: America/Sao_Paulo</p>
-                    </div>
-                )}
+                <CronBuilder
+                    value={form.cronExpression}
+                    onChange={cron => set({ cronExpression: cron })}
+                />
             </div>
 
             {/* Offset de datas */}
@@ -432,9 +394,10 @@ function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: Sched
                     )}
 
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            <code className="font-mono bg-muted px-1 rounded">{schedule.cronExpression}</code>
+                        <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 shrink-0" />
+                            <span className="font-medium text-foreground">{cronToHuman(schedule.cronExpression)}</span>
+                            <code className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{schedule.cronExpression}</code>
                         </span>
                         <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
