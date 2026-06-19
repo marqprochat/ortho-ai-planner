@@ -154,3 +154,32 @@ export const getScheduledDisparoLogs = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+export const getDisparoReports = async (req: Request, res: Response) => {
+    try {
+        const { dtInicio, dtTermino } = req.query;
+
+        const where: any = { status: { not: 'running' } };
+
+        if (dtInicio || dtTermino) {
+            where.executedAt = {};
+            if (dtInicio) where.executedAt.gte = new Date(`${dtInicio}T00:00:00`);
+            if (dtTermino) where.executedAt.lte = new Date(`${dtTermino}T23:59:59`);
+        }
+
+        const logs = await prisma.scheduledDisparoLog.findMany({
+            where,
+            orderBy: { executedAt: 'desc' },
+            include: {
+                schedule: {
+                    select: { id: true, name: true, modelo: true, unidades: true },
+                },
+            },
+            take: 500,
+        });
+
+        res.json(logs);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};

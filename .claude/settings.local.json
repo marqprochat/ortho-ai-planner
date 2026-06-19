@@ -10,7 +10,9 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(Get-ChildItem -Path \"p:\\\\APPS\\\\ortho-ai-planner\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('DB:', process.env.DATABASE_URL ? process.env.DATABASE_URL.replace\\(/:\\\\/\\\\/.*@/, '://***@'\\) : 'not set'\\)\")"
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); console.log\\('DB:', process.env.DATABASE_URL ? process.env.DATABASE_URL.replace\\(/:\\\\/\\\\/.*@/, '://***@'\\) : 'not set'\\)\")",
+      "Bash(xargs ls -lh)",
+      "Bash(xargs grep -l \"zustand\\\\|redux\\\\|context\")"
     ]
   }
 }

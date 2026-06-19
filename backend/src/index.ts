@@ -22,7 +22,7 @@ import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
 import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF } from './controllers/easydentalController';
 import { sendMessage, getMessageConfig } from './controllers/messageController';
-import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs } from './controllers/scheduledDisparoController';
+import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -146,6 +146,7 @@ app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sen
 app.get('/api/messages/config', authMiddleware, requireAppAccess('disparos'), getMessageConfig);
 
 // Scheduled Disparos Routes
+app.get('/api/scheduled-disparos/reports', authMiddleware, requireAppAccess('disparos'), getDisparoReports);
 app.get('/api/scheduled-disparos', authMiddleware, requireAppAccess('disparos'), listScheduledDisparos);
 app.post('/api/scheduled-disparos', authMiddleware, requireAppAccess('disparos'), createScheduledDisparo);
 app.get('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparos'), getScheduledDisparo);

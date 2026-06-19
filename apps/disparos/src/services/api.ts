@@ -98,4 +98,11 @@ export const api = {
 
     getScheduledDisparoLogs: (id: string) =>
         request<any[]>(`/scheduled-disparos/${id}/logs`),
+
+    getDisparoReports: (dtInicio?: string, dtTermino?: string) => {
+        const params = new URLSearchParams();
+        if (dtInicio) params.set('dtInicio', dtInicio);
+        if (dtTermino) params.set('dtTermino', dtTermino);
+        return request<any[]>(`/scheduled-disparos/reports?${params.toString()}`);
+    },
 };

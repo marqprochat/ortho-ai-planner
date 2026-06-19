@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toaster, toast } from 'sonner';
-import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock } from 'lucide-react';
+import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock, BarChart3 } from 'lucide-react';
 import { api, login, getMe } from './services/api';
 import FilterPanel from './components/FilterPanel';
 import MessageTable from './components/MessageTable';
 import SendProgressModal from './components/SendProgressModal';
 import ScheduledDisparos from './components/ScheduledDisparos';
+import DisparoReports from './components/DisparoReports';
 import DentalConnectIcon from './components/DentalConnectIcon';
 import type { Filters, Agendamento, MessageItem, SendConfig } from './types';
 
-type Tab = 'manual' | 'agendados';
+type Tab = 'manual' | 'agendados' | 'relatorios';
 
 function getFirstName(fullName: string): string {
     return (fullName || '').trim().split(/\s+/)[0] || '';
@@ -512,6 +513,13 @@ export default function App() {
                                 <Clock className="w-3.5 h-3.5" />
                                 Agendados
                             </button>
+                            <button
+                                onClick={() => setActiveTab('relatorios')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'relatorios' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <BarChart3 className="w-3.5 h-3.5" />
+                                Relatórios
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-1.5 text-xs text-emerald-600">
@@ -530,6 +538,11 @@ export default function App() {
                 {/* Agendados Tab */}
                 {activeTab === 'agendados' && (
                     <ScheduledDisparos unidadeOptions={unidadeOptions} />
+                )}
+
+                {/* Relatórios Tab */}
+                {activeTab === 'relatorios' && (
+                    <DisparoReports unidadeOptions={unidadeOptions} />
                 )}
 
                 {/* Manual Tab */}
