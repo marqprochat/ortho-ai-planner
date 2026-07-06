@@ -1,3 +1,5 @@
+import type { MessageTemplate } from '../types';
+
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 
@@ -105,4 +107,19 @@ export const api = {
         if (dtTermino) params.set('dtTermino', dtTermino);
         return request<any[]>(`/scheduled-disparos/reports?${params.toString()}`);
     },
+
+    getUltimaConsulta: (dtInicio: string, dtTermino: string, unidades: string[]) =>
+        request<{ success: boolean; data: any[] }>('/easydental/ultima-consulta', {
+            method: 'POST',
+            body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades }),
+        }),
+
+    // Message Templates
+    listMessageTemplates: () => request<MessageTemplate[]>('/message-templates'),
+    createMessageTemplate: (data: Partial<MessageTemplate>) =>
+        request<MessageTemplate>('/message-templates', { method: 'POST', body: JSON.stringify(data) }),
+    updateMessageTemplate: (id: string, data: Partial<MessageTemplate>) =>
+        request<MessageTemplate>(`/message-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteMessageTemplate: (id: string) =>
+        request<{ success: boolean }>(`/message-templates/${id}`, { method: 'DELETE' }),
 };

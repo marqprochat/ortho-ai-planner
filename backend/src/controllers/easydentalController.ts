@@ -93,3 +93,55 @@ export const getPrestadorCPF = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// RPCGetUltimaConsulta - retorna dados de última consulta e consulta agendada
+// Aceita array de unidades para busca paralela. Se não informado, busca todas as unidades.
+export const getUltimaConsulta = async (req: Request, res: Response) => {
+    try {
+        const { dt_inicio, dt_termino, unidades } = req.body;
+
+        if (!dt_inicio || !dt_termino) {
+            return res.status(400).json({ error: 'dt_inicio e dt_termino são obrigatórios' });
+        }
+
+        let targetUnits: string[] = [];
+
+        if (Array.isArray(unidades) && unidades.length > 0) {
+            targetUnits = unidades;
+        } else if (typeof unidades === 'string' && unidades.trim() !== '') {
+            targetUnits = [unidades];
+        } else {
+            // Fetch all active units
+            try {
+                const unitsData = await rpcCall('RPCGetUnidadeAtendimento');
+                if (Array.isArray(unitsData)) {
+                    targetUnits = unitsData
+                        .map((u: any) => u.TX_UNIDADE_ATENDIMENTO)
+                        .filter((name: any) => typeof name === 'string' && name.trim() !== '');
+                }
+            } catch (err: any) {
+                console.error('Error fetching units for fallback:', err.message);
+                return res.status(500).json({ error: 'Falha ao recuperar unidades para consulta: ' + err.message });
+            }
+        }
+
+        if (targetUnits.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const promises = targetUnits.map((nm_unidade: string) =>
+            rpcCall('RPCGetUltimaConsulta', { dt_inicio, dt_termino, nm_unidade })
+                .then(data => (Array.isArray(data) ? data : (data ? [data] : [])))
+                .catch(err => {
+                    console.error(`Error fetching ultima consulta for unit ${nm_unidade}:`, err.message);
+                    return [];
+                })
+        );
+        const results = await Promise.all(promises);
+        res.json({ success: true, data: results.flat() });
+    } catch (error: any) {
+        console.error('Error fetching ultima consulta:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+};
+

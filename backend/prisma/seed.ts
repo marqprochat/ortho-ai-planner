@@ -208,6 +208,33 @@ async function main() {
         console.log(`✅ SuperAdmin ${superAdmin.email} has ADMIN access ensured for all apps.`);
     }
 
+    // 6. Message Templates
+    console.log('Upserting default message templates...');
+    const defaultTemplates = [
+        { name: 'Confirmação de Consulta', category: 'utilidade', code: '22180', dayOffset: 1, statusKeyword: 'agenda' },
+        { name: 'Avaliação', category: 'utilidade', code: '19872', dayOffset: -1, statusKeyword: 'atend' },
+    ];
+
+    for (const temp of defaultTemplates) {
+        await prisma.messageTemplate.upsert({
+            where: { code: temp.code },
+            update: {
+                name: temp.name,
+                category: temp.category,
+                dayOffset: temp.dayOffset,
+                statusKeyword: temp.statusKeyword,
+            },
+            create: {
+                name: temp.name,
+                category: temp.category,
+                code: temp.code,
+                dayOffset: temp.dayOffset,
+                statusKeyword: temp.statusKeyword,
+            },
+        });
+    }
+    console.log('✅ Default message templates ensured.');
+
     console.log('🏁 Seed completed successfully.');
 }
 

@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toaster, toast } from 'sonner';
-import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock, BarChart3 } from 'lucide-react';
+import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock, BarChart3, Settings2 } from 'lucide-react';
 import { api, login, getMe } from './services/api';
 import FilterPanel from './components/FilterPanel';
 import MessageTable from './components/MessageTable';
 import SendProgressModal from './components/SendProgressModal';
 import ScheduledDisparos from './components/ScheduledDisparos';
 import DisparoReports from './components/DisparoReports';
+import MessageTemplatesTab from './components/MessageTemplatesTab';
 import DentalConnectIcon from './components/DentalConnectIcon';
-import type { Filters, Agendamento, MessageItem, SendConfig } from './types';
+import type { Filters, Agendamento, MessageItem, SendConfig, MessageTemplate } from './types';
 
-type Tab = 'manual' | 'agendados' | 'relatorios';
+type Tab = 'manual' | 'agendados' | 'relatorios' | 'mensagens';
 
 function getFirstName(fullName: string): string {
     return (fullName || '').trim().split(/\s+/)[0] || '';
@@ -97,9 +98,9 @@ const defaultFilters: Filters = {
     motivo: '',
 };
 
-const MODEL_PRESETS: Record<string, { label: string; dayOffset: number; statusKeyword: string; hint: string }> = {
-    '22180': { label: 'Confirmação de Consulta', dayOffset: 1,  statusKeyword: 'agenda', hint: 'Amanhã · Status: Agendado' },
-    '19872': { label: 'Avaliação',               dayOffset: -1, statusKeyword: 'atend',  hint: 'Ontem · Status: Atendido' },
+const FALLBACK_PRESETS: Record<string, { name: string; dayOffset: number; statusKeyword: string }> = {
+    '22180': { name: 'Confirmação de Consulta', dayOffset: 1, statusKeyword: 'agenda' },
+    '19872': { name: 'Avaliação', dayOffset: -1, statusKeyword: 'atend' }
 };
 
 export default function App() {
@@ -125,6 +126,34 @@ export default function App() {
     const [selectedModel, setSelectedModel] = useState('22180');
     const [totalToProcess, setTotalToProcess] = useState(0);
     const abortRef = useRef(false);
+
+    const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
+    const [templatesLoading, setTemplatesLoading] = useState(true);
+
+    const [isUltimaConsulta, setIsUltimaConsulta] = useState(false);
+    const [onlyWithoutScheduled, setOnlyWithoutScheduled] = useState(false);
+
+    const currentPreset = useMemo(() => {
+        const dbTpl = messageTemplates.find(t => t.code === selectedModel);
+        if (dbTpl) {
+            return {
+                label: dbTpl.name,
+                dayOffset: dbTpl.dayOffset,
+                statusKeyword: dbTpl.statusKeyword,
+                hint: `${dbTpl.dayOffset === 0 ? 'Hoje' : dbTpl.dayOffset > 0 ? `Amanhã (+${dbTpl.dayOffset}d)` : `Ontem (${dbTpl.dayOffset}d)`}${dbTpl.statusKeyword ? ` · Status: ${dbTpl.statusKeyword}` : ''}`
+            };
+        }
+        const fb = FALLBACK_PRESETS[selectedModel];
+        if (fb) {
+            return {
+                label: fb.name,
+                dayOffset: fb.dayOffset,
+                statusKeyword: fb.statusKeyword,
+                hint: `${fb.dayOffset === 1 ? 'Amanhã' : fb.dayOffset === -1 ? 'Ontem' : 'Hoje'} · Status: ${fb.statusKeyword}`
+            };
+        }
+        return null;
+    }, [messageTemplates, selectedModel]);
 
     // Auth: read token from URL or sessionStorage, then verify with backend
     useEffect(() => {
@@ -173,9 +202,33 @@ export default function App() {
             .catch(() => { });
     }, [authenticated]);
 
+    // Load Message Templates
+    useEffect(() => {
+        if (!authenticated) return;
+        api.listMessageTemplates()
+            .then(data => {
+                setMessageTemplates(data);
+                if (data.length > 0 && !data.some(t => t.code === selectedModel)) {
+                    setSelectedModel(data[0].code);
+                }
+                setTemplatesLoading(false);
+            })
+            .catch(err => {
+                toast.error('Erro ao carregar modelos: ' + err.message);
+                setTemplatesLoading(false);
+            });
+    }, [authenticated, activeTab]);
+
     // Apply frontend filters
     const filteredMessages = useMemo(() => {
         return messages.filter(msg => {
+            if (isUltimaConsulta) {
+                if (onlyWithoutScheduled && msg.consultaAgendada) {
+                    return false;
+                }
+                return true;
+            }
+
             const ag = rawAgendamentos.find(a => {
                 const aCode = a.ID_AGENDA_ITEM?.toString() || a.cd_paciente?.toString() || '';
                 return aCode === msg.codPaciente;
@@ -209,7 +262,7 @@ export default function App() {
 
             return true;
         });
-    }, [messages, rawAgendamentos, filters]);
+    }, [messages, rawAgendamentos, filters, isUltimaConsulta, onlyWithoutScheduled]);
 
     // Fetch agendamentos
     const handleSearch = useCallback(async () => {
@@ -220,73 +273,125 @@ export default function App() {
 
         setLoading(true);
         try {
-            const data = await api.getAgendamentos(
-                filters.dtInicio,
-                filters.dtTermino,
-                filters.unidades
-            );
+            if (isUltimaConsulta) {
+                const res = await api.getUltimaConsulta(
+                    filters.dtInicio,
+                    filters.dtTermino,
+                    filters.unidades
+                );
 
-            const agendamentos = Array.isArray(data) ? data : [];
-            setRawAgendamentos(agendamentos);
+                const records = res.success && Array.isArray(res.data) ? res.data : [];
+                setRawAgendamentos([]); // empty in this mode
 
-            // Deduplicate by patient + phone
-            const seen = new Set<string>();
-            const msgs: MessageItem[] = [];
+                const seen = new Set<string>();
+                const msgs: MessageItem[] = [];
 
-            agendamentos.forEach((ag, i) => {
-                const phone = extractPhone(ag);
-                const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
-                const code = ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || '';
-                const dataAg = ag.DATA || ag.dt_agendamento || ag.data || ag.dt_agenda || '';
-                const horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || ag.hr_agenda || '';
-                const key = `${phone}-${code}-${dataAg}-${horaAg}`;
+                records.forEach((rec, i) => {
+                    // Extract phone number digits
+                    let phone = (rec.CELULAR || '').toString().replace(/\D/g, '');
+                    if (phone.length >= 11 && phone.startsWith('0')) {
+                        phone = phone.substring(1);
+                    }
+                    const hasPhone = !!phone;
+                    const formattedPhone = hasPhone ? (phone.startsWith('55') ? `+${phone}` : `+55${phone}`) : '';
 
-                if (seen.has(key)) return;
-                seen.add(key);
+                    const fullName = rec.PACIENTE || '';
+                    const code = rec.CODIGO?.toString() || '';
+                    const key = `${formattedPhone}-${code}`;
 
-                const hasPhone = !!phone;
-                msgs.push({
-                    id: `msg-${i}-${code}`,
-                    nome: getFirstName(fullName),
-                    nomeCompleto: fullName,
-                    telefone: phone,
-                    unidade: extractUnit(ag),
-                    codPaciente: code,
-                    data: dataAg,
-                    hora: horaAg,
-                    status: hasPhone ? 'pending' : 'error',
-                    errorMessage: hasPhone ? undefined : 'Sem telefone',
-                    dentista: extractProvider(ag),
-                    motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
-                    statusAgendamento: extractStatus(ag),
-                    idAgendaItem: ag.ID_AGENDA_ITEM?.toString() || '',
-                    txCodigoPaciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || ''
+                    if (seen.has(key)) return;
+                    seen.add(key);
+
+                    msgs.push({
+                        id: `msg-${i}-${code}`,
+                        nome: getFirstName(fullName),
+                        nomeCompleto: fullName,
+                        telefone: formattedPhone,
+                        unidade: rec.UNIDADE || '',
+                        codPaciente: code,
+                        data: rec.ULTIMA_CONSULTA || '',
+                        hora: rec.CONSULTA_AGENDADA || '',
+                        ultimaConsulta: rec.ULTIMA_CONSULTA || '',
+                        consultaAgendada: rec.CONSULTA_AGENDADA || null,
+                        status: hasPhone ? 'pending' : 'error',
+                        errorMessage: hasPhone ? undefined : 'Sem telefone',
+                    });
                 });
-            });
 
-            setMessages(msgs);
-            setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
+                setMessages(msgs);
+                setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
-            // Auto-select statuses matching the chosen model
-            const preset = MODEL_PRESETS[selectedModel];
-            if (preset) {
-                const uniqueStatuses = Array.from(new Set(
-                    agendamentos.map(a => a.STATUS || a.ds_status || a.status_agendamento || a.status).filter(Boolean) as string[]
-                ));
-                const matching = uniqueStatuses.filter(s => new RegExp(preset.statusKeyword, 'i').test(s));
-                if (matching.length > 0) {
-                    setFilters(prev => ({ ...prev, statusAgendamento: matching }));
+                const errCount = msgs.filter(m => m.status === 'error').length;
+                toast.success(`${msgs.length} paciente(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
+            } else {
+                const data = await api.getAgendamentos(
+                    filters.dtInicio,
+                    filters.dtTermino,
+                    filters.unidades
+                );
+
+                const agendamentos = Array.isArray(data) ? data : [];
+                setRawAgendamentos(agendamentos);
+
+                // Deduplicate by patient + phone
+                const seen = new Set<string>();
+                const msgs: MessageItem[] = [];
+
+                agendamentos.forEach((ag, i) => {
+                    const phone = extractPhone(ag);
+                    const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
+                    const code = ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || '';
+                    const dataAg = ag.DATA || ag.dt_agendamento || ag.data || ag.dt_agenda || '';
+                    const horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || ag.hr_agenda || '';
+                    const key = `${phone}-${code}-${dataAg}-${horaAg}`;
+
+                    if (seen.has(key)) return;
+                    seen.add(key);
+
+                    const hasPhone = !!phone;
+                    msgs.push({
+                        id: `msg-${i}-${code}`,
+                        nome: getFirstName(fullName),
+                        nomeCompleto: fullName,
+                        telefone: phone,
+                        unidade: extractUnit(ag),
+                        codPaciente: code,
+                        data: dataAg,
+                        hora: horaAg,
+                        status: hasPhone ? 'pending' : 'error',
+                        errorMessage: hasPhone ? undefined : 'Sem telefone',
+                        dentista: extractProvider(ag),
+                        motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
+                        statusAgendamento: extractStatus(ag),
+                        idAgendaItem: ag.ID_AGENDA_ITEM?.toString() || '',
+                        txCodigoPaciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || ''
+                    });
+                });
+
+                setMessages(msgs);
+                setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
+
+                // Auto-select statuses matching the chosen model
+                const preset = currentPreset;
+                if (preset) {
+                    const uniqueStatuses = Array.from(new Set(
+                        agendamentos.map(a => a.STATUS || a.ds_status || a.status_agendamento || a.status).filter(Boolean) as string[]
+                    ));
+                    const matching = uniqueStatuses.filter(s => new RegExp(preset.statusKeyword, 'i').test(s));
+                    if (matching.length > 0) {
+                        setFilters(prev => ({ ...prev, statusAgendamento: matching }));
+                    }
                 }
-            }
 
-            const errCount = msgs.filter(m => m.status === 'error').length;
-            toast.success(`${msgs.length} paciente(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
+                const errCount = msgs.filter(m => m.status === 'error').length;
+                toast.success(`${msgs.length} paciente(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
+            }
         } catch (err: any) {
             toast.error('Erro ao buscar agendamentos: ' + err.message);
         } finally {
             setLoading(false);
         }
-    }, [filters, selectedModel]);
+    }, [filters, selectedModel, isUltimaConsulta]);
 
     // Send messages
     const handleSend = useCallback(async () => {
@@ -319,17 +424,17 @@ export default function App() {
             // Send batch
             const results = await Promise.allSettled(
                 batch.map(msg => {
-                    const formattedDate = formatAgendamento(msg.data, msg.hora);
+                    const formattedDate = isUltimaConsulta ? '' : formatAgendamento(msg.data, msg.hora);
                     return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate, {
-                        dentista: msg.dentista,
-                        motivo: msg.motivo,
-                        status: msg.statusAgendamento,
-                        id_agenda_item: msg.idAgendaItem,
-                        tx_codigo_paciente: msg.txCodigoPaciente,
+                        dentista: msg.dentista || '',
+                        motivo: msg.motivo || '',
+                        status: msg.statusAgendamento || '',
+                        id_agenda_item: msg.idAgendaItem || '',
+                        tx_codigo_paciente: msg.txCodigoPaciente || msg.codPaciente || '',
                         paciente: msg.nomeCompleto,
                         celular: msg.telefone,
-                        data: msg.data,
-                        inicio: msg.hora
+                        data: isUltimaConsulta ? (msg.ultimaConsulta || '') : (msg.data || ''),
+                        inicio: isUltimaConsulta ? '' : (msg.hora || '')
                     })
                         .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
                         .catch(err => ({ id: msg.id, success: false, error: err.message }));
@@ -362,7 +467,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -383,14 +488,20 @@ export default function App() {
 
     const handleModelChange = useCallback((newModel: string) => {
         setSelectedModel(newModel);
-        const preset = MODEL_PRESETS[newModel];
-        if (preset) {
-            const dateStr = dateOffset(preset.dayOffset);
+        const tpl = messageTemplates.find(t => t.code === newModel);
+        if (tpl) {
+            const dateStr = dateOffset(tpl.dayOffset);
             setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
+        } else {
+            const fb = FALLBACK_PRESETS[newModel];
+            if (fb) {
+                const dateStr = dateOffset(fb.dayOffset);
+                setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
+            }
         }
         setMessages([]);
         setRawAgendamentos([]);
-    }, []);
+    }, [messageTemplates]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -520,6 +631,13 @@ export default function App() {
                                 <BarChart3 className="w-3.5 h-3.5" />
                                 Relatórios
                             </button>
+                            <button
+                                onClick={() => setActiveTab('mensagens')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'mensagens' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <Settings2 className="w-3.5 h-3.5" />
+                                Mensagens
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-1.5 text-xs text-emerald-600">
@@ -545,6 +663,11 @@ export default function App() {
                     <DisparoReports unidadeOptions={unidadeOptions} />
                 )}
 
+                {/* Mensagens Tab */}
+                {activeTab === 'mensagens' && (
+                    <MessageTemplatesTab />
+                )}
+
                 {/* Manual Tab */}
                 {activeTab === 'manual' && <div className="flex gap-6">
                     {/* Sidebar Filters */}
@@ -557,6 +680,7 @@ export default function App() {
                                 unidadeOptions={unidadeOptions}
                                 collapsed={filterCollapsed}
                                 onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+                                isUltimaConsulta={isUltimaConsulta}
                             />
                         </div>
                     </div>
@@ -575,15 +699,21 @@ export default function App() {
                                         className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground shadow-sm outline-none cursor-pointer hover:border-primary transition-colors h-[38px] font-medium"
                                         disabled={isSending}
                                     >
-                                        {Object.entries(MODEL_PRESETS).map(([id, p]) => (
-                                            <option key={id} value={id}>{p.label}</option>
-                                        ))}
+                                        {messageTemplates.length > 0 ? (
+                                            messageTemplates.map(t => (
+                                                <option key={t.code} value={t.code}>{t.name}</option>
+                                            ))
+                                        ) : (
+                                            Object.entries(FALLBACK_PRESETS).map(([id, p]) => (
+                                                <option key={id} value={id}>{p.name}</option>
+                                            ))
+                                        )}
                                     </select>
                                 </div>
-                                {MODEL_PRESETS[selectedModel] && (
+                                {currentPreset && (
                                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium mt-4">
                                         <Search className="w-3.5 h-3.5 opacity-70" />
-                                        Padrão: {MODEL_PRESETS[selectedModel].hint}
+                                        Padrão: {currentPreset.hint}
                                     </div>
                                 )}
                             </div>
@@ -657,6 +787,38 @@ export default function App() {
                                         </div>
                                     </div>
 
+                                    {/* Última Consulta Checkboxes */}
+                                    <div className="flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px] select-none">
+                                        <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="filter-checkbox"
+                                                checked={isUltimaConsulta}
+                                                onChange={e => {
+                                                    setIsUltimaConsulta(e.target.checked);
+                                                    setMessages([]);
+                                                    setRawAgendamentos([]);
+                                                }}
+                                            />
+                                            <span>Última consulta</span>
+                                        </label>
+
+                                        {isUltimaConsulta && (
+                                            <>
+                                                <div className="w-px h-4 bg-border" />
+                                                <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 cursor-pointer animate-fade-in">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="filter-checkbox"
+                                                        checked={onlyWithoutScheduled}
+                                                        onChange={e => setOnlyWithoutScheduled(e.target.checked)}
+                                                    />
+                                                    <span>Somente sem consulta agendada</span>
+                                                </label>
+                                            </>
+                                        )}
+                                    </div>
+
                                     <button
                                         onClick={handleSearch}
                                         disabled={loading}
@@ -691,6 +853,8 @@ export default function App() {
                             onToggleSelect={toggleSelect}
                             onSelectAll={selectAll}
                             isSending={isSending}
+                            isUltimaConsulta={isUltimaConsulta}
+                            loading={loading}
                         />
                     </div>
                 </div>}

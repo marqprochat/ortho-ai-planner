@@ -8,6 +8,26 @@ interface MessageTableProps {
     onToggleSelect: (id: string) => void;
     onSelectAll: () => void;
     isSending: boolean;
+    isUltimaConsulta?: boolean;
+    loading?: boolean;
+}
+
+function formatSimpleDate(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
+    try {
+        const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            return `${match[3]}/${match[2]}/${match[1]}`;
+        }
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const year = d.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+    } catch {
+        return dateStr;
+    }
 }
 
 function StatusBadge({ status, error }: { status: MessageStatus; error?: string }) {
@@ -27,7 +47,7 @@ function StatusBadge({ status, error }: { status: MessageStatus; error?: string 
     );
 }
 
-export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending }: MessageTableProps) {
+export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending, isUltimaConsulta, loading }: MessageTableProps) {
     const allSelected = messages.length > 0 && selectedIds.size === messages.filter(m => m.status === 'pending').length;
     const stats = {
         total: messages.length,
@@ -40,7 +60,14 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
     return (
         <div className="glass-card overflow-hidden">
             {/* Stats bar */}
-            {messages.length > 0 && (
+            {loading ? (
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/30">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-sm font-medium text-foreground">
+                        Buscando pacientes na base de dados...
+                    </span>
+                </div>
+            ) : messages.length > 0 && (
                 <div className="flex items-center gap-4 px-5 py-3 border-b border-border bg-muted/30">
                     <span className="text-sm font-medium text-foreground">
                         {stats.total} destinatário{stats.total !== 1 ? 's' : ''}
@@ -91,10 +118,25 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                 <div className="flex items-center gap-1"><User className="w-3.5 h-3.5" /> Paciente</div>
                             </th>
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
-                                <div className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" /> Data</div>
+                                <div className="flex items-center gap-1">
+                                    <Calendar className="w-3.5 h-3.5" />
+                                    {isUltimaConsulta ? 'Última Consulta' : 'Data'}
+                                </div>
                             </th>
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
-                                <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Hora</div>
+                                <div className="flex items-center gap-1">
+                                    {isUltimaConsulta ? (
+                                        <>
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>Consulta Agendada</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>Hora</span>
+                                        </>
+                                    )}
+                                </div>
                             </th>
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                 <div className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> Unidade</div>
@@ -103,7 +145,33 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {messages.map((msg, i) => (
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, rowIndex) => (
+                                <tr key={`skeleton-${rowIndex}`} className="animate-pulse">
+                                    <td className="px-3 py-3.5 text-center">
+                                        <div className="w-4 h-4 bg-muted/80 rounded mx-auto" />
+                                    </td>
+                                    <td className="px-3 py-3.5">
+                                        <div className="h-4 bg-muted/80 rounded w-24 mx-auto md:mx-0" />
+                                    </td>
+                                    <td className="px-3 py-3.5 font-medium">
+                                        <div className="h-4 bg-muted/80 rounded w-48" />
+                                    </td>
+                                    <td className="px-3 py-3.5">
+                                        <div className="h-4 bg-muted/80 rounded w-20" />
+                                    </td>
+                                    <td className="px-3 py-3.5">
+                                        <div className="h-4 bg-muted/80 rounded w-16" />
+                                    </td>
+                                    <td className="px-3 py-3.5">
+                                        <div className="h-4 bg-muted/80 rounded w-24" />
+                                    </td>
+                                    <td className="px-3 py-3.5 text-center">
+                                        <div className="w-20 h-6 bg-muted/80 rounded-full mx-auto" />
+                                    </td>
+                                </tr>
+                            ))
+                        ) : messages.map((msg, i) => (
                             <tr
                                 key={msg.id}
                                 className={`transition-colors hover:bg-muted/30 ${
@@ -126,8 +194,18 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                     {msg.telefone || <span className="text-red-400 italic">Sem telefone</span>}
                                 </td>
                                 <td className="px-3 py-2.5 font-medium">{msg.nomeCompleto}</td>
-                                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{msg.data}</td>
-                                <td className="px-3 py-2.5 text-muted-foreground text-xs">{msg.hora}</td>
+                                <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
+                                    {isUltimaConsulta ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
+                                </td>
+                                <td className="px-3 py-2.5 text-muted-foreground text-xs">
+                                    {isUltimaConsulta ? (
+                                        formatSimpleDate(msg.consultaAgendada) || (
+                                            <span className="text-muted-foreground/60 italic font-normal">Nenhuma</span>
+                                        )
+                                    ) : (
+                                        msg.hora
+                                    )}
+                                </td>
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs">{msg.unidade}</td>
                                 <td className="px-3 py-2.5 text-center">
                                     <StatusBadge status={msg.status} error={msg.errorMessage} />
@@ -135,7 +213,7 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                             </tr>
                         ))}
 
-                        {messages.length === 0 && (
+                        {!loading && messages.length === 0 && (
                             <tr>
                                 <td colSpan={7} className="px-6 py-16 text-center">
                                     <div className="flex flex-col items-center gap-3 text-muted-foreground">

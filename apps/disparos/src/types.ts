@@ -44,6 +44,8 @@ export interface MessageItem {
     statusAgendamento?: string;
     idAgendaItem?: string;
     txCodigoPaciente?: string;
+    ultimaConsulta?: string;
+    consultaAgendada?: string | null;
 }
 
 export interface Filters {
@@ -98,3 +100,15 @@ export interface ScheduledDisparo {
 }
 
 export type ScheduledDisparoFormData = Omit<ScheduledDisparo, 'id' | 'createdBy' | 'createdAt' | 'updatedAt' | 'logs'>;
+
+export interface MessageTemplate {
+    id: string;
+    name: string;
+    category: 'utilidade' | 'marketing';
+    code: string;
+    dayOffset: number;
+    statusKeyword: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+

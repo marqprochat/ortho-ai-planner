@@ -6,6 +6,7 @@ import {
     ChevronUp, MessageSquare, Loader2, AlertTriangle, X
 } from 'lucide-react';
 import { api } from '../services/api';
+import type { MessageTemplate } from '../types';
 
 const MODEL_NAMES: Record<string, string> = {
     '22180': 'Confirmação de Consulta',
@@ -140,6 +141,7 @@ interface Props {
 
 export default function DisparoReports({ unidadeOptions }: Props) {
     const [logs, setLogs] = useState<ReportLog[]>([]);
+    const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
     const [loading, setLoading] = useState(false);
     const [dtInicio, setDtInicio] = useState(monthStartStr());
     const [dtTermino, setDtTermino] = useState(todayStr());
@@ -163,6 +165,9 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
     useEffect(() => {
         fetchReports();
+        api.listMessageTemplates()
+            .then(setMessageTemplates)
+            .catch(() => {});
     }, []);
 
     // Filtered logs based on unit and schedule filters
@@ -254,7 +259,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
     return (
         <div className="space-y-6">
             {/* Filters */}
-            <div className="glass-card px-5 py-4 flex flex-wrap items-end gap-3">
+            <div className="glass-card px-5 py-4 flex flex-wrap items-end gap-3 relative z-30">
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-muted-foreground">Período</label>
                     <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px]">
@@ -458,7 +463,8 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
                         {displayLogs.map(log => {
                             const isExpanded = expandedRows.has(log.id);
-                            const msgName = MODEL_NAMES[log.schedule.modelo] || `Modelo ${log.schedule.modelo}`;
+                            const tpl = messageTemplates.find(t => t.code === log.schedule.modelo);
+                            const msgName = tpl ? tpl.name : (MODEL_NAMES[log.schedule.modelo] || `Modelo ${log.schedule.modelo}`);
                             const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas'];
 
                             return (

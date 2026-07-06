@@ -5,7 +5,7 @@ import {
     CheckCircle, XCircle, Loader2, Calendar, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { api } from '../services/api';
-import type { ScheduledDisparo, ScheduledDisparoLog, ScheduledDisparoFormData } from '../types';
+import type { ScheduledDisparo, ScheduledDisparoLog, ScheduledDisparoFormData, MessageTemplate } from '../types';
 import CronBuilder, { cronToHuman } from './CronBuilder';
 
 
@@ -127,12 +127,13 @@ function LogsPanel({ scheduleId }: { scheduleId: string }) {
 interface ScheduleFormProps {
     initial: ScheduledDisparoFormData;
     unidadeOptions: string[];
+    messageTemplates: MessageTemplate[];
     onSubmit: (data: ScheduledDisparoFormData) => Promise<void>;
     onCancel: () => void;
     loading: boolean;
 }
 
-function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: ScheduleFormProps) {
+function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onCancel, loading }: ScheduleFormProps) {
     const [form, setForm] = useState<ScheduledDisparoFormData>(initial);
 
     const set = (patch: Partial<ScheduledDisparoFormData>) => setForm(prev => ({ ...prev, ...patch }));
@@ -303,7 +304,11 @@ function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: 
                     value={form.modelo}
                     onChange={e => set({ modelo: e.target.value })}
                 >
-                    {MODELO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {messageTemplates.length > 0 ? (
+                        messageTemplates.map(t => <option key={t.code} value={t.code}>{t.name}</option>)
+                    ) : (
+                        MODELO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+                    )}
                 </select>
             </div>
 
@@ -358,13 +363,14 @@ function ScheduleForm({ initial, unidadeOptions, onSubmit, onCancel, loading }: 
 
 interface ScheduleCardProps {
     schedule: ScheduledDisparo;
+    messageTemplates: MessageTemplate[];
     onEdit: (s: ScheduledDisparo) => void;
     onDelete: (id: string) => void;
     onTrigger: (id: string) => void;
     onToggle: (s: ScheduledDisparo) => void;
 }
 
-function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: ScheduleCardProps) {
+function ScheduleCard({ schedule, messageTemplates, onEdit, onDelete, onTrigger, onToggle }: ScheduleCardProps) {
     const [showLogs, setShowLogs] = useState(false);
     const lastLog = schedule.logs?.[0];
 
@@ -376,7 +382,9 @@ function ScheduleCard({ schedule, onEdit, onDelete, onTrigger, onToggle }: Sched
         ? fmtOffset(schedule.dtInicioOffset)
         : `${fmtOffset(schedule.dtInicioOffset)} a ${fmtOffset(schedule.dtTerminoOffset)}`;
 
-    const modeloLabel = MODELO_OPTIONS.find(o => o.value === schedule.modelo)?.label || schedule.modelo;
+    const modeloLabel = messageTemplates.find(t => t.code === schedule.modelo)?.name || 
+                        MODELO_OPTIONS.find(o => o.value === schedule.modelo)?.label || 
+                        schedule.modelo;
 
     return (
         <div className={`glass-card p-5 transition-all ${!schedule.isActive ? 'opacity-60' : ''}`}>
@@ -491,6 +499,7 @@ interface Props {
 
 export default function ScheduledDisparos({ unidadeOptions }: Props) {
     const [schedules, setSchedules] = useState<ScheduledDisparo[]>([]);
+    const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
     const [editTarget, setEditTarget] = useState<ScheduledDisparo | null>(null);
@@ -508,6 +517,12 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
     }, []);
 
     useEffect(() => { fetchSchedules(); }, [fetchSchedules]);
+
+    useEffect(() => {
+        api.listMessageTemplates()
+            .then(setMessageTemplates)
+            .catch(() => {});
+    }, []);
 
     const handleCreate = async (data: ScheduledDisparoFormData) => {
         setSaving(true);
@@ -623,6 +638,7 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
                     <ScheduleForm
                         initial={formInitial}
                         unidadeOptions={unidadeOptions}
+                        messageTemplates={messageTemplates}
                         onSubmit={formMode === 'create' ? handleCreate : handleEdit}
                         onCancel={closeForm}
                         loading={saving}
@@ -654,6 +670,7 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
                         <ScheduleCard
                             key={schedule.id}
                             schedule={schedule}
+                            messageTemplates={messageTemplates}
                             onEdit={openEdit}
                             onDelete={handleDelete}
                             onTrigger={handleTrigger}

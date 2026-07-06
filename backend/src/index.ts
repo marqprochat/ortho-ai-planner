@@ -20,9 +20,10 @@ import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatment
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
-import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF } from './controllers/easydentalController';
+import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, getUltimaConsulta } from './controllers/easydentalController';
 import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
+import { listMessageTemplates, getMessageTemplate, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate } from './controllers/messageTemplateController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -140,6 +141,7 @@ app.get('/api/easydental/unidades', authMiddleware, requireAppAccess('disparos')
 app.post('/api/easydental/agendamentos', authMiddleware, requireAppAccess('disparos'), getAgendamentos);
 app.post('/api/easydental/kpi', authMiddleware, requireAppAccess('disparos'), getKPIPrd);
 app.post('/api/easydental/prestador', authMiddleware, requireAppAccess('disparos'), getPrestadorCPF);
+app.post('/api/easydental/ultima-consulta', authMiddleware, requireAppAccess('disparos'), getUltimaConsulta);
 
 // Message Dispatch Routes (BotConversa)
 app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sendMessage);
@@ -154,6 +156,13 @@ app.put('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparo
 app.delete('/api/scheduled-disparos/:id', authMiddleware, requireAppAccess('disparos'), deleteScheduledDisparo);
 app.post('/api/scheduled-disparos/:id/trigger', authMiddleware, requireAppAccess('disparos'), triggerScheduledDisparo);
 app.get('/api/scheduled-disparos/:id/logs', authMiddleware, requireAppAccess('disparos'), getScheduledDisparoLogs);
+
+// Message Template Routes
+app.get('/api/message-templates', authMiddleware, requireAppAccess('disparos'), listMessageTemplates);
+app.get('/api/message-templates/:id', authMiddleware, requireAppAccess('disparos'), getMessageTemplate);
+app.post('/api/message-templates', authMiddleware, requireAppAccess('disparos'), createMessageTemplate);
+app.put('/api/message-templates/:id', authMiddleware, requireAppAccess('disparos'), updateMessageTemplate);
+app.delete('/api/message-templates/:id', authMiddleware, requireAppAccess('disparos'), deleteMessageTemplate);
 
 // Start Server
 app.listen(PORT, async () => {
