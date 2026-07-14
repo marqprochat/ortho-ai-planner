@@ -303,7 +303,7 @@ export default function App() {
                     if (seen.has(key)) return;
                     seen.add(key);
 
-                    const birthDate = rec.DT_NASCIMENTO || rec.ANIVERSARIO || rec.DATA || '';
+                    const birthDate = rec.DT_ANIV || rec.DT_NASCIMENTO || rec.ANIVERSARIO || rec.DATA || '';
 
                     msgs.push({
                         id: `msg-${i}-${code}`,

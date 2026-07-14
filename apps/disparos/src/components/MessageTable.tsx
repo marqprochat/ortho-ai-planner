@@ -16,6 +16,11 @@ interface MessageTableProps {
 function formatSimpleDate(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     try {
+        // Handle MM/DD or MM-DD anniversaries
+        const matchAniv = dateStr.match(/^(\d{2})[/-](\d{2})$/);
+        if (matchAniv) {
+            return `${matchAniv[2]}/${matchAniv[1]}`; // Convert "MM/DD" to "DD/MM"
+        }
         const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (match) {
             return `${match[3]}/${match[2]}/${match[1]}`;
@@ -45,7 +50,7 @@ function calculateAge(dateStr: string | null | undefined): string {
                     return `${currentYear - birthYear} anos`;
                 }
             }
-            return '';
+            return '—'; // No birth year available (e.g. MM/DD)
         }
         const birthYear = parseInt(match[1]);
         const currentYear = new Date().getFullYear();
@@ -53,7 +58,7 @@ function calculateAge(dateStr: string | null | undefined): string {
             return `${currentYear - birthYear} anos`;
         }
     } catch {}
-    return '';
+    return '—';
 }
 
 function StatusBadge({ status, error }: { status: MessageStatus; error?: string }) {

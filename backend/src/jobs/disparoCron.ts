@@ -271,7 +271,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             let horaAg = '';
 
             if (schedule.searchMode === 'aniversario') {
-                dataAg = ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
+                dataAg = ag.DT_ANIV || ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
                 horaAg = '';
             } else if (schedule.searchMode === 'ultima-consulta') {
                 dataAg = ag.ULTIMA_CONSULTA || '';
@@ -334,7 +334,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                     let horaAg = '';
 
                     if (schedule.searchMode === 'aniversario') {
-                        dataAg = ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
+                        dataAg = ag.DT_ANIV || ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
                         horaAg = '';
                     } else if (schedule.searchMode === 'ultima-consulta') {
                         dataAg = ag.ULTIMA_CONSULTA || '';
