@@ -284,16 +284,35 @@ model MessageTemplate {
 }
 
 model ScheduledDisparoLog {
-  id             String           @id @default(uuid())
+  id             String                 @id @default(uuid())
   scheduleId     String
-  executedAt     DateTime         @default(now())
-  status         String           // "running" | "completed" | "failed"
-  totalFetched   Int              @default(0)
-  totalSent      Int              @default(0)
-  totalErrors    Int              @default(0)
-  totalProcessed Int              @default(0)
+  executedAt     DateTime               @default(now())
+  status         String                 // "running" | "completed" | "failed"
+  totalFetched   Int                    @default(0)
+  totalSent      Int                    @default(0)
+  totalErrors    Int                    @default(0)
+  totalProcessed Int                    @default(0)
   errorMessage   String?
   dtInicio       String
   dtTermino      String
-  schedule       ScheduledDisparo @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  schedule       ScheduledDisparo       @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  individualLogs DisparoIndividualLog[]
+}
+
+model DisparoIndividualLog {
+  id            String               @id @default(uuid())
+  scheduleLogId String?
+  scheduleLog   ScheduledDisparoLog? @relation(fields: [scheduleLogId], references: [id], onDelete: Cascade)
+  scheduleId    String?
+  type          String               @default("automatic") // "automatic" | "manual"
+  paciente      String
+  telefone      String
+  unidade       String
+  modelo        String
+  status        String               // "sent" | "error"
+  errorMessage  String?
+  executedAt    DateTime             @default(now())
+
+  @@index([scheduleLogId])
+  @@index([executedAt])
 }

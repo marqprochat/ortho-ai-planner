@@ -182,7 +182,160 @@ export const getDisparoReports = async (req: Request, res: Response) => {
             take: 500,
         });
 
-        res.json(logs);
+        const logIds = logs.map(l => l.id);
+
+        // Agregação dos disparos automáticos por unidade e status
+        const individualAggregations = await prisma.disparoIndividualLog.groupBy({
+            by: ['scheduleLogId', 'unidade', 'status'],
+            where: {
+                scheduleLogId: { in: logIds },
+            },
+            _count: {
+                id: true,
+            },
+        });
+
+        const breakdownMap = new Map<string, Array<{
+            unidade: string;
+            totalSent: number;
+            totalErrors: number;
+            totalProcessed: number;
+        }>>();
+
+        individualAggregations.forEach(agg => {
+            const logId = agg.scheduleLogId;
+            if (!logId) return;
+
+            if (!breakdownMap.has(logId)) {
+                breakdownMap.set(logId, []);
+            }
+
+            const currentList = breakdownMap.get(logId)!;
+            let existing = currentList.find(x => x.unidade === agg.unidade);
+
+            if (!existing) {
+                existing = {
+                    unidade: agg.unidade,
+                    totalSent: 0,
+                    totalErrors: 0,
+                    totalProcessed: 0,
+                };
+                currentList.push(existing);
+            }
+
+            const count = agg._count.id || 0;
+            existing.totalProcessed += count;
+            if (agg.status === 'sent') {
+                existing.totalSent += count;
+            } else if (agg.status === 'error') {
+                existing.totalErrors += count;
+            }
+        });
+
+        const logsWithBreakdown = logs.map(log => {
+            const unitBreakdown = breakdownMap.get(log.id) || [];
+            return {
+                ...log,
+                unitBreakdown,
+            };
+        });
+
+        // Agregação dos disparos manuais por dia, unidade e status
+        const manualWhere: any = { type: 'manual' };
+        if (dtInicio || dtTermino) {
+            manualWhere.executedAt = {};
+            if (dtInicio) manualWhere.executedAt.gte = new Date(`${dtInicio}T00:00:00`);
+            if (dtTermino) manualWhere.executedAt.lte = new Date(`${dtTermino}T23:59:59`);
+        }
+
+        const manualSends = await prisma.disparoIndividualLog.findMany({
+            where: manualWhere,
+            orderBy: { executedAt: 'desc' },
+        });
+
+        const manualGroups = new Map<string, {
+            id: string;
+            scheduleId: string;
+            executedAt: Date;
+            status: string;
+            totalFetched: number;
+            totalSent: number;
+            totalErrors: number;
+            totalProcessed: number;
+            dtInicio: string;
+            dtTermino: string;
+            schedule: {
+                id: string;
+                name: string;
+                modelo: string;
+                unidades: string[];
+            };
+            unitBreakdown: Array<{
+                unidade: string;
+                totalSent: number;
+                totalErrors: number;
+                totalProcessed: number;
+            }>;
+        }>();
+
+        manualSends.forEach(send => {
+            const dayStr = send.executedAt.toISOString().split('T')[0];
+            if (!manualGroups.has(dayStr)) {
+                manualGroups.set(dayStr, {
+                    id: `manual-${dayStr}`,
+                    scheduleId: `manual-schedule`,
+                    executedAt: send.executedAt,
+                    status: 'completed',
+                    totalFetched: 0,
+                    totalSent: 0,
+                    totalErrors: 0,
+                    totalProcessed: 0,
+                    dtInicio: dayStr,
+                    dtTermino: dayStr,
+                    schedule: {
+                        id: `manual-schedule`,
+                        name: 'Envios Manuais',
+                        modelo: 'manual',
+                        unidades: [],
+                    },
+                    unitBreakdown: [],
+                });
+            }
+
+            const group = manualGroups.get(dayStr)!;
+            group.totalProcessed++;
+            if (send.status === 'sent') {
+                group.totalSent++;
+            } else {
+                group.totalErrors++;
+            }
+
+            let ub = group.unitBreakdown.find(x => x.unidade === send.unidade);
+            if (!ub) {
+                ub = {
+                    unidade: send.unidade,
+                    totalSent: 0,
+                    totalErrors: 0,
+                    totalProcessed: 0,
+                };
+                group.unitBreakdown.push(ub);
+            }
+
+            ub.totalProcessed++;
+            if (send.status === 'sent') {
+                ub.totalSent++;
+            } else {
+                ub.totalErrors++;
+            }
+        });
+
+        const manualLogs = Array.from(manualGroups.values());
+
+        const allReports = [...logsWithBreakdown, ...manualLogs].sort(
+            (a, b) => new Date(b.executedAt).getTime() - new Date(a.executedAt).getTime()
+        );
+
+        res.json(allReports);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

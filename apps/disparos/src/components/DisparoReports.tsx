@@ -13,6 +13,13 @@ const MODEL_NAMES: Record<string, string> = {
     '19872': 'Avaliação',
 };
 
+interface UnitBreakdown {
+    unidade: string;
+    totalSent: number;
+    totalErrors: number;
+    totalProcessed: number;
+}
+
 interface ReportLog {
     id: string;
     scheduleId: string;
@@ -31,6 +38,7 @@ interface ReportLog {
         modelo: string;
         unidades: string[];
     };
+    unitBreakdown?: UnitBreakdown[];
 }
 
 function todayStr() {
@@ -140,6 +148,10 @@ interface Props {
 }
 
 function isLogRelatedToUnit(log: ReportLog, unit: string) {
+    if (log.unitBreakdown && log.unitBreakdown.length > 0) {
+        const ub = log.unitBreakdown.find(x => x.unidade === unit);
+        return ub ? (ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0) : false;
+    }
     const logUnidades = log.schedule.unidades;
     if (unit === 'Todas') {
         return logUnidades.length === 0;
@@ -185,11 +197,18 @@ export default function DisparoReports({ unidadeOptions }: Props) {
     const filteredLogs = useMemo(() => {
         return logs.filter(log => {
             if (selectedUnidades.length > 0) {
-                const scheduleUnidades = log.schedule.unidades;
-                // If schedule applies to all units (empty array), show it; otherwise check overlap
-                const matches = scheduleUnidades.length === 0 ||
-                    scheduleUnidades.some(u => selectedUnidades.includes(u));
-                if (!matches) return false;
+                if (log.unitBreakdown && log.unitBreakdown.length > 0) {
+                    const matches = log.unitBreakdown.some(ub => 
+                        selectedUnidades.includes(ub.unidade) && 
+                        (ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0)
+                    );
+                    if (!matches) return false;
+                } else {
+                    const scheduleUnidades = log.schedule.unidades;
+                    const matches = scheduleUnidades.length === 0 ||
+                        scheduleUnidades.some(u => selectedUnidades.includes(u));
+                    if (!matches) return false;
+                }
             }
             if (selectedScheduleId && log.scheduleId !== selectedScheduleId) return false;
             return true;
@@ -201,16 +220,29 @@ export default function DisparoReports({ unidadeOptions }: Props) {
         const map = new Map<string, { totalSent: number; totalErrors: number; totalProcessed: number; executions: number }>();
 
         filteredLogs.forEach(log => {
-            const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas', ...unidadeOptions];
-            units.forEach(u => {
-                const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
-                map.set(u, {
-                    totalSent: existing.totalSent + log.totalSent,
-                    totalErrors: existing.totalErrors + log.totalErrors,
-                    totalProcessed: existing.totalProcessed + log.totalProcessed,
-                    executions: existing.executions + 1,
+            if (log.unitBreakdown && log.unitBreakdown.length > 0) {
+                log.unitBreakdown.forEach(ub => {
+                    const u = ub.unidade;
+                    const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
+                    map.set(u, {
+                        totalSent: existing.totalSent + ub.totalSent,
+                        totalErrors: existing.totalErrors + ub.totalErrors,
+                        totalProcessed: existing.totalProcessed + ub.totalProcessed,
+                        executions: existing.executions + ((ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0) ? 1 : 0),
+                    });
                 });
-            });
+            } else {
+                const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas', ...unidadeOptions];
+                units.forEach(u => {
+                    const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
+                    map.set(u, {
+                        totalSent: existing.totalSent + log.totalSent,
+                        totalErrors: existing.totalErrors + log.totalErrors,
+                        totalProcessed: existing.totalProcessed + log.totalProcessed,
+                        executions: existing.executions + 1,
+                    });
+                });
+            }
         });
 
         return Array.from(map.entries())
@@ -221,22 +253,56 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
     // Summary totals
     const totals = useMemo(() => {
-        const unitFilteredLogs = selectedUnitCard
-            ? filteredLogs.filter(log => isLogRelatedToUnit(log, selectedUnitCard))
-            : filteredLogs;
+        if (selectedUnitCard) {
+            let executions = 0;
+            let sent = 0;
+            let errors = 0;
+            let processed = 0;
+            let fetched = 0;
+
+            filteredLogs.forEach(log => {
+                if (log.unitBreakdown && log.unitBreakdown.length > 0) {
+                    const ub = log.unitBreakdown.find(x => x.unidade === selectedUnitCard);
+                    if (ub && (ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0)) {
+                        executions++;
+                        sent += ub.totalSent;
+                        errors += ub.totalErrors;
+                        processed += ub.totalProcessed;
+                        fetched += ub.totalProcessed;
+                    }
+                } else {
+                    const isRelated = isLogRelatedToUnit(log, selectedUnitCard);
+                    if (isRelated) {
+                        executions++;
+                        sent += log.totalSent;
+                        errors += log.totalErrors;
+                        processed += log.totalProcessed;
+                        fetched += log.totalFetched;
+                    }
+                }
+            });
+
+            return { executions, sent, errors, processed, fetched };
+        }
 
         return {
-            executions: unitFilteredLogs.length,
-            sent: unitFilteredLogs.reduce((s, l) => s + l.totalSent, 0),
-            errors: unitFilteredLogs.reduce((s, l) => s + l.totalErrors, 0),
-            processed: unitFilteredLogs.reduce((s, l) => s + l.totalProcessed, 0),
-            fetched: unitFilteredLogs.reduce((s, l) => s + l.totalFetched, 0),
+            executions: filteredLogs.length,
+            sent: filteredLogs.reduce((s, l) => s + l.totalSent, 0),
+            errors: filteredLogs.reduce((s, l) => s + l.totalErrors, 0),
+            processed: filteredLogs.reduce((s, l) => s + l.totalProcessed, 0),
+            fetched: filteredLogs.reduce((s, l) => s + l.totalFetched, 0),
         };
     }, [filteredLogs, selectedUnitCard]);
 
     const displayLogs = useMemo(() => {
         if (!selectedUnitCard) return filteredLogs;
-        return filteredLogs.filter(log => isLogRelatedToUnit(log, selectedUnitCard));
+        return filteredLogs.filter(log => {
+            if (log.unitBreakdown && log.unitBreakdown.length > 0) {
+                const ub = log.unitBreakdown.find(x => x.unidade === selectedUnitCard);
+                return ub ? (ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0) : false;
+            }
+            return isLogRelatedToUnit(log, selectedUnitCard);
+        });
     }, [filteredLogs, selectedUnitCard]);
 
     const rate = successRate(totals.sent, totals.errors);
@@ -546,6 +612,32 @@ export default function DisparoReports({ unidadeOptions }: Props) {
                                                         <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                                                             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                                                             <span>{log.errorMessage}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {log.unitBreakdown && log.unitBreakdown.length > 0 && (
+                                                    <div className="w-full pt-3 mt-3 border-t border-border/50">
+                                                        <p className="text-xs font-semibold text-muted-foreground mb-2">Detalhamento Realizado por Unidade</p>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                                            {log.unitBreakdown.map(ub => (
+                                                                <div key={ub.unidade} className="bg-background/80 border border-border p-2.5 rounded-lg">
+                                                                    <p className="text-xs font-bold text-foreground truncate mb-1.5">{ub.unidade}</p>
+                                                                    <div className="grid grid-cols-3 gap-1 text-center">
+                                                                        <div>
+                                                                            <p className="text-xs font-bold text-emerald-600">{ub.totalSent}</p>
+                                                                            <p className="text-[9px] text-muted-foreground">Env.</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-xs font-bold text-red-500">{ub.totalErrors}</p>
+                                                                            <p className="text-[9px] text-muted-foreground">Err.</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-xs font-bold text-blue-600">{ub.totalProcessed}</p>
+                                                                            <p className="text-[9px] text-muted-foreground">Filt.</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 )}

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import prisma from '../lib/prisma';
 
 const BOTCONVERSA_URL = process.env.BOTCONVERSA_WEBHOOK_URL || '';
 const DEFAULT_DELAY = parseInt(process.env.MESSAGE_DELAY_MS || '1000', 10);
@@ -44,14 +45,38 @@ export const sendMessage = async (req: Request, res: Response) => {
             }),
         });
 
-        if (response.status === 200) {
+        let responseText = '';
+        if (response.status !== 200) {
+            responseText = await response.text().catch(() => '');
+        }
+
+        const success = response.status === 200;
+        const statusText = success ? 'sent' : 'error';
+        const errMsg = success ? null : `BotConversa retornou ${response.status}: ${responseText}`;
+
+        try {
+            await prisma.disparoIndividualLog.create({
+                data: {
+                    type: 'manual',
+                    paciente: paciente || nome || '',
+                    telefone: telefone,
+                    unidade: unidade || 'Sem Unidade',
+                    modelo: modelo || '',
+                    status: statusText,
+                    errorMessage: errMsg,
+                }
+            });
+        } catch (dbErr: any) {
+            console.error('Error logging manual message to database:', dbErr.message);
+        }
+
+        if (success) {
             return res.json({ status: 'sent' });
         }
 
-        const text = await response.text();
         return res.status(response.status).json({
             status: 'error',
-            error: `BotConversa retornou ${response.status}: ${text}`,
+            error: errMsg,
         });
     } catch (error: any) {
         console.error('Error sending message:', error.message);

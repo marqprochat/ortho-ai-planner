@@ -363,6 +363,33 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                 })
             );
 
+            const batchLogs = batch.map((ag, index) => {
+                const r = results[index];
+                const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
+                const phone = extractPhone(ag);
+                const unitName = extractUnit(ag) || 'Sem Unidade';
+                const success = r.status === 'fulfilled';
+                const errMsg = r.status === 'rejected' ? (r.reason?.message || 'Erro de envio') : null;
+
+                return {
+                    scheduleLogId: log.id,
+                    scheduleId: schedule.id,
+                    type: 'automatic',
+                    paciente: fullName,
+                    telefone: phone,
+                    unidade: unitName,
+                    modelo: schedule.modelo,
+                    status: success ? 'sent' : 'error',
+                    errorMessage: errMsg,
+                };
+            });
+
+            try {
+                await prisma.disparoIndividualLog.createMany({ data: batchLogs });
+            } catch (dbErr: any) {
+                console.error(`[DisparoCron] Erro ao salvar logs individuais no banco:`, dbErr.message);
+            }
+
             for (const r of results) {
                 if (r.status === 'fulfilled') totalSent++;
                 else { totalErrors++; console.error(`[DisparoCron] Send error:`, r.reason?.message); }
