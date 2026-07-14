@@ -154,26 +154,23 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                     {isAniversario ? 'Data Nascimento' : isUltimaConsulta ? 'Última Consulta' : 'Data'}
                                 </div>
                             </th>
-                            <th className="px-3 py-3 text-left font-semibold text-foreground/70">
-                                <div className="flex items-center gap-1">
-                                    {isAniversario ? (
-                                        <>
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            <span>Idade</span>
-                                        </>
-                                    ) : isUltimaConsulta ? (
-                                        <>
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            <span>Consulta Agendada</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Clock className="w-3.5 h-3.5" />
-                                            <span>Hora</span>
-                                        </>
-                                    )}
-                                </div>
-                            </th>
+                            {!isAniversario && (
+                                <th className="px-3 py-3 text-left font-semibold text-foreground/70">
+                                    <div className="flex items-center gap-1">
+                                        {isUltimaConsulta ? (
+                                            <>
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span>Consulta Agendada</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Clock className="w-3.5 h-3.5" />
+                                                <span>Hora</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </th>
+                            )}
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                 <div className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> Unidade</div>
                             </th>
@@ -196,9 +193,11 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                     <td className="px-3 py-3.5">
                                         <div className="h-4 bg-muted/80 rounded w-20" />
                                     </td>
-                                    <td className="px-3 py-3.5">
-                                        <div className="h-4 bg-muted/80 rounded w-16" />
-                                    </td>
+                                    {!isAniversario && (
+                                        <td className="px-3 py-3.5">
+                                            <div className="h-4 bg-muted/80 rounded w-16" />
+                                        </td>
+                                    )}
                                     <td className="px-3 py-3.5">
                                         <div className="h-4 bg-muted/80 rounded w-24" />
                                     </td>
@@ -233,17 +232,17 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
                                     {isAniversario ? formatSimpleDate(msg.data) : isUltimaConsulta ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
                                 </td>
-                                <td className="px-3 py-2.5 text-muted-foreground text-xs">
-                                    {isAniversario ? (
-                                        calculateAge(msg.data) || '-'
-                                    ) : isUltimaConsulta ? (
-                                        formatSimpleDate(msg.consultaAgendada) || (
-                                            <span className="text-muted-foreground/60 italic font-normal">Nenhuma</span>
-                                        )
-                                    ) : (
-                                        msg.hora
-                                    )}
-                                </td>
+                                {!isAniversario && (
+                                    <td className="px-3 py-2.5 text-muted-foreground text-xs">
+                                        {isUltimaConsulta ? (
+                                            formatSimpleDate(msg.consultaAgendada) || (
+                                                <span className="text-muted-foreground/60 italic font-normal">Nenhuma</span>
+                                            )
+                                        ) : (
+                                            msg.hora
+                                        )}
+                                    </td>
+                                )}
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs">{msg.unidade}</td>
                                 <td className="px-3 py-2.5 text-center">
                                     <StatusBadge status={msg.status} error={msg.errorMessage} />
@@ -253,7 +252,7 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
 
                         {!loading && messages.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="px-6 py-16 text-center">
+                                <td colSpan={isAniversario ? 6 : 7} className="px-6 py-16 text-center">
                                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
                                         <Phone className="w-10 h-10 opacity-30" />
                                         <p className="text-sm">Nenhum destinatário encontrado</p>
