@@ -114,6 +114,12 @@ export const api = {
             body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades }),
         }),
 
+    getAniversarios: (dtInicio: string, dtTermino: string, unidades: string[]) =>
+        request<{ success: boolean; data: any[] }>('/easydental/aniversarios', {
+            method: 'POST',
+            body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades }),
+        }),
+
     // Message Templates
     listMessageTemplates: () => request<MessageTemplate[]>('/message-templates'),
     createMessageTemplate: (data: Partial<MessageTemplate>) =>

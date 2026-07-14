@@ -13,6 +13,7 @@ interface FilterPanelProps {
     collapsed: boolean;
     onToggleCollapse: () => void;
     isUltimaConsulta?: boolean;
+    isAniversario?: boolean;
 }
 
 
@@ -68,7 +69,7 @@ function MultiCheckbox({ label, icon, options, selected, onToggle, selectAll }: 
     );
 }
 
-export default function FilterPanel({ filters, onChange, agendamentos, unidadeOptions, collapsed, onToggleCollapse, isUltimaConsulta }: FilterPanelProps) {
+export default function FilterPanel({ filters, onChange, agendamentos, unidadeOptions, collapsed, onToggleCollapse, isUltimaConsulta, isAniversario }: FilterPanelProps) {
     const agendaOptions = useMemo(() => {
         const set = new Set<string>();
         agendamentos.forEach(a => {
@@ -117,7 +118,7 @@ export default function FilterPanel({ filters, onChange, agendamentos, unidadeOp
             </button>
 
             {!collapsed && (
-                isUltimaConsulta ? (
+                (isUltimaConsulta || isAniversario) ? (
                     <div className="flex flex-col items-center justify-center text-center py-10 gap-3 text-muted-foreground animate-fade-in">
                         <div className="p-3 bg-muted rounded-full">
                             <Filter className="w-6 h-6 text-muted-foreground/60" />
@@ -125,7 +126,7 @@ export default function FilterPanel({ filters, onChange, agendamentos, unidadeOp
                         <div className="space-y-1 px-2">
                             <p className="font-semibold text-xs text-foreground">Filtros Desativados</p>
                             <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                No modo de última consulta, os filtros de agendas, status e períodos não são aplicáveis.
+                                No modo de {isUltimaConsulta ? 'última consulta' : 'aniversário'}, os filtros de agendas, status e períodos não são aplicáveis.
                             </p>
                         </div>
                     </div>

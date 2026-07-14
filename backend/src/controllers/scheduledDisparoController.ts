@@ -42,6 +42,7 @@ export const createScheduledDisparo = async (req: Request, res: Response) => {
             name, description, cronExpression, isActive,
             unidades, agendas, statusAgendamento, periodos, motivo,
             dtInicioOffset, dtTerminoOffset, modelo, delayMs, concurrentLimit,
+            searchMode,
         } = req.body;
 
         if (!name || !cronExpression) {
@@ -64,6 +65,7 @@ export const createScheduledDisparo = async (req: Request, res: Response) => {
                 modelo: modelo || '22180',
                 delayMs: delayMs ?? 1000,
                 concurrentLimit: concurrentLimit ?? 5,
+                searchMode: searchMode || 'agendamento',
                 createdBy: user?.id || 'system',
             },
         });
@@ -82,6 +84,7 @@ export const updateScheduledDisparo = async (req: Request, res: Response) => {
             name, description, cronExpression, isActive,
             unidades, agendas, statusAgendamento, periodos, motivo,
             dtInicioOffset, dtTerminoOffset, modelo, delayMs, concurrentLimit,
+            searchMode,
         } = req.body;
 
         const schedule = await prisma.scheduledDisparo.update({
@@ -101,6 +104,7 @@ export const updateScheduledDisparo = async (req: Request, res: Response) => {
                 ...(modelo !== undefined && { modelo }),
                 ...(delayMs !== undefined && { delayMs }),
                 ...(concurrentLimit !== undefined && { concurrentLimit }),
+                ...(searchMode !== undefined && { searchMode }),
             },
         });
 

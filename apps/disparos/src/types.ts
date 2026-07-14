@@ -93,6 +93,7 @@ export interface ScheduledDisparo {
     modelo: string;
     delayMs: number;
     concurrentLimit: number;
+    searchMode?: string;
     createdBy: string;
     createdAt: string;
     updatedAt: string;
@@ -108,6 +109,7 @@ export interface MessageTemplate {
     code: string;
     dayOffset: number;
     statusKeyword: string;
+    searchMode?: string;
     createdAt?: string;
     updatedAt?: string;
 }

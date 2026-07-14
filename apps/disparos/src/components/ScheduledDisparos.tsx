@@ -45,6 +45,7 @@ const DEFAULT_FORM: ScheduledDisparoFormData = {
     modelo: '22180',
     delayMs: 1000,
     concurrentLimit: 5,
+    searchMode: 'agendamento',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -241,60 +242,89 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                 </div>
             )}
 
-            {/* Status de Agendamento */}
-            <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">
-                    Status de agendamento{' '}
-                    <span className="font-normal text-muted-foreground">(vazio = todos)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                    {STATUS_OPTIONS.map(s => {
-                        const selected = form.statusAgendamento.includes(s.code);
-                        return (
-                            <label
-                                key={s.code}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${selected
-                                    ? 'border-primary bg-primary/10 text-primary font-semibold'
-                                    : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
-                            >
-                                <input type="checkbox" className="sr-only" checked={selected} onChange={() => toggleArray('statusAgendamento', s.code)} />
-                                <span
-                                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: s.color, border: s.color === '#D1D5DB' ? '1px solid #9CA3AF' : undefined }}
-                                />
-                                <span className="font-mono font-bold">{s.code}</span>
-                                <span className="hidden sm:inline">— {s.label}</span>
-                            </label>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Período */}
-            <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">Período (vazio = ambos)</label>
-                <div className="flex gap-2">
-                    {['Manhã', 'Tarde'].map(p => (
-                        <label key={p} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${form.periodos.includes(p)
-                            ? 'border-primary bg-primary/10 text-primary font-semibold'
-                            : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}>
-                            <input type="checkbox" className="sr-only" checked={form.periodos.includes(p)} onChange={() => toggleArray('periodos', p)} />
-                            {p}
-                        </label>
-                    ))}
-                </div>
-            </div>
-
-            {/* Motivo */}
+            {/* Modo de Busca */}
             <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Filtro de motivo (contém)</label>
-                <input
-                    className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary"
-                    value={form.motivo}
-                    onChange={e => set({ motivo: e.target.value })}
-                    placeholder="Ex: Ortodontia (vazio = todos)"
-                />
+                <label className="text-xs font-semibold text-foreground">Modo de Busca</label>
+                <select
+                    className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary cursor-pointer"
+                    value={form.searchMode || 'agendamento'}
+                    onChange={e => {
+                        const val = e.target.value;
+                        set({
+                            searchMode: val,
+                            ...(val !== 'agendamento' && {
+                                statusAgendamento: [],
+                                agendas: [],
+                                periodos: [],
+                                motivo: '',
+                            })
+                        });
+                    }}
+                >
+                    <option value="agendamento">Agendamento Padrão</option>
+                    <option value="ultima-consulta">Última Consulta</option>
+                    <option value="aniversario">Aniversário</option>
+                </select>
             </div>
+
+            {(!form.searchMode || form.searchMode === 'agendamento') && (
+                <>
+                    {/* Status de Agendamento */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-foreground">
+                            Status de agendamento{' '}
+                            <span className="font-normal text-muted-foreground">(vazio = todos)</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {STATUS_OPTIONS.map(s => {
+                                const selected = form.statusAgendamento.includes(s.code);
+                                return (
+                                    <label
+                                        key={s.code}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${selected
+                                            ? 'border-primary bg-primary/10 text-primary font-semibold'
+                                            : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}
+                                    >
+                                        <input type="checkbox" className="sr-only" checked={selected} onChange={() => toggleArray('statusAgendamento', s.code)} />
+                                        <span
+                                            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                                            style={{ backgroundColor: s.color, border: s.color === '#D1D5DB' ? '1px solid #9CA3AF' : undefined }}
+                                        />
+                                        <span className="font-mono font-bold">{s.code}</span>
+                                        <span className="hidden sm:inline">— {s.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Período */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-foreground">Período (vazio = ambos)</label>
+                        <div className="flex gap-2">
+                            {['Manhã', 'Tarde'].map(p => (
+                                <label key={p} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border cursor-pointer transition-colors ${form.periodos.includes(p)
+                                    ? 'border-primary bg-primary/10 text-primary font-semibold'
+                                    : 'border-border bg-background text-muted-foreground hover:border-primary/50'}`}>
+                                    <input type="checkbox" className="sr-only" checked={form.periodos.includes(p)} onChange={() => toggleArray('periodos', p)} />
+                                    {p}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Motivo */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-foreground">Filtro de motivo (contém)</label>
+                        <input
+                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary"
+                            value={form.motivo}
+                            onChange={e => set({ motivo: e.target.value })}
+                            placeholder="Ex: Ortodontia (vazio = todos)"
+                        />
+                    </div>
+                </>
+            )}
 
             {/* Template */}
             <div className="space-y-1">
@@ -395,6 +425,15 @@ function ScheduleCard({ schedule, messageTemplates, onEdit, onDelete, onTrigger,
                         {schedule.isActive
                             ? <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Ativo</span>
                             : <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Inativo</span>}
+                        {schedule.searchMode === 'aniversario' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 font-medium">Aniversário</span>
+                        )}
+                        {schedule.searchMode === 'ultima-consulta' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Última Consulta</span>
+                        )}
+                        {(!schedule.searchMode || schedule.searchMode === 'agendamento') && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Agendamento</span>
+                        )}
                         {lastLog && <StatusBadge status={lastLog.status} />}
                     </div>
                     {schedule.description && (

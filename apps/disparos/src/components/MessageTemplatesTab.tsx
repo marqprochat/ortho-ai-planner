@@ -23,6 +23,7 @@ export default function MessageTemplatesTab() {
     const [code, setCode] = useState('');
     const [dayOffset, setDayOffset] = useState(0);
     const [statusKeyword, setStatusKeyword] = useState('');
+    const [searchMode, setSearchMode] = useState('agendamento');
 
     const fetchTemplates = async () => {
         setLoading(true);
@@ -54,6 +55,7 @@ export default function MessageTemplatesTab() {
         setCode('');
         setDayOffset(0);
         setStatusKeyword('');
+        setSearchMode('agendamento');
         setIsModalOpen(true);
     };
 
@@ -64,6 +66,7 @@ export default function MessageTemplatesTab() {
         setCode(tpl.code);
         setDayOffset(tpl.dayOffset);
         setStatusKeyword(tpl.statusKeyword);
+        setSearchMode(tpl.searchMode || 'agendamento');
         setIsModalOpen(true);
     };
 
@@ -81,7 +84,8 @@ export default function MessageTemplatesTab() {
                 category,
                 code,
                 dayOffset,
-                statusKeyword
+                statusKeyword,
+                searchMode
             };
 
             if (editTarget) {
@@ -239,7 +243,7 @@ export default function MessageTemplatesTab() {
                                 <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground bg-muted/10 -mx-6 -mb-6 px-6 py-3 rounded-b-xl">
                                     <span className="flex items-center gap-1">
                                         <Settings2 className="w-3.5 h-3.5 opacity-70" />
-                                        Filtro:
+                                        Modo: <span className="font-semibold text-foreground">{tpl.searchMode === 'ultima-consulta' ? 'Última Consulta' : tpl.searchMode === 'aniversario' ? 'Aniversário' : 'Agendamento'}</span>
                                     </span>
                                     <div className="flex items-center gap-2 font-medium text-foreground">
                                         <span>
@@ -250,7 +254,7 @@ export default function MessageTemplatesTab() {
                                                     : `${tpl.dayOffset}d`
                                             }
                                         </span>
-                                        {tpl.statusKeyword && (
+                                        {(!tpl.searchMode || tpl.searchMode === 'agendamento') && tpl.statusKeyword && (
                                             <>
                                                 <span className="text-muted-foreground/50">•</span>
                                                 <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/15 text-[10px] uppercase font-bold">
@@ -338,9 +342,7 @@ export default function MessageTemplatesTab() {
                                     placeholder="Ex: 22180"
                                     className="w-full px-3.5 py-2.5 text-sm border border-border rounded-xl bg-background outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-mono"
                                 />
-                            </div>
-
-                            {/* Advanced configurations */}
+                                              {/* Advanced configurations */}
                             <div className="border-t border-border pt-4 mt-2 space-y-3">
                                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                     <Settings2 className="w-3.5 h-3.5" />
@@ -348,6 +350,28 @@ export default function MessageTemplatesTab() {
                                 </p>
                                 
                                 <div className="grid grid-cols-2 gap-3">
+                                    {/* Search Mode */}
+                                    <div className="space-y-1 col-span-2">
+                                        <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                            Modo de Busca
+                                        </label>
+                                        <select
+                                            value={searchMode}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setSearchMode(val);
+                                                if (val !== 'agendamento') {
+                                                    setStatusKeyword('');
+                                                }
+                                            }}
+                                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary cursor-pointer"
+                                        >
+                                            <option value="agendamento">Agendamento Padrão</option>
+                                            <option value="ultima-consulta">Última Consulta</option>
+                                            <option value="aniversario">Aniversário</option>
+                                        </select>
+                                    </div>
+
                                     {/* Day Offset */}
                                     <div className="space-y-1">
                                         <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
@@ -366,10 +390,10 @@ export default function MessageTemplatesTab() {
                                             className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary"
                                         />
                                     </div>
-
+ 
                                     {/* Keyword Status */}
                                     <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                        <label className={`text-[11px] font-semibold flex items-center gap-1 ${searchMode !== 'agendamento' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                                             Filtro de Status (Chave)
                                             <span className="group relative">
                                                 <HelpCircle className="w-3 h-3 cursor-pointer opacity-70" />
@@ -382,12 +406,13 @@ export default function MessageTemplatesTab() {
                                             type="text"
                                             value={statusKeyword}
                                             onChange={e => setStatusKeyword(e.target.value)}
-                                            placeholder="Ex: agenda"
-                                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary"
+                                            placeholder={searchMode === 'agendamento' ? 'Ex: agenda' : 'Não aplicável'}
+                                            disabled={searchMode !== 'agendamento'}
+                                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary disabled:opacity-50 disabled:bg-muted/30"
                                         />
                                     </div>
                                 </div>
-                            </div>
+                            </div>               </div>
 
                             {/* Actions */}
                             <div className="flex items-center justify-end gap-3 pt-4 border-t border-border mt-6">

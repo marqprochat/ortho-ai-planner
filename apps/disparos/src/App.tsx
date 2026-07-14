@@ -131,6 +131,7 @@ export default function App() {
     const [templatesLoading, setTemplatesLoading] = useState(true);
 
     const [isUltimaConsulta, setIsUltimaConsulta] = useState(false);
+    const [isAniversario, setIsAniversario] = useState(false);
     const [onlyWithoutScheduled, setOnlyWithoutScheduled] = useState(false);
 
     const currentPreset = useMemo(() => {
@@ -222,8 +223,8 @@ export default function App() {
     // Apply frontend filters
     const filteredMessages = useMemo(() => {
         return messages.filter(msg => {
-            if (isUltimaConsulta) {
-                if (onlyWithoutScheduled && msg.consultaAgendada) {
+            if (isUltimaConsulta || isAniversario) {
+                if (isUltimaConsulta && onlyWithoutScheduled && msg.consultaAgendada) {
                     return false;
                 }
                 return true;
@@ -262,7 +263,7 @@ export default function App() {
 
             return true;
         });
-    }, [messages, rawAgendamentos, filters, isUltimaConsulta, onlyWithoutScheduled]);
+    }, [messages, rawAgendamentos, filters, isUltimaConsulta, isAniversario, onlyWithoutScheduled]);
 
     // Fetch agendamentos
     const handleSearch = useCallback(async () => {
@@ -273,7 +274,57 @@ export default function App() {
 
         setLoading(true);
         try {
-            if (isUltimaConsulta) {
+            if (isAniversario) {
+                const res = await api.getAniversarios(
+                    filters.dtInicio,
+                    filters.dtTermino,
+                    filters.unidades
+                );
+
+                const records = res.success && Array.isArray(res.data) ? res.data : [];
+                setRawAgendamentos([]); // empty in this mode
+
+                const seen = new Set<string>();
+                const msgs: MessageItem[] = [];
+
+                records.forEach((rec, i) => {
+                    // Extract phone number digits
+                    let phone = (rec.CELULAR || '').toString().replace(/\D/g, '');
+                    if (phone.length >= 11 && phone.startsWith('0')) {
+                        phone = phone.substring(1);
+                    }
+                    const hasPhone = !!phone;
+                    const formattedPhone = hasPhone ? (phone.startsWith('55') ? `+${phone}` : `+55${phone}`) : '';
+
+                    const fullName = rec.PACIENTE || '';
+                    const code = rec.CODIGO?.toString() || '';
+                    const key = `${formattedPhone}-${code}`;
+
+                    if (seen.has(key)) return;
+                    seen.add(key);
+
+                    const birthDate = rec.DT_NASCIMENTO || rec.ANIVERSARIO || rec.DATA || '';
+
+                    msgs.push({
+                        id: `msg-${i}-${code}`,
+                        nome: getFirstName(fullName),
+                        nomeCompleto: fullName,
+                        telefone: formattedPhone,
+                        unidade: rec.UNIDADE || '',
+                        codPaciente: code,
+                        data: birthDate,
+                        hora: '',
+                        status: hasPhone ? 'pending' : 'error',
+                        errorMessage: hasPhone ? undefined : 'Sem telefone',
+                    });
+                });
+
+                setMessages(msgs);
+                setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
+
+                const errCount = msgs.filter(m => m.status === 'error').length;
+                toast.success(`${msgs.length} aniversariante(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
+            } else if (isUltimaConsulta) {
                 const res = await api.getUltimaConsulta(
                     filters.dtInicio,
                     filters.dtTermino,
@@ -391,7 +442,7 @@ export default function App() {
         } finally {
             setLoading(false);
         }
-    }, [filters, selectedModel, isUltimaConsulta]);
+    }, [filters, selectedModel, isUltimaConsulta, isAniversario]);
 
     // Send messages
     const handleSend = useCallback(async () => {
@@ -424,7 +475,7 @@ export default function App() {
             // Send batch
             const results = await Promise.allSettled(
                 batch.map(msg => {
-                    const formattedDate = isUltimaConsulta ? '' : formatAgendamento(msg.data, msg.hora);
+                    const formattedDate = (isUltimaConsulta || isAniversario) ? '' : formatAgendamento(msg.data, msg.hora);
                     return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate, {
                         dentista: msg.dentista || '',
                         motivo: msg.motivo || '',
@@ -433,8 +484,8 @@ export default function App() {
                         tx_codigo_paciente: msg.txCodigoPaciente || msg.codPaciente || '',
                         paciente: msg.nomeCompleto,
                         celular: msg.telefone,
-                        data: isUltimaConsulta ? (msg.ultimaConsulta || '') : (msg.data || ''),
-                        inicio: isUltimaConsulta ? '' : (msg.hora || '')
+                        data: (isUltimaConsulta || isAniversario) ? (msg.ultimaConsulta || msg.data || '') : (msg.data || ''),
+                        inicio: (isUltimaConsulta || isAniversario) ? '' : (msg.hora || '')
                     })
                         .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
                         .catch(err => ({ id: msg.id, success: false, error: err.message }));
@@ -467,7 +518,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -492,12 +543,27 @@ export default function App() {
         if (tpl) {
             const dateStr = dateOffset(tpl.dayOffset);
             setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
+            
+            if (tpl.searchMode === 'ultima-consulta') {
+                setIsUltimaConsulta(true);
+                setIsAniversario(false);
+                setOnlyWithoutScheduled(false);
+            } else if (tpl.searchMode === 'aniversario') {
+                setIsUltimaConsulta(false);
+                setIsAniversario(true);
+                setOnlyWithoutScheduled(false);
+            } else {
+                setIsUltimaConsulta(false);
+                setIsAniversario(false);
+            }
         } else {
             const fb = FALLBACK_PRESETS[newModel];
             if (fb) {
                 const dateStr = dateOffset(fb.dayOffset);
                 setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
             }
+            setIsUltimaConsulta(false);
+            setIsAniversario(false);
         }
         setMessages([]);
         setRawAgendamentos([]);
@@ -681,6 +747,7 @@ export default function App() {
                                 collapsed={filterCollapsed}
                                 onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
                                 isUltimaConsulta={isUltimaConsulta}
+                                isAniversario={isAniversario}
                             />
                         </div>
                     </div>
@@ -788,7 +855,7 @@ export default function App() {
                                     </div>
 
                                     {/* Última Consulta Checkboxes */}
-                                    <div className="flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px] select-none">
+                                    <div className="flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px] select-none animate-fade-in">
                                         <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 cursor-pointer">
                                             <input
                                                 type="checkbox"
@@ -796,6 +863,9 @@ export default function App() {
                                                 checked={isUltimaConsulta}
                                                 onChange={e => {
                                                     setIsUltimaConsulta(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        setIsAniversario(false);
+                                                    }
                                                     setMessages([]);
                                                     setRawAgendamentos([]);
                                                 }}
@@ -817,6 +887,27 @@ export default function App() {
                                                 </label>
                                             </>
                                         )}
+                                    </div>
+
+                                    {/* Aniversário Checkbox */}
+                                    <div className="flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px] select-none animate-fade-in">
+                                        <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="filter-checkbox"
+                                                checked={isAniversario}
+                                                onChange={e => {
+                                                    setIsAniversario(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        setIsUltimaConsulta(false);
+                                                        setOnlyWithoutScheduled(false);
+                                                    }
+                                                    setMessages([]);
+                                                    setRawAgendamentos([]);
+                                                }}
+                                            />
+                                            <span>Aniversário</span>
+                                        </label>
                                     </div>
 
                                     <button
@@ -854,6 +945,7 @@ export default function App() {
                             onSelectAll={selectAll}
                             isSending={isSending}
                             isUltimaConsulta={isUltimaConsulta}
+                            isAniversario={isAniversario}
                             loading={loading}
                         />
                     </div>

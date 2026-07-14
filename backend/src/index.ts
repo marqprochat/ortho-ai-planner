@@ -20,7 +20,7 @@ import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatment
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
-import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, getUltimaConsulta } from './controllers/easydentalController';
+import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, getUltimaConsulta, getAniversarios } from './controllers/easydentalController';
 import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
 import { listMessageTemplates, getMessageTemplate, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate } from './controllers/messageTemplateController';
@@ -142,6 +142,7 @@ app.post('/api/easydental/agendamentos', authMiddleware, requireAppAccess('dispa
 app.post('/api/easydental/kpi', authMiddleware, requireAppAccess('disparos'), getKPIPrd);
 app.post('/api/easydental/prestador', authMiddleware, requireAppAccess('disparos'), getPrestadorCPF);
 app.post('/api/easydental/ultima-consulta', authMiddleware, requireAppAccess('disparos'), getUltimaConsulta);
+app.post('/api/easydental/aniversarios', authMiddleware, requireAppAccess('disparos'), getAniversarios);
 
 // Message Dispatch Routes (BotConversa)
 app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sendMessage);

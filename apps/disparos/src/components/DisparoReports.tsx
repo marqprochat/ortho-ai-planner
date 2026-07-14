@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
     BarChart3, Send, XCircle, RefreshCw, CheckCircle2, AlertCircle,
@@ -139,6 +139,14 @@ interface Props {
     unidadeOptions: string[];
 }
 
+function isLogRelatedToUnit(log: ReportLog, unit: string) {
+    const logUnidades = log.schedule.unidades;
+    if (unit === 'Todas') {
+        return logUnidades.length === 0;
+    }
+    return logUnidades.length === 0 || logUnidades.includes(unit);
+}
+
 export default function DisparoReports({ unidadeOptions }: Props) {
     const [logs, setLogs] = useState<ReportLog[]>([]);
     const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
@@ -151,7 +159,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
     const [showUnidadesDropdown, setShowUnidadesDropdown] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-    const fetchReports = async () => {
+    const fetchReports = useCallback(async () => {
         setLoading(true);
         try {
             const data = await api.getDisparoReports(dtInicio, dtTermino);
@@ -161,14 +169,17 @@ export default function DisparoReports({ unidadeOptions }: Props) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [dtInicio, dtTermino]);
 
     useEffect(() => {
-        fetchReports();
         api.listMessageTemplates()
             .then(setMessageTemplates)
             .catch(() => {});
     }, []);
+
+    useEffect(() => {
+        fetchReports();
+    }, [fetchReports]);
 
     // Filtered logs based on unit and schedule filters
     const filteredLogs = useMemo(() => {
@@ -190,7 +201,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
         const map = new Map<string, { totalSent: number; totalErrors: number; totalProcessed: number; executions: number }>();
 
         filteredLogs.forEach(log => {
-            const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas'];
+            const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas', ...unidadeOptions];
             units.forEach(u => {
                 const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
                 map.set(u, {
@@ -204,16 +215,14 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
         return Array.from(map.entries())
             .map(([unidade, stats]) => ({ unidade, ...stats }))
+            .filter(({ unidade }) => selectedUnidades.length === 0 || selectedUnidades.includes(unidade))
             .sort((a, b) => b.totalSent - a.totalSent);
-    }, [filteredLogs]);
+    }, [filteredLogs, selectedUnidades, unidadeOptions]);
 
     // Summary totals
     const totals = useMemo(() => {
         const unitFilteredLogs = selectedUnitCard
-            ? filteredLogs.filter(log => {
-                const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas'];
-                return units.includes(selectedUnitCard);
-            })
+            ? filteredLogs.filter(log => isLogRelatedToUnit(log, selectedUnitCard))
             : filteredLogs;
 
         return {
@@ -227,10 +236,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
     const displayLogs = useMemo(() => {
         if (!selectedUnitCard) return filteredLogs;
-        return filteredLogs.filter(log => {
-            const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas'];
-            return units.includes(selectedUnitCard);
-        });
+        return filteredLogs.filter(log => isLogRelatedToUnit(log, selectedUnitCard));
     }, [filteredLogs, selectedUnitCard]);
 
     const rate = successRate(totals.sent, totals.errors);

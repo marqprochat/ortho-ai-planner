@@ -264,6 +264,7 @@ model ScheduledDisparo {
   modelo            String               @default("22180")
   delayMs           Int                  @default(1000)
   concurrentLimit   Int                  @default(5)
+  searchMode        String               @default("agendamento") // "agendamento" | "ultima-consulta" | "aniversario"
   createdBy         String
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
@@ -277,6 +278,7 @@ model MessageTemplate {
   code          String   @unique
   dayOffset     Int      @default(0)
   statusKeyword String   @default("")
+  searchMode    String   @default("agendamento") // "agendamento" | "ultima-consulta" | "aniversario"
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }

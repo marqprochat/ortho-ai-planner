@@ -9,6 +9,7 @@ interface MessageTableProps {
     onSelectAll: () => void;
     isSending: boolean;
     isUltimaConsulta?: boolean;
+    isAniversario?: boolean;
     loading?: boolean;
 }
 
@@ -30,6 +31,31 @@ function formatSimpleDate(dateStr: string | null | undefined): string {
     }
 }
 
+function calculateAge(dateStr: string | null | undefined): string {
+    if (!dateStr) return '';
+    try {
+        const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!match) {
+            // Also handle DD/MM/YYYY if applicable
+            const matchDMY = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if (matchDMY) {
+                const birthYear = parseInt(matchDMY[3]);
+                const currentYear = new Date().getFullYear();
+                if (birthYear > 1900 && birthYear <= currentYear) {
+                    return `${currentYear - birthYear} anos`;
+                }
+            }
+            return '';
+        }
+        const birthYear = parseInt(match[1]);
+        const currentYear = new Date().getFullYear();
+        if (birthYear > 1900 && birthYear <= currentYear) {
+            return `${currentYear - birthYear} anos`;
+        }
+    } catch {}
+    return '';
+}
+
 function StatusBadge({ status, error }: { status: MessageStatus; error?: string }) {
     const config: Record<MessageStatus, { label: string; class: string; icon: React.ReactNode }> = {
         pending: { label: 'Pendente', class: 'badge-pending', icon: <Clock className="w-3 h-3" /> },
@@ -47,7 +73,7 @@ function StatusBadge({ status, error }: { status: MessageStatus; error?: string 
     );
 }
 
-export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending, isUltimaConsulta, loading }: MessageTableProps) {
+export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending, isUltimaConsulta, isAniversario, loading }: MessageTableProps) {
     const allSelected = messages.length > 0 && selectedIds.size === messages.filter(m => m.status === 'pending').length;
     const stats = {
         total: messages.length,
@@ -120,12 +146,17 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                 <div className="flex items-center gap-1">
                                     <Calendar className="w-3.5 h-3.5" />
-                                    {isUltimaConsulta ? 'Última Consulta' : 'Data'}
+                                    {isAniversario ? 'Data Nascimento' : isUltimaConsulta ? 'Última Consulta' : 'Data'}
                                 </div>
                             </th>
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                 <div className="flex items-center gap-1">
-                                    {isUltimaConsulta ? (
+                                    {isAniversario ? (
+                                        <>
+                                            <Calendar className="w-3.5 h-3.5" />
+                                            <span>Idade</span>
+                                        </>
+                                    ) : isUltimaConsulta ? (
                                         <>
                                             <Calendar className="w-3.5 h-3.5" />
                                             <span>Consulta Agendada</span>
@@ -195,10 +226,12 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                 </td>
                                 <td className="px-3 py-2.5 font-medium">{msg.nomeCompleto}</td>
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
-                                    {isUltimaConsulta ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
+                                    {isAniversario ? formatSimpleDate(msg.data) : isUltimaConsulta ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
                                 </td>
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs">
-                                    {isUltimaConsulta ? (
+                                    {isAniversario ? (
+                                        calculateAge(msg.data) || '-'
+                                    ) : isUltimaConsulta ? (
                                         formatSimpleDate(msg.consultaAgendada) || (
                                             <span className="text-muted-foreground/60 italic font-normal">Nenhuma</span>
                                         )
