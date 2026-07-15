@@ -185,7 +185,7 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">De</span>
                         <input
-                            type="number" min={-30} max={30}
+                            type="number"
                             className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
                             value={form.dtInicioOffset}
                             onChange={e => set({ dtInicioOffset: parseInt(e.target.value) || 0 })}
@@ -201,7 +201,7 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">até</span>
                         <input
-                            type="number" min={-30} max={30}
+                            type="number"
                             className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
                             value={form.dtTerminoOffset}
                             onChange={e => set({ dtTerminoOffset: parseInt(e.target.value) || 0 })}
