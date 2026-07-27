@@ -43,6 +43,16 @@ function ratePercent(sent: number, errors: number) {
     return rate === null ? '' : `${rate}%`;
 }
 
+/**
+ * `aggregateByUnit`/`logsForUnit` usam "Todas" como chave interna para
+ * disparos sem unidade configurada (mesma semântica da tela). Na planilha
+ * isso precisa de um rótulo que não seja confundido com um nome de unidade
+ * real.
+ */
+function displayUnitName(unidade: string) {
+    return unidade === 'Todas' ? 'Sem unidade definida' : unidade;
+}
+
 export function buildReportWorkbook(params: ExportReportsParams): XLSX.WorkBook {
     const { logs, unidades, unidadeOptions, resolveMessageName, dtInicio, dtTermino, filtrosDescricao } = params;
 
@@ -69,7 +79,7 @@ export function buildReportWorkbook(params: ExportReportsParams): XLSX.WorkBook 
         totalErrors += s.totalErrors;
         totalProcessed += s.totalProcessed;
         resumoRows.push([
-            s.unidade,
+            displayUnitName(s.unidade),
             s.executions,
             s.totalSent,
             s.totalErrors,
@@ -123,7 +133,7 @@ export function buildReportWorkbook(params: ExportReportsParams): XLSX.WorkBook 
             { wch: 18 }, { wch: 26 }, { wch: 22 }, { wch: 10 }, { wch: 8 },
             { wch: 10 }, { wch: 8 }, { wch: 9 }, { wch: 24 }, { wch: 50 },
         ];
-        XLSX.utils.book_append_sheet(wb, sheet, sanitizeSheetName(unidade, usedNames));
+        XLSX.utils.book_append_sheet(wb, sheet, sanitizeSheetName(displayUnitName(unidade), usedNames));
     });
 
     return wb;
