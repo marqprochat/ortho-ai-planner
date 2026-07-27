@@ -3,12 +3,13 @@ import { toast } from 'sonner';
 import {
     BarChart3, Send, XCircle, RefreshCw, CheckCircle2, AlertCircle,
     Clock, Building2, Calendar, TrendingUp, Filter, ChevronDown,
-    ChevronUp, MessageSquare, Loader2, AlertTriangle, X
+    ChevronUp, MessageSquare, Loader2, AlertTriangle, X, Download
 } from 'lucide-react';
 import { api } from '../services/api';
 import type { MessageTemplate } from '../types';
 import { formatDateTime, formatDateOnly } from '../utils/format';
 import { aggregateByUnit, isLogRelatedToUnit, successRate, type ReportLog } from '../utils/reportAggregations';
+import { exportReportsXlsx } from '../utils/exportReportsXlsx';
 
 const MODEL_NAMES: Record<string, string> = {
     '22180': 'Confirmação de Consulta',
@@ -116,6 +117,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
     const [selectedUnitCard, setSelectedUnitCard] = useState<string | null>(null);
     const [showUnidadesDropdown, setShowUnidadesDropdown] = useState(false);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [exporting, setExporting] = useState(false);
 
     const fetchReports = useCallback(async () => {
         setLoading(true);
@@ -229,6 +231,46 @@ export default function DisparoReports({ unidadeOptions }: Props) {
         return Array.from(map.entries());
     }, [logs]);
 
+    const handleExport = () => {
+        const unidadesParaExportar = selectedUnitCard
+            ? [selectedUnitCard]
+            : unitStats.map(u => u.unidade);
+
+        if (displayLogs.length === 0 || unidadesParaExportar.length === 0) {
+            toast.error('Nenhum dado para exportar no período');
+            return;
+        }
+
+        const filtros: string[] = [];
+        if (selectedUnidades.length > 0) filtros.push(`Unidades: ${selectedUnidades.join(', ')}`);
+        if (selectedScheduleId) {
+            const nome = scheduleOptions.find(([id]) => id === selectedScheduleId)?.[1];
+            if (nome) filtros.push(`Disparo: ${nome}`);
+        }
+        if (selectedUnitCard) filtros.push(`Unidade selecionada: ${selectedUnitCard}`);
+
+        setExporting(true);
+        try {
+            exportReportsXlsx({
+                logs: displayLogs,
+                unidades: unidadesParaExportar,
+                unidadeOptions,
+                resolveMessageName: (modelo: string) => {
+                    const tpl = messageTemplates.find(t => t.code === modelo);
+                    return tpl ? tpl.name : (MODEL_NAMES[modelo] || `Modelo ${modelo}`);
+                },
+                dtInicio,
+                dtTermino,
+                filtrosDescricao: filtros.length > 0 ? filtros.join(' | ') : 'nenhum',
+            });
+            toast.success('Planilha exportada');
+        } catch (err: any) {
+            toast.error('Erro ao gerar planilha: ' + err.message);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const toggleRow = (id: string) => {
         setExpandedRows(prev => {
             const next = new Set(prev);
@@ -331,6 +373,15 @@ export default function DisparoReports({ unidadeOptions }: Props) {
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     Atualizar
+                </button>
+
+                <button
+                    onClick={handleExport}
+                    disabled={exporting || loading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 h-[38px] mt-auto"
+                >
+                    {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Exportar Planilha
                 </button>
 
                 {(selectedUnidades.length > 0 || selectedScheduleId || selectedUnitCard) && (
