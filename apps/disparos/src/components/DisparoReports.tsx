@@ -8,39 +8,12 @@ import {
 import { api } from '../services/api';
 import type { MessageTemplate } from '../types';
 import { formatDateTime, formatDateOnly } from '../utils/format';
+import { aggregateByUnit, isLogRelatedToUnit, successRate, type ReportLog } from '../utils/reportAggregations';
 
 const MODEL_NAMES: Record<string, string> = {
     '22180': 'Confirmação de Consulta',
     '19872': 'Avaliação',
 };
-
-interface UnitBreakdown {
-    unidade: string;
-    totalSent: number;
-    totalErrors: number;
-    totalProcessed: number;
-}
-
-interface ReportLog {
-    id: string;
-    scheduleId: string;
-    executedAt: string;
-    status: 'completed' | 'failed';
-    totalFetched: number;
-    totalSent: number;
-    totalErrors: number;
-    totalProcessed: number;
-    errorMessage?: string;
-    dtInicio: string;
-    dtTermino: string;
-    schedule: {
-        id: string;
-        name: string;
-        modelo: string;
-        unidades: string[];
-    };
-    unitBreakdown?: UnitBreakdown[];
-}
 
 function todayStr() {
     return new Date().toISOString().split('T')[0];
@@ -50,12 +23,6 @@ function monthStartStr() {
     const d = new Date();
     d.setDate(1);
     return d.toISOString().split('T')[0];
-}
-
-function successRate(sent: number, errors: number) {
-    const total = sent + errors;
-    if (total === 0) return null;
-    return Math.round((sent / total) * 100);
 }
 
 interface UnitCardProps {
@@ -138,18 +105,6 @@ interface Props {
     unidadeOptions: string[];
 }
 
-function isLogRelatedToUnit(log: ReportLog, unit: string) {
-    if (log.unitBreakdown && log.unitBreakdown.length > 0) {
-        const ub = log.unitBreakdown.find(x => x.unidade === unit);
-        return ub ? (ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0) : false;
-    }
-    const logUnidades = log.schedule.unidades;
-    if (unit === 'Todas') {
-        return logUnidades.length === 0;
-    }
-    return logUnidades.length === 0 || logUnidades.includes(unit);
-}
-
 export default function DisparoReports({ unidadeOptions }: Props) {
     const [logs, setLogs] = useState<ReportLog[]>([]);
     const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
@@ -208,38 +163,8 @@ export default function DisparoReports({ unidadeOptions }: Props) {
 
     // Build unit cards data
     const unitStats = useMemo(() => {
-        const map = new Map<string, { totalSent: number; totalErrors: number; totalProcessed: number; executions: number }>();
-
-        filteredLogs.forEach(log => {
-            if (log.unitBreakdown && log.unitBreakdown.length > 0) {
-                log.unitBreakdown.forEach(ub => {
-                    const u = ub.unidade;
-                    const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
-                    map.set(u, {
-                        totalSent: existing.totalSent + ub.totalSent,
-                        totalErrors: existing.totalErrors + ub.totalErrors,
-                        totalProcessed: existing.totalProcessed + ub.totalProcessed,
-                        executions: existing.executions + ((ub.totalProcessed > 0 || ub.totalSent > 0 || ub.totalErrors > 0) ? 1 : 0),
-                    });
-                });
-            } else {
-                const units = log.schedule.unidades.length > 0 ? log.schedule.unidades : ['Todas', ...unidadeOptions];
-                units.forEach(u => {
-                    const existing = map.get(u) || { totalSent: 0, totalErrors: 0, totalProcessed: 0, executions: 0 };
-                    map.set(u, {
-                        totalSent: existing.totalSent + log.totalSent,
-                        totalErrors: existing.totalErrors + log.totalErrors,
-                        totalProcessed: existing.totalProcessed + log.totalProcessed,
-                        executions: existing.executions + 1,
-                    });
-                });
-            }
-        });
-
-        return Array.from(map.entries())
-            .map(([unidade, stats]) => ({ unidade, ...stats }))
-            .filter(({ unidade }) => selectedUnidades.length === 0 || selectedUnidades.includes(unidade))
-            .sort((a, b) => b.totalSent - a.totalSent);
+        return aggregateByUnit(filteredLogs, unidadeOptions)
+            .filter(({ unidade }) => selectedUnidades.length === 0 || selectedUnidades.includes(unidade));
     }, [filteredLogs, selectedUnidades, unidadeOptions]);
 
     // Summary totals
