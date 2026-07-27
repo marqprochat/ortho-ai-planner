@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import type { MessageTemplate } from '../types';
+import { formatDateTime, formatDateOnly } from '../utils/format';
 
 const MODEL_NAMES: Record<string, string> = {
     '22180': 'Confirmação de Consulta',
@@ -49,16 +50,6 @@ function monthStartStr() {
     const d = new Date();
     d.setDate(1);
     return d.toISOString().split('T')[0];
-}
-
-function formatDateTime(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(iso: string) {
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR');
 }
 
 function successRate(sent: number, errors: number) {
@@ -583,7 +574,7 @@ export default function DisparoReports({ unidadeOptions }: Props) {
                                                     <p className="text-xs text-muted-foreground mb-0.5">Intervalo de Datas Usado</p>
                                                     <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
                                                         <Calendar className="w-3.5 h-3.5 text-primary" />
-                                                        {formatDate(log.dtInicio)} → {formatDate(log.dtTermino)}
+                                                        {formatDateOnly(log.dtInicio)} → {formatDateOnly(log.dtTermino)}
                                                     </p>
                                                 </div>
                                                 <div>
