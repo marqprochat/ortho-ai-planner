@@ -539,15 +539,13 @@ export default function App() {
                         inicio: (isUltimaConsulta || isAniversario) ? '' : (msg.hora || '')
                     };
 
-                    // Aggregate all appointment IDs for the same phone: id_agenda_item, id_agenda_item2, id_agenda_item3...
+                    // Aggregate all appointment IDs for the same phone: id_agenda_item, Id_agenda_item2, Id_agenda_item3...
                     group.items.forEach((item, idx) => {
                         const idVal = item.idAgendaItem || item.codPaciente || '';
                         if (idx === 0) {
                             extraData.id_agenda_item = idVal;
-                            extraData.Id_agenda_item = idVal;
                         } else {
                             const num = idx + 1;
-                            extraData[`id_agenda_item${num}`] = idVal;
                             extraData[`Id_agenda_item${num}`] = idVal;
                         }
                     });

@@ -417,15 +417,13 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         inicio: schedule.searchMode === 'ultima-consulta' ? '' : horaAg,
                     };
 
-                    // Aggregate all appointment IDs for the same phone: id_agenda_item, id_agenda_item2, id_agenda_item3...
+                    // Aggregate all appointment IDs for the same phone: id_agenda_item, Id_agenda_item2, Id_agenda_item3...
                     group.items.forEach((item, idx) => {
                         const idVal = item.ID_AGENDA_ITEM?.toString() || item.cd_paciente?.toString() || '';
                         if (idx === 0) {
                             payload.id_agenda_item = idVal;
-                            payload.Id_agenda_item = idVal;
                         } else {
                             const num = idx + 1;
-                            payload[`id_agenda_item${num}`] = idVal;
                             payload[`Id_agenda_item${num}`] = idVal;
                         }
                     });

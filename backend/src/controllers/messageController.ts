@@ -34,7 +34,6 @@ export const sendMessage = async (req: Request, res: Response) => {
             motivo: motivo || '',
             status: status || '',
             id_agenda_item: id_agenda_item || Id_agenda_item || '',
-            Id_agenda_item: Id_agenda_item || id_agenda_item || '',
             tx_codigo_paciente: tx_codigo_paciente || '',
             paciente: paciente || '',
             celular: celular || '',
