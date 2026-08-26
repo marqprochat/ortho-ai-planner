@@ -54,6 +54,36 @@ function getTimeSlot(ag: Agendamento): string {
     return h < 12 ? 'Manhã' : 'Tarde';
 }
 
+function getNormalizedPhoneKey(phone?: string): string {
+    let digits = (phone || '').replace(/\D/g, '');
+    if (digits.length >= 12 && digits.startsWith('55')) {
+        digits = digits.substring(2);
+    }
+    if (digits.length >= 11 && digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+    return digits;
+}
+
+function getAppointmentTimestamp(data?: string, hora?: string): number {
+    if (!data) return 0;
+    let dStr = data.trim();
+    if (dStr.includes('/')) {
+        const parts = dStr.split('/');
+        if (parts.length === 3) {
+            dStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+    let hStr = (hora || '00:00').trim().replace('h', ':');
+    const hParts = hStr.split(':');
+    const hh = (hParts[0] || '0').padStart(2, '0');
+    const mm = (hParts[1] || '0').padStart(2, '0');
+    const ss = (hParts[2] || '0').padStart(2, '0');
+    const fullStr = `${dStr}T${hh}:${mm}:${ss}`;
+    const t = new Date(fullStr).getTime();
+    return isNaN(t) ? 0 : t;
+}
+
 function formatAgendamento(data: string, hora: string): string {
     if (!data || !hora) return '';
 
@@ -452,6 +482,25 @@ export default function App() {
             return;
         }
 
+        // Group messages by normalized phone number (or unique id if no phone)
+        const groupsMap = new Map<string, MessageItem[]>();
+        toSend.forEach(m => {
+            const key = getNormalizedPhoneKey(m.telefone) || m.id;
+            if (!groupsMap.has(key)) {
+                groupsMap.set(key, []);
+            }
+            groupsMap.get(key)!.push(m);
+        });
+
+        // Sort items in each group chronologically (earliest appointment first)
+        const messageGroups = Array.from(groupsMap.values()).map(groupItems => {
+            const sorted = [...groupItems].sort((a, b) => getAppointmentTimestamp(a.data, a.hora) - getAppointmentTimestamp(b.data, b.hora));
+            return {
+                items: sorted,
+                firstMsg: sorted[0],
+            };
+        });
+
         setIsSending(true);
         setSentCount(0);
         setErrorCount(0);
@@ -460,57 +509,76 @@ export default function App() {
 
         const { delayMs, concurrentLimit } = sendConfig;
 
-        // Process in batches
-        for (let i = 0; i < toSend.length; i += concurrentLimit) {
+        // Process groups in batches
+        for (let i = 0; i < messageGroups.length; i += concurrentLimit) {
             if (abortRef.current) break;
 
-            const batch = toSend.slice(i, i + concurrentLimit);
+            const batch = messageGroups.slice(i, i + concurrentLimit);
+            const batchItemIds = new Set(batch.flatMap(g => g.items.map(item => item.id)));
 
-            // Update status to sending
+            // Update status to sending for all items in batch
             setMessages(prev => prev.map(m =>
-                batch.some(b => b.id === m.id) ? { ...m, status: 'sending' as const } : m
+                batchItemIds.has(m.id) ? { ...m, status: 'sending' as const } : m
             ));
-            setCurrentSendName(batch[0]?.nome || '');
+            setCurrentSendName(batch[0]?.firstMsg?.nome || '');
 
             // Send batch
             const results = await Promise.allSettled(
-                batch.map(msg => {
+                batch.map(group => {
+                    const msg = group.firstMsg;
                     const formattedDate = (isUltimaConsulta || isAniversario) ? '' : formatAgendamento(msg.data, msg.hora);
-                    return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate, {
+
+                    const extraData: Record<string, any> = {
                         dentista: msg.dentista || '',
                         motivo: msg.motivo || '',
                         status: msg.statusAgendamento || '',
-                        id_agenda_item: msg.idAgendaItem || '',
                         tx_codigo_paciente: msg.txCodigoPaciente || msg.codPaciente || '',
                         paciente: msg.nomeCompleto,
                         celular: msg.telefone,
                         data: (isUltimaConsulta || isAniversario) ? (msg.ultimaConsulta || msg.data || '') : (msg.data || ''),
                         inicio: (isUltimaConsulta || isAniversario) ? '' : (msg.hora || '')
-                    })
-                        .then(res => ({ id: msg.id, success: res.status === 'sent', error: res.error }))
-                        .catch(err => ({ id: msg.id, success: false, error: err.message }));
+                    };
+
+                    // Aggregate all appointment IDs for the same phone: id_agenda_item, id_agenda_item2, id_agenda_item3...
+                    group.items.forEach((item, idx) => {
+                        const idVal = item.idAgendaItem || item.codPaciente || '';
+                        if (idx === 0) {
+                            extraData.id_agenda_item = idVal;
+                            extraData.Id_agenda_item = idVal;
+                        } else {
+                            const num = idx + 1;
+                            extraData[`id_agenda_item${num}`] = idVal;
+                            extraData[`Id_agenda_item${num}`] = idVal;
+                        }
+                    });
+
+                    return api.sendMessage(msg.nome, msg.telefone, msg.unidade, selectedModel, formattedDate, extraData)
+                        .then(res => ({ group, success: res.status === 'sent', error: res.error }))
+                        .catch(err => ({ group, success: false, error: err.message }));
                 })
             );
 
-            // Update statuses
+            // Update statuses for all items in processed groups
             results.forEach(result => {
                 if (result.status === 'fulfilled') {
-                    const { id, success, error } = result.value;
+                    const { group, success, error } = result.value;
+                    const itemIds = new Set(group.items.map(m => m.id));
+
                     setMessages(prev => prev.map(m =>
-                        m.id === id ? {
+                        itemIds.has(m.id) ? {
                             ...m,
                             status: success ? 'sent' as const : 'error' as const,
                             errorMessage: success ? undefined : (error || 'Falha no envio'),
                             sentAt: success ? new Date().toISOString() : undefined,
                         } : m
                     ));
-                    if (success) setSentCount(c => c + 1);
-                    else setErrorCount(c => c + 1);
+                    if (success) setSentCount(c => c + group.items.length);
+                    else setErrorCount(c => c + group.items.length);
                 }
             });
 
             // Wait delay before next batch
-            if (i + concurrentLimit < toSend.length && !abortRef.current) {
+            if (i + concurrentLimit < messageGroups.length && !abortRef.current) {
                 await new Promise(resolve => setTimeout(resolve, delayMs));
             }
         }

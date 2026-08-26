@@ -84,6 +84,36 @@ function getFirstName(fullName: string): string {
     return (fullName || '').trim().split(/\s+/)[0] || '';
 }
 
+function getNormalizedPhoneKey(phone?: string): string {
+    let digits = (phone || '').replace(/\D/g, '');
+    if (digits.length >= 12 && digits.startsWith('55')) {
+        digits = digits.substring(2);
+    }
+    if (digits.length >= 11 && digits.startsWith('0')) {
+        digits = digits.substring(1);
+    }
+    return digits;
+}
+
+function getAppointmentTimestamp(data?: string, hora?: string): number {
+    if (!data) return 0;
+    let dStr = data.trim();
+    if (dStr.includes('/')) {
+        const parts = dStr.split('/');
+        if (parts.length === 3) {
+            dStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+    let hStr = (hora || '00:00').trim().replace('h', ':');
+    const hParts = hStr.split(':');
+    const hh = (hParts[0] || '0').padStart(2, '0');
+    const mm = (hParts[1] || '0').padStart(2, '0');
+    const ss = (hParts[2] || '0').padStart(2, '0');
+    const fullStr = `${dStr}T${hh}:${mm}:${ss}`;
+    const t = new Date(fullStr).getTime();
+    return isNaN(t) ? 0 : t;
+}
+
 function formatAgendamento(data: string, hora: string): string {
     if (!data || !hora) return '';
     let dateObj: Date;
@@ -321,12 +351,39 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             (filteredMotivo   ? ` | ${filteredMotivo} filtro motivo`   : '')
         );
 
+        // Group messages by normalized phone number (or unique item id if no phone)
+        const groupsMap = new Map<string, any[]>();
+        toSend.forEach(ag => {
+            const phone = extractPhone(ag);
+            const key = getNormalizedPhoneKey(phone) || (ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || Math.random().toString());
+            if (!groupsMap.has(key)) {
+                groupsMap.set(key, []);
+            }
+            groupsMap.get(key)!.push(ag);
+        });
+
+        // Sort appointments per group chronologically (earliest appointment first)
+        const messageGroups = Array.from(groupsMap.values()).map(groupItems => {
+            const sorted = [...groupItems].sort((a, b) => {
+                const dataA = a.DATA || a.dt_agendamento || a.data || a.dt_agenda || a.ULTIMA_CONSULTA || a.DT_ANIV || '';
+                const horaA = a.INICIO || a.hr_agendamento || a.hora || a.hr_agenda || a.CONSULTA_AGENDADA || '';
+                const dataB = b.DATA || b.dt_agendamento || b.data || b.dt_agenda || b.ULTIMA_CONSULTA || b.DT_ANIV || '';
+                const horaB = b.INICIO || b.hr_agendamento || b.hora || b.hr_agenda || b.CONSULTA_AGENDADA || '';
+                return getAppointmentTimestamp(dataA, horaA) - getAppointmentTimestamp(dataB, horaB);
+            });
+            return {
+                items: sorted,
+                firstAg: sorted[0],
+            };
+        });
+
         // Send in batches with delay
-        for (let i = 0; i < toSend.length; i += schedule.concurrentLimit) {
-            const batch = toSend.slice(i, i + schedule.concurrentLimit);
+        for (let i = 0; i < messageGroups.length; i += schedule.concurrentLimit) {
+            const batch = messageGroups.slice(i, i + schedule.concurrentLimit);
 
             const results = await Promise.allSettled(
-                batch.map(ag => {
+                batch.map(group => {
+                    const ag = group.firstAg;
                     const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
                     const phone = extractPhone(ag);
                     
@@ -344,7 +401,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         horaAg = ag.INICIO || ag.hr_agendamento || ag.hora || ag.hr_agenda || '';
                     }
 
-                    return sendViaBotConversa({
+                    const payload: Record<string, string> = {
                         nome: getFirstName(fullName),
                         telefone: phone,
                         unidade: extractUnit(ag),
@@ -353,35 +410,50 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         dentista: extractProvider(ag),
                         motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
                         status: extractStatus(ag),
-                        id_agenda_item: ag.ID_AGENDA_ITEM?.toString() || '',
                         tx_codigo_paciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || '',
                         paciente: fullName,
                         celular: phone,
                         data: schedule.searchMode === 'ultima-consulta' ? (ag.ULTIMA_CONSULTA || '') : dataAg,
                         inicio: schedule.searchMode === 'ultima-consulta' ? '' : horaAg,
+                    };
+
+                    // Aggregate all appointment IDs for the same phone: id_agenda_item, id_agenda_item2, id_agenda_item3...
+                    group.items.forEach((item, idx) => {
+                        const idVal = item.ID_AGENDA_ITEM?.toString() || item.cd_paciente?.toString() || '';
+                        if (idx === 0) {
+                            payload.id_agenda_item = idVal;
+                            payload.Id_agenda_item = idVal;
+                        } else {
+                            const num = idx + 1;
+                            payload[`id_agenda_item${num}`] = idVal;
+                            payload[`Id_agenda_item${num}`] = idVal;
+                        }
                     });
+
+                    return sendViaBotConversa(payload);
                 })
             );
 
-            const batchLogs = batch.map((ag, index) => {
+            const batchLogs = batch.flatMap((group, index) => {
                 const r = results[index];
-                const fullName = ag.PACIENTE || ag.nm_paciente || ag.paciente || ag.nome || '';
-                const phone = extractPhone(ag);
-                const unitName = extractUnit(ag) || 'Sem Unidade';
+                const firstAg = group.firstAg;
+                const fullName = firstAg.PACIENTE || firstAg.nm_paciente || firstAg.paciente || firstAg.nome || '';
+                const phone = extractPhone(firstAg);
+                const unitName = extractUnit(firstAg) || 'Sem Unidade';
                 const success = r.status === 'fulfilled';
                 const errMsg = r.status === 'rejected' ? (r.reason?.message || 'Erro de envio') : null;
 
-                return {
+                return group.items.map(item => ({
                     scheduleLogId: log.id,
                     scheduleId: schedule.id,
                     type: 'automatic',
-                    paciente: fullName,
+                    paciente: item.PACIENTE || item.nm_paciente || item.paciente || item.nome || fullName,
                     telefone: phone,
-                    unidade: unitName,
+                    unidade: extractUnit(item) || unitName,
                     modelo: schedule.modelo,
                     status: success ? 'sent' : 'error',
                     errorMessage: errMsg,
-                };
+                }));
             });
 
             try {
@@ -390,12 +462,17 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                 console.error(`[DisparoCron] Erro ao salvar logs individuais no banco:`, dbErr.message);
             }
 
-            for (const r of results) {
-                if (r.status === 'fulfilled') totalSent++;
-                else { totalErrors++; console.error(`[DisparoCron] Send error:`, r.reason?.message); }
-            }
+            results.forEach((r, idx) => {
+                const groupCount = batch[idx]?.items.length || 1;
+                if (r.status === 'fulfilled') {
+                    totalSent += groupCount;
+                } else {
+                    totalErrors += groupCount;
+                    console.error(`[DisparoCron] Send error:`, r.reason?.message);
+                }
+            });
 
-            if (i + schedule.concurrentLimit < toSend.length) {
+            if (i + schedule.concurrentLimit < messageGroups.length) {
                 await new Promise(resolve => setTimeout(resolve, schedule.delayMs));
             }
         }

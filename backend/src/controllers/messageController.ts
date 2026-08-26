@@ -8,7 +8,7 @@ const MAX_CONCURRENT = parseInt(process.env.MESSAGE_CONCURRENT_LIMIT || '5', 10)
 // Enviar uma única mensagem para o BotConversa
 export const sendMessage = async (req: Request, res: Response) => {
     try {
-        const { nome, telefone, unidade, modelo, data_agendamento, dentista, motivo, status, id_agenda_item, tx_codigo_paciente, paciente, celular, data, inicio } = req.body;
+        const { nome, telefone, unidade, modelo, data_agendamento, dentista, motivo, status, id_agenda_item, Id_agenda_item, tx_codigo_paciente, paciente, celular, data, inicio, ...rest } = req.body;
 
         if (!telefone) {
             return res.status(400).json({
@@ -24,25 +24,29 @@ export const sendMessage = async (req: Request, res: Response) => {
             });
         }
 
+        const payload: Record<string, any> = {
+            nome: nome || '',
+            telefone,
+            unidade: unidade || '',
+            modelo: modelo || '',
+            data_agendamento: data_agendamento || '',
+            dentista: dentista || '',
+            motivo: motivo || '',
+            status: status || '',
+            id_agenda_item: id_agenda_item || Id_agenda_item || '',
+            Id_agenda_item: Id_agenda_item || id_agenda_item || '',
+            tx_codigo_paciente: tx_codigo_paciente || '',
+            paciente: paciente || '',
+            celular: celular || '',
+            data: data || '',
+            inicio: inicio || '',
+            ...rest
+        };
+
         const response = await fetch(BOTCONVERSA_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nome: nome || '',
-                telefone,
-                unidade: unidade || '',
-                modelo: modelo || '',
-                data_agendamento: data_agendamento || '',
-                dentista: dentista || '',
-                motivo: motivo || '',
-                status: status || '',
-                id_agenda_item: id_agenda_item || '',
-                tx_codigo_paciente: tx_codigo_paciente || '',
-                paciente: paciente || '',
-                celular: celular || '',
-                data: data || '',
-                inicio: inicio || ''
-            }),
+            body: JSON.stringify(payload),
         });
 
         let responseText = '';
