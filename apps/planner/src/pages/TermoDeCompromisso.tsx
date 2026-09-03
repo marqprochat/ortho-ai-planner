@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import Sidebar from "@/components/Sidebar";
@@ -19,6 +26,7 @@ interface ContractData {
     logoPreview: string;
     // Paciente
     nomePaciente: string;
+    cpfPaciente: string;
     responsavel: string;
     endereco: string;
     cep: string;
@@ -34,13 +42,16 @@ interface ContractData {
     tempoEstimado: string;
     frequenciaRetorno: string;
     objetivo: string;
+    consideracoesAdicionais: string;
     // Pagamento
     paymentType: string;
+    tipoTratamento: string;
     // Valores
     valorAparelhos: string;
     valorMensalidade: string;
     valorQuebraDanos: string;
     valorConsertoRemovivel: string;
+    valorRetornoContencao: string;
     // Data
     cidade: string;
     dataContrato: string;
@@ -49,6 +60,7 @@ interface ContractData {
 const initialContractData: ContractData = {
     logoPreview: "",
     nomePaciente: "",
+    cpfPaciente: "",
     responsavel: "",
     endereco: "",
     cep: "",
@@ -61,11 +73,14 @@ const initialContractData: ContractData = {
     tempoEstimado: "",
     frequenciaRetorno: "",
     objetivo: "",
+    consideracoesAdicionais: "",
     paymentType: "",
+    tipoTratamento: "Aparelho Ortopédico",
     valorAparelhos: "",
     valorMensalidade: "",
     valorQuebraDanos: "",
     valorConsertoRemovivel: "",
+    valorRetornoContencao: "",
     cidade: "Campinas",
     dataContrato: "",
 };
@@ -115,6 +130,7 @@ const TermoDeCompromisso = () => {
                 tempoEstimado: parsed.tempoEstimado || prev.tempoEstimado,
                 frequenciaRetorno: parsed.frequenciaRetorno || prev.frequenciaRetorno,
                 objetivo: parsed.objetivoTratamento || prev.objetivo,
+                consideracoesAdicionais: parsed.consideracoes || prev.consideracoesAdicionais,
                 paymentType: parsed.paymentType || prev.paymentType,
             }));
         }
@@ -208,7 +224,7 @@ const TermoDeCompromisso = () => {
         setContractData(prev => ({ ...prev, cep: value }));
     };
 
-    const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCpfChange = (field: 'cpf' | 'cpfPaciente') => (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value.replace(/\D/g, "");
         if (value.length > 11) value = value.substring(0, 11);
         if (value.length > 9) {
@@ -218,7 +234,7 @@ const TermoDeCompromisso = () => {
         } else if (value.length > 3) {
             value = value.replace(/^(\d{3})(\d{0,3}).*/, "$1.$2");
         }
-        setContractData(prev => ({ ...prev, cpf: value }));
+        setContractData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleCurrencyChange = (field: keyof ContractData) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,16 +248,17 @@ const TermoDeCompromisso = () => {
 
     const generateContractText = (): string => {
         const {
-            nomePaciente, responsavel, endereco, cep, cpf,
+            nomePaciente, cpfPaciente, responsavel, endereco, cep, cpf,
             nomeClinica, croClinica, naturezaServico,
             nomeDentista, croDentista,
-            tempoEstimado, frequenciaRetorno, objetivo,
-            paymentType,
-            valorAparelhos, valorMensalidade, valorQuebraDanos, valorConsertoRemovivel,
+            tempoEstimado, frequenciaRetorno, objetivo, consideracoesAdicionais,
+            paymentType, tipoTratamento,
+            valorAparelhos, valorMensalidade, valorQuebraDanos, valorConsertoRemovivel, valorRetornoContencao,
             cidade, dataContrato
         } = contractData;
 
         const isConvenio = paymentType === 'Convênio';
+        const isFixoParticular = tipoTratamento === 'Fixo Particular';
 
         const paymentSection = isConvenio
             ? `7 - PAGAMENTO
@@ -249,11 +266,24 @@ As mensalidades do tratamento ortodôntico serão pagas pelo seu convênio, conf
 
 Em caso de quebra, perda ou dano ao aparelho, e não sendo possível o conserto, será cobrado o valor de R$ ${valorQuebraDanos || '________'}.
 Se houver a possibilidade de conserto do aparelho removível (se for o caso), o valor será de R$ ${valorConsertoRemovivel || '___'}.`
+            : isFixoParticular
+            ? `7 - PAGAMENTO
+   • Valor do tratamento - entrada: R$ ${valorAparelhos}
+   • Mensalidade: R$ ${valorMensalidade} (a partir do segundo mês)
+   • Quebra/Danos no aparelho: Será cobrado R$ ${valorQuebraDanos} por peça nova.
+   • Acompanhamento Pós-tratamento: Após a remoção, é indicado o acompanhamento a cada 3 ou 6 meses, conforme indicação do profissional. Retornos de contenção: R$ ${valorRetornoContencao}.`
             : `7 - PAGAMENTO
-   • Valor do tratamento (aparelhos): R$ ${valorAparelhos} (referente ao aparelho superior e inferior)
+   • Valor do tratamento (entrada): R$ ${valorAparelhos}
    • Mensalidade: R$ ${valorMensalidade} (a partir da data de instalação)
-   • Quebra/Danos no aparelho: Será cobrado R$ ${valorQuebraDanos} por aparelho novo (cada)
+   • Quebra/Danos no aparelho: Será cobrado R$ ${valorQuebraDanos} por aparelho novo (cada), caso seja possível fazer o conserto é R$ ${valorConsertoRemovivel}.
    • Acompanhamento Pós-tratamento: Após a remoção, é indicado o acompanhamento anual.`;
+
+        const consideracoesSection = consideracoesAdicionais
+            ? `
+
+6.1 - CONSIDERAÇÕES ADICIONAIS
+${consideracoesAdicionais}`
+            : '';
 
         return `TERMO DE COMPROMISSO PARA EXECUÇÃO DE TRATAMENTO ODONTOLÓGICO – ORTODÔNTICO/ORTOPÉDICO
 
@@ -262,6 +292,7 @@ As normas do presente Termo visam reger com clareza as condições gerais de tra
 DADOS DAS PARTES
 
 Paciente: ${nomePaciente}
+CPF do Paciente: ${cpfPaciente}
 Responsável: ${responsavel}
 Residente domiciliado: ${endereco}
 CEP: ${cep}
@@ -297,7 +328,7 @@ O aparecimento de manchas, lesões de cárie ou outras, devido ao não cumprimen
 Estalos e ruídos da ATM podem não ser eliminados após o tratamento. O objetivo é livrar o paciente da sintomatologia dolorosa e, quando possível, eliminar os ruídos articulares. Ruídos podem aparecer durante ou após o tratamento, associados à instabilidade da oclusão e/ou apertamento dental (bruxismo) devido a estresse/tensão.
 
 6 - OBJETIVO
-${objetivo}
+${objetivo}${consideracoesSection}
 
 ${paymentSection}
 
@@ -465,6 +496,7 @@ ${cidade}, ${dataContrato}.`;
 
             // Labels esquerda
             pdf.text(`Paciente: ${contractData.nomePaciente}`, leftX, cursorY + 5);
+            pdf.text(`CPF: ${contractData.cpfPaciente}`, leftX, cursorY + 10);
 
             // Labels direita
             pdf.text(`Responsável: ${contractData.responsavel}`, rightX, cursorY + 5);
@@ -573,6 +605,7 @@ ${cidade}, ${dataContrato}.`;
                                                 <div style={{ flex: 1, textAlign: 'center' }}>
                                                     <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '48px' }}>
                                                         <p style={{ margin: 0, fontWeight: 500 }}>Paciente: {contractData.nomePaciente}</p>
+                                                        <p style={{ margin: 0, fontSize: '0.85em', color: '#555' }}>CPF: {contractData.cpfPaciente}</p>
                                                     </div>
                                                 </div>
                                                 <div style={{ flex: 1, textAlign: 'center' }}>
@@ -683,6 +716,15 @@ ${cidade}, ${dataContrato}.`;
                                         />
                                     </div>
                                     <div className="space-y-2">
+                                        <Label htmlFor="cpfPaciente">CPF do Paciente</Label>
+                                        <Input
+                                            id="cpfPaciente"
+                                            value={contractData.cpfPaciente}
+                                            onChange={handleCpfChange('cpfPaciente')}
+                                            placeholder="000.000.000-00"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
                                         <Label htmlFor="responsavel">Responsável</Label>
                                         <Input
                                             id="responsavel"
@@ -716,7 +758,7 @@ ${cidade}, ${dataContrato}.`;
                                         <Input
                                             id="cpf"
                                             value={contractData.cpf}
-                                            onChange={handleCpfChange}
+                                            onChange={handleCpfChange('cpf')}
                                             placeholder="000.000.000-00"
                                         />
                                     </div>
@@ -808,6 +850,16 @@ ${cidade}, ${dataContrato}.`;
                                         className="min-h-[100px]"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="consideracoesAdicionais">Considerações Adicionais</Label>
+                                    <Textarea
+                                        id="consideracoesAdicionais"
+                                        value={contractData.consideracoesAdicionais}
+                                        onChange={(e) => handleInputChange('consideracoesAdicionais', e.target.value)}
+                                        placeholder="Auto-preenchido do planejamento (lesões, agenesias, etc)"
+                                        className="min-h-[80px]"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -820,11 +872,28 @@ ${cidade}, ${dataContrato}.`;
                                 )}
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                {contractData.paymentType !== 'Convênio' && (
+                                    <div className="space-y-2">
+                                        <Label>Tipo de Tratamento</Label>
+                                        <Select
+                                            value={contractData.tipoTratamento}
+                                            onValueChange={(v) => handleInputChange('tipoTratamento', v)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Aparelho Ortopédico">Aparelho Ortopédico</SelectItem>
+                                                <SelectItem value="Fixo Particular">Fixo Particular</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {contractData.paymentType !== 'Convênio' && (
                                         <>
                                             <div className="space-y-2">
-                                                <Label htmlFor="valorAparelhos">Valor dos Aparelhos (R$)</Label>
+                                                <Label htmlFor="valorAparelhos">Valor de Entrada (R$)</Label>
                                                 <Input
                                                     id="valorAparelhos"
                                                     value={contractData.valorAparelhos}
@@ -852,13 +921,24 @@ ${cidade}, ${dataContrato}.`;
                                             placeholder="0,00"
                                         />
                                     </div>
-                                    {contractData.paymentType === 'Convênio' && (
+                                    {contractData.tipoTratamento === 'Aparelho Ortopédico' && (
                                         <div className="space-y-2">
                                             <Label htmlFor="valorConsertoRemovivel">Conserto Aparelho Removível (R$)</Label>
                                             <Input
                                                 id="valorConsertoRemovivel"
                                                 value={contractData.valorConsertoRemovivel}
                                                 onChange={handleCurrencyChange('valorConsertoRemovivel')}
+                                                placeholder="0,00"
+                                            />
+                                        </div>
+                                    )}
+                                    {contractData.paymentType !== 'Convênio' && contractData.tipoTratamento === 'Fixo Particular' && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="valorRetornoContencao">Retorno de Contenção (R$)</Label>
+                                            <Input
+                                                id="valorRetornoContencao"
+                                                value={contractData.valorRetornoContencao}
+                                                onChange={handleCurrencyChange('valorRetornoContencao')}
                                                 placeholder="0,00"
                                             />
                                         </div>
