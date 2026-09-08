@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, Download, Filter, ArrowLeft, Activity } from "lucide-react";
+import { Search, Download, Filter, ArrowLeft, Activity, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { reportService } from "@/services/reportService";
+import { patientService } from "@/services/patientService";
+import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -21,6 +23,20 @@ const [loading, setLoading] = useState(true);
 const [search, setSearch] = useState("");
 const [status, setStatus] = useState(searchParams.get("status") || "ALL");
 const [dateRange, setDateRange] = useState({ start: "", end: "" });
+const [syncing, setSyncing] = useState(false);
+
+    const syncAppointments = async () => {
+        setSyncing(true);
+        try {
+            const result = await patientService.syncTreatmentAppointments();
+            toast.success(`${result.updated} tratamento(s) atualizado(s) de ${result.matched} encontrado(s) na agenda.`);
+            await fetchData();
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao sincronizar consultas");
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -144,6 +160,10 @@ const downloadCSV = () => {
                         <p className="text-muted-foreground">Monitoramento de pacientes em tratamento e cronogramas</p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="outline" onClick={syncAppointments} disabled={syncing}>
+                            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+                            {syncing ? "Sincronizando..." : "Sincronizar agenda"}
+                        </Button>
                         <Button variant="outline" onClick={downloadCSV}>
                             <Download className="h-4 w-4 mr-2" /> CSV
                         </Button>

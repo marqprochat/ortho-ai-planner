@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, hasPermission } from '../middleware/authMiddleware';
+import { syncTreatmentAppointments } from '../services/appointmentSync';
 
 // Get all treatments for tenant/clinic
 export const getAllTreatments = async (req: AuthRequest, res: Response) => {
@@ -285,5 +286,24 @@ export const deleteTreatment = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Error deleting treatment:', error);
         res.status(500).json({ error: 'Erro ao excluir tratamento' });
+    }
+};
+
+// Sincroniza ultima/proxima consulta a partir da agenda do EasyDental
+export const syncAppointments = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId, clinicId } = req;
+        const canManageAll = hasPermission(req.user, 'manage', 'planning');
+
+        const result = await syncTreatmentAppointments({
+            tenantId,
+            clinicId,
+            ...(canManageAll ? {} : { userId: req.userId }),
+        });
+
+        res.json({ success: true, ...result });
+    } catch (error: any) {
+        console.error('Error syncing treatment appointments:', error);
+        res.status(500).json({ error: error.message || 'Erro ao sincronizar consultas' });
     }
 };

@@ -304,6 +304,20 @@ throw new Error('Erro ao criar tratamento');
 return response.json();
 },
 
+async syncTreatmentAppointments(): Promise<{ success: boolean; fetched: number; candidates: number; matched: number; updated: number; unmatched: number }> {
+const response = await fetch(`${API_URL}/treatments/sync-appointments`, {
+method: 'POST',
+headers: getAuthHeaders(),
+});
+
+if (!response.ok) {
+const err = await response.json().catch(() => ({}));
+throw new Error(err.error || 'Erro ao sincronizar consultas');
+}
+
+return response.json();
+},
+
 async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
 const response = await fetch(`${API_URL}/treatments/${id}`, {
 method: 'PUT',

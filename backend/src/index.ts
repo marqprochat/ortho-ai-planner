@@ -8,7 +8,7 @@ import prisma from './lib/prisma';
 import { register, login, getMe } from './controllers/authController';
 import { getPatients, createPatient, getPatient, updatePatient, findOrCreatePatient, deletePatient, transferPatient } from './controllers/patientController';
 import { getPlannings, createPlanning, updatePlanning, getAllPlannings, deletePlanning } from './controllers/planningController';
-import { getAllTreatments, getTreatment, getTreatmentById, createTreatment, updateTreatment, deleteTreatment } from './controllers/treatmentController';
+import { getAllTreatments, getTreatment, getTreatmentById, createTreatment, updateTreatment, deleteTreatment, syncAppointments } from './controllers/treatmentController';
 import { createContract, getPatientContracts, getContract, getAllContracts, deleteContract, signContract } from './controllers/contractController';
 import { getPermissions } from './controllers/permissionController';
 import { getRoles, createRole, updateRole, deleteRole } from './controllers/roleController';
@@ -20,6 +20,7 @@ import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatment
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
+import { initAppointmentSyncCron } from './jobs/appointmentSyncCron';
 import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, getUltimaConsulta, getAniversarios } from './controllers/easydentalController';
 import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
@@ -77,6 +78,7 @@ app.get('/api/treatments', authMiddleware, requireAppAccess('planner'), requireP
 app.get('/api/treatments/:id', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getTreatmentById);
 app.get('/api/plannings/:planningId/treatment', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), getTreatment);
 app.post('/api/treatments', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), createTreatment);
+app.post('/api/treatments/sync-appointments', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), syncAppointments);
 app.put('/api/treatments/:id', authMiddleware, requireAppAccess('planner'), requirePermission('write', 'planning'), updateTreatment);
 app.delete('/api/treatments/:id', authMiddleware, requireAppAccess('planner'), requirePermission('delete', 'planning'), deleteTreatment);
 
@@ -174,6 +176,7 @@ app.listen(PORT, async () => {
         
         // Initialize jobs
         initCronJobs();
+        initAppointmentSyncCron();
         await initDisparoCron();
     } catch (error) {
         console.error('❌ Database connection failed', error);

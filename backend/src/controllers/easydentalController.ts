@@ -1,26 +1,5 @@
 import { Request, Response } from 'express';
-
-const API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1/rpc';
-const API_KEY = process.env.EASYDENTAL_API_KEY || '';
-const CLIENT_ID = process.env.EASYDENTAL_CLIENT_ID || '';
-
-async function rpcCall(method: string, params: Record<string, any> = {}) {
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': API_KEY,
-        },
-        body: JSON.stringify({ clientId: CLIENT_ID, method, params }),
-    });
-
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`RPC ${method} failed (${response.status}): ${text}`);
-    }
-
-    return response.json();
-}
+import { rpcCall } from '../lib/easydental';
 
 // RPCGetUnidadeAtendimento - retorna ID e Nome das unidades ativas
 export const getUnidadesAtendimento = async (_req: Request, res: Response) => {
