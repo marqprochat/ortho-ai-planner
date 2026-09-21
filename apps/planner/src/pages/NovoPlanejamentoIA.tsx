@@ -138,7 +138,7 @@ const NovoPlanejamentoIA = () => {
       telefone: patient.phone || "",
       paymentType: patient.paymentType || "",
       insuranceCompany: patient.insuranceCompany || "",
-      numeroPaciente: patient.externalId || "",
+      numeroPaciente: patient.patientNumber || patient.externalId || "",
     }));
     setPatientId(patient.id);
     setIsPatientSearchOpen(false);
@@ -303,6 +303,7 @@ const NovoPlanejamentoIA = () => {
         name: formData.nomePaciente,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
+        patientNumber: formData.numeroPaciente || undefined,
         externalId: formData.numeroPaciente || undefined,
         paymentType: formData.paymentType || undefined,
         insuranceCompany: formData.insuranceCompany || undefined,
@@ -543,6 +544,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         name: formData.nomePaciente,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
+        patientNumber: formData.numeroPaciente || undefined,
         externalId: formData.numeroPaciente || undefined,
       });
 
@@ -975,7 +977,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
                     </Select>
                   </div>
                 )}
-                <div className="space-y-2"><Label htmlFor="numeroPaciente">Número do Paciente (ID externo)</Label><Input id="numeroPaciente" value={formData.numeroPaciente} onChange={(e) => setFormData({ ...formData, numeroPaciente: e.target.value })} placeholder="Número de outro sistema" /></div>
+                <div className="space-y-2"><Label htmlFor="numeroPaciente">Número do Paciente</Label><Input id="numeroPaciente" value={formData.numeroPaciente} onChange={(e) => setFormData({ ...formData, numeroPaciente: e.target.value })} placeholder="Mesmo número do cadastro do paciente" /></div>
                 <div className="md:col-span-2 space-y-2"><Label htmlFor="queixas">Queixas do paciente *</Label><Textarea id="queixas" required value={formData.queixas} onChange={(e) => setFormData({ ...formData, queixas: e.target.value })} /></div>
               </CardContent>
             </Card>

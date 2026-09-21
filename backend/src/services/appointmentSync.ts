@@ -90,8 +90,8 @@ export async function syncTreatmentAppointments(options: SyncOptions = {}): Prom
             id: true,
             lastAppointment: true,
             nextAppointment: true,
-            patient: { select: { patientNumber: true, externalId: true } },
-            planning: { select: { patient: { select: { patientNumber: true, externalId: true } } } },
+            patient: { select: { patientNumber: true } },
+            planning: { select: { patient: { select: { patientNumber: true } } } },
         },
     });
 
@@ -104,12 +104,11 @@ export async function syncTreatmentAppointments(options: SyncOptions = {}): Prom
     };
 
     for (const treatment of treatments) {
+        // Vinculo SOMENTE pelo "Numero do Paciente" digitado pelo usuario ao criar o paciente.
+        // Nao usamos externalId, id interno, telefone ou nome como fallback.
         const patient = treatment.patient || treatment.planning?.patient;
-        const byPatientNumber = normalizeCode(patient?.patientNumber);
-        const byExternalId = normalizeCode(patient?.externalId);
-        const match =
-            (byPatientNumber ? byCode.get(byPatientNumber) : undefined) ||
-            (byExternalId ? byCode.get(byExternalId) : undefined);
+        const code = normalizeCode(patient?.patientNumber);
+        const match = code ? byCode.get(code) : undefined;
 
         if (!match) {
             result.unmatched++;

@@ -179,6 +179,7 @@ export const getTreatmentsReport = async (req: AuthRequest, res: Response) => {
                         id: true,
                         name: true, 
                         patientNumber: true,
+                        paymentType: true,
                         user: { select: { name: true } }
                     } 
                 },

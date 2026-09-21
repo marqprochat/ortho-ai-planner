@@ -73,13 +73,22 @@ const [syncing, setSyncing] = useState(false);
         fetchData();
     }, [search, status, dateRange]);
 
-const downloadCSV = () => {
-        const headers = ["Nº", "Paciente", "Status", "Data Início", "Última Consulta", "Próxima Consulta", "Dentista"];
+    const getPaymentTypeInitial = (paymentType?: string | null) => {
+        if (!paymentType) return "-";
+        const clean = paymentType.trim().toUpperCase();
+        if (clean.startsWith("C")) return "C";
+        if (clean.startsWith("P")) return "P";
+        return clean.charAt(0);
+    };
+
+    const downloadCSV = () => {
+        const headers = ["Nº", "Paciente", "Tipo", "Data Início", "Data Finalização", "Última Consulta", "Próxima Consulta", "Dentista"];
         const rows = data.map(t => [
             t.patient?.patientNumber || "-",
             t.patient?.name || "-",
-            t.status,
+            getPaymentTypeInitial(t.patient?.paymentType),
             formatDateOnlyAsPTBR(t.startDate),
+            t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-",
             t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-",
             t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-",
             t.doctorName || "-"
@@ -111,22 +120,24 @@ const downloadCSV = () => {
         let y = 40;
         doc.setFontSize(10);
         doc.text("Paciente", 14, y);
-        doc.text("Status", 60, y);
-        doc.text("Início", 95, y);
-        doc.text("Última", 125, y);
+        doc.text("Tipo", 65, y);
+        doc.text("Início", 80, y);
+        doc.text("Fim", 105, y);
+        doc.text("Última", 130, y);
         doc.text("Próx.", 155, y);
         doc.line(14, y + 2, 196, y + 2);
         y += 10;
 
-        data.forEach((t, i) => {
+        data.forEach((t) => {
             if (y > 280) {
                 doc.addPage();
                 y = 20;
             }
-            doc.text((t.patient?.name || "-").substring(0, 25), 14, y);
-            doc.text(t.status === 'EM_ANDAMENTO' ? 'Em andamento' : t.status === 'CONCLUIDO' ? 'Concluído' : 'Pausado', 60, y);
-            doc.text(formatDateOnlyAsPTBR(t.startDate), 95, y);
-            doc.text(t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-", 125, y);
+            doc.text((t.patient?.name || "-").substring(0, 22), 14, y);
+            doc.text(getPaymentTypeInitial(t.patient?.paymentType), 65, y);
+            doc.text(formatDateOnlyAsPTBR(t.startDate), 80, y);
+            doc.text(t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-", 105, y);
+            doc.text(t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-", 130, y);
             doc.text(t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-", 155, y);
             y += 8;
         });
@@ -223,56 +234,67 @@ const downloadCSV = () => {
                                 <TableRow>
                                     <TableHead>Nº</TableHead>
                                     <TableHead>Paciente</TableHead>
+                                    <TableHead className="w-8 text-center p-0"></TableHead>
                                     <TableHead>Início</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead>Finalização</TableHead>
                                     <TableHead>Última Consulta</TableHead>
                                     <TableHead>Próx. Consulta</TableHead>
                                     <TableHead>Dentista</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-{loading ? (
-<TableRow>
-<TableCell colSpan={7} className="text-center py-10">Carregando tratamentos...</TableCell>
-</TableRow>
-) : data.length === 0 ? (
-<TableRow>
-<TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum dado encontrado</TableCell>
-</TableRow>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-10">Carregando tratamentos...</TableCell>
+                                    </TableRow>
+                                ) : data.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">Nenhum dado encontrado</TableCell>
+                                    </TableRow>
                                 ) : (
-data.map((t) => (
-<TableRow
-key={t.id}
-className="cursor-pointer hover:bg-muted/50"
-onClick={() =>
-    navigate(`/tratamento`, {
-        state: {
-            planningId: t.planning?.id,
-            patientName: t.patient?.name,
-            patientId: t.patient?.id,
-            treatmentId: t.id,
-        }
-    })
-}
->
-<TableCell className="font-medium text-muted-foreground text-xs">{t.patient?.patientNumber || "-"}</TableCell>
-<TableCell>{t.patient?.name || "-"}</TableCell>
-<TableCell>{formatDateOnlyAsPTBR(t.startDate)}</TableCell>
-<TableCell>
-<span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
-? 'bg-green-100 text-green-800'
-: t.status === 'EM_ANDAMENTO'
-? 'bg-blue-100 text-blue-800'
-: 'bg-yellow-100 text-yellow-800'
-}`}>
-{t.status === 'CONCLUIDO' ? 'Concluído' : t.status === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}
-</span>
-</TableCell>
-<TableCell className={getNextAppointmentColor(t.lastAppointment)}>{t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-"}</TableCell>
-<TableCell className={getNextAppointmentColor(t.nextAppointment)}>{t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-"}</TableCell>
-<TableCell>{t.doctorName || "-"}</TableCell>
-</TableRow>
-))
+                                    data.map((t) => {
+                                        const paymentInitial = getPaymentTypeInitial(t.patient?.paymentType);
+                                        return (
+                                            <TableRow
+                                                key={t.id}
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() =>
+                                                    navigate(`/tratamento`, {
+                                                        state: {
+                                                            planningId: t.planning?.id,
+                                                            patientName: t.patient?.name,
+                                                            patientId: t.patient?.id,
+                                                            treatmentId: t.id,
+                                                        }
+                                                    })
+                                                }
+                                            >
+                                                <TableCell className="font-medium text-muted-foreground text-xs">{t.patient?.patientNumber || "-"}</TableCell>
+                                                <TableCell>{t.patient?.name || "-"}</TableCell>
+                                                <TableCell className="text-center px-1">
+                                                    {paymentInitial !== "-" ? (
+                                                        <span
+                                                            className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                                                                paymentInitial === 'C'
+                                                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                                            }`}
+                                                            title={t.patient?.paymentType || (paymentInitial === 'C' ? 'Convênio' : 'Particular')}
+                                                        >
+                                                            {paymentInitial}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>{formatDateOnlyAsPTBR(t.startDate)}</TableCell>
+                                                <TableCell>{t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-"}</TableCell>
+                                                <TableCell className={getNextAppointmentColor(t.lastAppointment)}>{t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-"}</TableCell>
+                                                <TableCell className={getNextAppointmentColor(t.nextAppointment)}>{t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-"}</TableCell>
+                                                <TableCell>{t.doctorName || "-"}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
