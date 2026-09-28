@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, Download, Filter, ArrowLeft, Activity, RefreshCw } from "lucide-react";
+import { Search, Download, Filter, ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,14 +16,14 @@ import { jsPDF } from "jspdf";
 import { formatDateOnlyAsPTBR, getUtcDateOnlyTimestamp } from "@/lib/dateUtils";
 
 const TreatmentsReport = () => {
-const [searchParams] = useSearchParams();
-const navigate = useNavigate();
-const [data, setData] = useState<any[]>([]);
-const [loading, setLoading] = useState(true);
-const [search, setSearch] = useState("");
-const [status, setStatus] = useState(searchParams.get("status") || "ALL");
-const [dateRange, setDateRange] = useState({ start: "", end: "" });
-const [syncing, setSyncing] = useState(false);
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const [data, setData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+    const [status, setStatus] = useState(searchParams.get("status") || "ALL");
+    const [dateRange, setDateRange] = useState({ start: "", end: "" });
+    const [syncing, setSyncing] = useState(false);
 
     const syncAppointments = async () => {
         setSyncing(true);
@@ -82,13 +82,13 @@ const [syncing, setSyncing] = useState(false);
     };
 
     const downloadCSV = () => {
-        const headers = ["Nº", "Paciente", "Tipo", "Data Início", "Data Finalização", "Última Consulta", "Próxima Consulta", "Dentista"];
+        const headers = ["Nº", "Paciente", "Tipo", "Data Início", "Prazo Convênio", "Última Consulta", "Próxima Consulta", "Dentista"];
         const rows = data.map(t => [
             t.patient?.patientNumber || "-",
             t.patient?.name || "-",
             getPaymentTypeInitial(t.patient?.paymentType),
             formatDateOnlyAsPTBR(t.startDate),
-            t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-",
+            t.deadline ? formatDateOnlyAsPTBR(t.deadline) : "-",
             t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-",
             t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-",
             t.doctorName || "-"
@@ -122,7 +122,7 @@ const [syncing, setSyncing] = useState(false);
         doc.text("Paciente", 14, y);
         doc.text("Tipo", 65, y);
         doc.text("Início", 80, y);
-        doc.text("Fim", 105, y);
+        doc.text("Prazo Conv.", 105, y);
         doc.text("Última", 130, y);
         doc.text("Próx.", 155, y);
         doc.line(14, y + 2, 196, y + 2);
@@ -136,7 +136,7 @@ const [syncing, setSyncing] = useState(false);
             doc.text((t.patient?.name || "-").substring(0, 22), 14, y);
             doc.text(getPaymentTypeInitial(t.patient?.paymentType), 65, y);
             doc.text(formatDateOnlyAsPTBR(t.startDate), 80, y);
-            doc.text(t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-", 105, y);
+            doc.text(t.deadline ? formatDateOnlyAsPTBR(t.deadline) : "-", 105, y);
             doc.text(t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-", 130, y);
             doc.text(t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-", 155, y);
             y += 8;
@@ -236,7 +236,7 @@ const [syncing, setSyncing] = useState(false);
                                     <TableHead>Paciente</TableHead>
                                     <TableHead className="w-8 text-center p-0"></TableHead>
                                     <TableHead>Início</TableHead>
-                                    <TableHead>Finalização</TableHead>
+                                    <TableHead>Prazo Convênio</TableHead>
                                     <TableHead>Última Consulta</TableHead>
                                     <TableHead>Próx. Consulta</TableHead>
                                     <TableHead>Dentista</TableHead>
@@ -288,7 +288,7 @@ const [syncing, setSyncing] = useState(false);
                                                     )}
                                                 </TableCell>
                                                 <TableCell>{formatDateOnlyAsPTBR(t.startDate)}</TableCell>
-                                                <TableCell>{t.endDate ? formatDateOnlyAsPTBR(t.endDate) : "-"}</TableCell>
+                                                <TableCell>{t.deadline ? formatDateOnlyAsPTBR(t.deadline) : "-"}</TableCell>
                                                 <TableCell className={getNextAppointmentColor(t.lastAppointment)}>{t.lastAppointment ? formatDateOnlyAsPTBR(t.lastAppointment) : "-"}</TableCell>
                                                 <TableCell className={getNextAppointmentColor(t.nextAppointment)}>{t.nextAppointment ? formatDateOnlyAsPTBR(t.nextAppointment) : "-"}</TableCell>
                                                 <TableCell>{t.doctorName || "-"}</TableCell>
