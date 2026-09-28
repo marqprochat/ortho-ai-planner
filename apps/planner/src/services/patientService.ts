@@ -5,13 +5,16 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 export interface Patient {
     id: string;
     name: string;
-    patientNumber?: string;  // Patient registration number (número do paciente)
+    cpf?: string;
+    patientNumber?: string;  // Patient registration number (número do paciente / código EasyDental)
     paymentType?: string;   // Payment type: 'Convênio' or 'Particular'
     insuranceCompany?: string; // Insurance company name
     email?: string;
     phone?: string;
     birthDate?: string;
     externalId?: string;  // External patient number from another application
+    easyDentalId?: string; // EasyDental internal ID_PACIENTE
+    easyDentalSyncStatus?: string; // 'SINCRONIZADO' | 'PENDENTE' | 'ERRO'
     tenantId: string;
     userId: string;
     clinicId?: string;
@@ -24,6 +27,21 @@ export interface Patient {
     plannings?: Planning[];
     contracts?: Contract[];
     treatments?: Treatment[];
+}
+
+export interface EasyDentalSearchResult {
+    found: boolean;
+    alreadyInPlanner: boolean;
+    message?: string;
+    plannerPatient?: Patient | null;
+    easyDental?: {
+        id: string;
+        codigo: string;
+        nome: string;
+        cpf: string;
+        celular: string;
+        dtNascimento: string;
+    };
 }
 
 export interface Planning {
@@ -108,7 +126,51 @@ export const patientService = {
         return response.json();
     },
 
-    async createPatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string; insuranceCompany?: string }): Promise<Patient> {
+    // Consulta paciente no EasyDental por CPF, Celular ou Código/Número do Cliente
+    async searchEasyDental(params: { cpf?: string; celular?: string; codigo?: string; numeroCliente?: string; query?: string }): Promise<EasyDentalSearchResult> {
+        const response = await fetch(`${API_URL}/easydental/paciente/search`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(params),
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erro ao consultar EasyDental');
+        }
+
+        return response.json();
+    },
+
+    // Vincula prestador do EasyDental ao usuário logado pelo CPF
+    async linkPrestadorCPF(cpf: string): Promise<{ success: boolean; message: string; prestador: any }> {
+        const response = await fetch(`${API_URL}/easydental/prestador/link`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ cpf }),
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erro ao vincular prestador');
+        }
+
+        return response.json();
+    },
+
+    async createPatient(data: { 
+        name: string; 
+        cpf: string;
+        email?: string; 
+        phone?: string; 
+        birthDate?: string; 
+        clinicId?: string; 
+        externalId?: string; 
+        patientNumber?: string; 
+        easyDentalId?: string;
+        paymentType?: string; 
+        insuranceCompany?: string 
+    }): Promise<Patient & { warning?: string }> {
         const response = await fetch(`${API_URL}/patients`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -116,13 +178,26 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao criar paciente');
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erro ao criar paciente');
         }
 
         return response.json();
     },
 
-    async findOrCreatePatient(data: { name: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string; insuranceCompany?: string }): Promise<{ patient: Patient; isNew: boolean }> {
+    async findOrCreatePatient(data: { 
+        name: string; 
+        cpf?: string;
+        email?: string; 
+        phone?: string; 
+        birthDate?: string; 
+        clinicId?: string; 
+        externalId?: string; 
+        patientNumber?: string; 
+        easyDentalId?: string;
+        paymentType?: string; 
+        insuranceCompany?: string 
+    }): Promise<{ patient: Patient; isNew: boolean; warning?: string }> {
         const response = await fetch(`${API_URL}/patients/find-or-create`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -130,13 +205,27 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao buscar/criar paciente');
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erro ao buscar/criar paciente');
         }
 
         return response.json();
     },
 
-    async updatePatient(id: string, data: { name?: string; email?: string; phone?: string; birthDate?: string; clinicId?: string; externalId?: string; patientNumber?: string; paymentType?: string; insuranceCompany?: string }): Promise<Patient> {
+    async updatePatient(id: string, data: { 
+        name?: string; 
+        cpf?: string;
+        email?: string; 
+        phone?: string; 
+        birthDate?: string; 
+        clinicId?: string; 
+        externalId?: string; 
+        patientNumber?: string; 
+        easyDentalId?: string;
+        easyDentalSyncStatus?: string;
+        paymentType?: string; 
+        insuranceCompany?: string 
+    }): Promise<Patient> {
         const response = await fetch(`${API_URL}/patients/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -144,7 +233,8 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao atualizar paciente');
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erro ao atualizar paciente');
         }
 
         return response.json();

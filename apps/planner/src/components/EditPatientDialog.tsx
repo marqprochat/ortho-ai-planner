@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { Patient, patientService } from "@/services/patientService";
 import { toast } from "sonner";
@@ -22,6 +23,14 @@ interface EditPatientDialogProps {
     onSuccess: (updatedPatient: Patient) => void;
 }
 
+const formatCpfMask = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+};
+
 export function EditPatientDialog({
     open,
     onOpenChange,
@@ -31,6 +40,7 @@ export function EditPatientDialog({
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
+        cpf: "",
         patientNumber: "",
         paymentType: "",
         email: "",
@@ -43,6 +53,7 @@ export function EditPatientDialog({
         if (patient && open) {
             setFormData({
                 name: patient.name || "",
+                cpf: patient.cpf || "",
                 patientNumber: patient.patientNumber || "",
                 paymentType: patient.paymentType || "",
                 email: patient.email || "",
@@ -88,7 +99,14 @@ export function EditPatientDialog({
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Editar Paciente</DialogTitle>
+                        <div className="flex items-center justify-between">
+                            <DialogTitle>Editar Paciente</DialogTitle>
+                            {patient.easyDentalId && (
+                                <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                    EasyDental #{patient.patientNumber || patient.easyDentalId}
+                                </Badge>
+                            )}
+                        </div>
                         <DialogDescription>
                             Faça alterações nas informações do paciente aqui.
                         </DialogDescription>
@@ -96,7 +114,7 @@ export function EditPatientDialog({
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">
-                                Nome
+                                Nome *
                             </Label>
                             <Input
                                 id="name"
@@ -108,8 +126,22 @@ export function EditPatientDialog({
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="cpf" className="text-right">
+                                CPF *
+                            </Label>
+                            <Input
+                                id="cpf"
+                                name="cpf"
+                                value={formData.cpf}
+                                onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCpfMask(e.target.value) }))}
+                                className="col-span-3"
+                                placeholder="000.000.000-00"
+                                maxLength={14}
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="patientNumber" className="text-right">
-                                Número
+                                Número / Cód.
                             </Label>
                             <Input
                                 id="patientNumber"
@@ -117,7 +149,7 @@ export function EditPatientDialog({
                                 value={formData.patientNumber}
                                 onChange={handleChange}
                                 className="col-span-3"
-                                placeholder="Número do paciente"
+                                placeholder="Número ou código EasyDental"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

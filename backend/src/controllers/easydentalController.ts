@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import { rpcCall } from '../lib/easydental';
+import { rpcCall, formatCPF, cleanDigits, findPacienteByCPF, findPacienteByCelular, getPacienteByCod, findPrestadorByCPF } from '../lib/easydental';
+import prisma from '../lib/prisma';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 // RPCGetUnidadeAtendimento - retorna ID e Nome das unidades ativas
 export const getUnidadesAtendimento = async (_req: Request, res: Response) => {
@@ -182,6 +184,219 @@ export const getAniversarios = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error('Error fetching aniversarios:', error.message);
         res.status(500).json({ error: error.message });
+    }
+};
+
+// POST /api/easydental/paciente/search
+// Pesquisa paciente no EasyDental por CPF, Celular ou Código/Número do Cliente
+export const searchPaciente = async (req: AuthRequest, res: Response) => {
+    try {
+        const { cpf, celular, codigo, numeroCliente, numeroPaciente, query } = req.body;
+        const { tenantId, clinicId } = req;
+
+        const effectiveCodigo = codigo || numeroCliente || numeroPaciente;
+
+        if (!cpf && !celular && !effectiveCodigo && !query) {
+            return res.status(400).json({ error: 'Informe o CPF, Celular ou Código/Número do Paciente para buscar no EasyDental' });
+        }
+
+        let match: { ID_PACIENTE?: string | number; CODIGO_PACIENTE?: string } | null = null;
+        let details: { NOME: string; DT_NASCIMENTO?: string; CELULAR?: string; CPF?: string } | null = null;
+
+        // 1. Busca direta por Código / Número do Paciente se informado
+        if (effectiveCodigo) {
+            details = await getPacienteByCod(String(effectiveCodigo));
+            if (details) {
+                if (details.CPF) {
+                    const matchByCpf = await findPacienteByCPF(details.CPF);
+                    if (matchByCpf) match = matchByCpf;
+                }
+                if (!match) {
+                    match = { CODIGO_PACIENTE: String(effectiveCodigo) };
+                }
+            }
+        }
+
+        // 2. Busca por CPF se informado e ainda não encontrado
+        if (!match && cpf) {
+            match = await findPacienteByCPF(cpf);
+        }
+
+        // 3. Busca por celular se informado e ainda não encontrado
+        if (!match && celular) {
+            match = await findPacienteByCelular(celular);
+        }
+
+        // 4. Se foi passado query genérica e ainda não encontrou
+        if (!match && query && typeof query === 'string' && query.trim() !== '') {
+            const trimmedQuery = query.trim();
+            const clean = cleanDigits(trimmedQuery);
+
+            // Tenta como código primeiro se tiver até 8 dígitos ou caracteres não estritamente CPF/fone
+            if (clean.length > 0 && clean.length <= 8) {
+                details = await getPacienteByCod(trimmedQuery);
+                if (details) {
+                    if (details.CPF) {
+                        const matchByCpf = await findPacienteByCPF(details.CPF);
+                        if (matchByCpf) match = matchByCpf;
+                    }
+                    if (!match) {
+                        match = { CODIGO_PACIENTE: trimmedQuery };
+                    }
+                }
+            }
+
+            // Tenta como CPF (11 dígitos)
+            if (!match && clean.length === 11) {
+                match = await findPacienteByCPF(clean);
+            }
+
+            // Tenta como Celular (10 ou 11 dígitos)
+            if (!match && (clean.length === 10 || clean.length === 11)) {
+                match = await findPacienteByCelular(clean);
+            }
+
+            // Tenta como código se nada anterior funcionou
+            if (!match && !details) {
+                details = await getPacienteByCod(trimmedQuery);
+                if (details) {
+                    if (details.CPF) {
+                        const matchByCpf = await findPacienteByCPF(details.CPF);
+                        if (matchByCpf) match = matchByCpf;
+                    }
+                    if (!match) {
+                        match = { CODIGO_PACIENTE: trimmedQuery };
+                    }
+                }
+            }
+        }
+
+        if (!match && !details) {
+            return res.json({
+                found: false,
+                message: 'Paciente não localizado no sistema EasyDental'
+            });
+        }
+
+        const codigoPaciente = match?.CODIGO_PACIENTE ? String(match.CODIGO_PACIENTE) : (effectiveCodigo ? String(effectiveCodigo) : '');
+        const idPaciente = match?.ID_PACIENTE ? String(match.ID_PACIENTE) : '';
+
+        // Se ainda não buscou os detalhes completos, busca pelo código
+        if (!details && codigoPaciente) {
+            details = await getPacienteByCod(codigoPaciente);
+        }
+
+        // Converte data DD/MM/YYYY do EasyDental para ISO YYYY-MM-DD
+        let birthDateFormatted: string | null = null;
+        if (details?.DT_NASCIMENTO) {
+            const parts = details.DT_NASCIMENTO.split('/');
+            if (parts.length === 3) {
+                // DD, MM, YYYY -> YYYY-MM-DD
+                birthDateFormatted = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            } else {
+                birthDateFormatted = details.DT_NASCIMENTO;
+            }
+        }
+
+        // Verifica se o paciente já está cadastrado no Planner na clínica/tenant atual
+        let alreadyInPlanner = false;
+        let plannerPatient: any = null;
+
+        const orFilters: any[] = [];
+        if (codigoPaciente) {
+            orFilters.push({ patientNumber: codigoPaciente });
+            orFilters.push({ externalId: codigoPaciente });
+        }
+        if (idPaciente) {
+            orFilters.push({ easyDentalId: idPaciente });
+        }
+        const cleanCpf = cleanDigits(cpf || details?.CPF);
+        const formattedCpf = formatCPF(cpf || details?.CPF);
+        if (cleanCpf) {
+            orFilters.push({ cpf: cleanCpf });
+            orFilters.push({ cpf: formattedCpf });
+        }
+
+        if (orFilters.length > 0 && tenantId) {
+            plannerPatient = await prisma.patient.findFirst({
+                where: {
+                    tenantId,
+                    ...(clinicId ? { clinicId } : {}),
+                    OR: orFilters
+                }
+            });
+            if (plannerPatient) {
+                alreadyInPlanner = true;
+            }
+        }
+
+        return res.json({
+            found: true,
+            alreadyInPlanner,
+            plannerPatient,
+            easyDental: {
+                id: idPaciente,
+                codigo: codigoPaciente,
+                nome: details?.NOME || '',
+                cpf: details?.CPF || (cpf ? formatCPF(cpf) : ''),
+                celular: details?.CELULAR || (celular ? cleanDigits(celular) : ''),
+                dtNascimento: birthDateFormatted || ''
+            }
+        });
+    } catch (error: any) {
+        console.error('Erro ao pesquisar paciente no EasyDental:', error.message);
+        return res.status(500).json({ error: error.message || 'Erro ao pesquisar paciente no EasyDental' });
+    }
+};
+
+// POST /api/easydental/prestador/link
+// Consulta prestador pelo CPF e vincula ao usuário logado
+export const linkPrestadorCPF = async (req: AuthRequest, res: Response) => {
+    try {
+        const { cpf } = req.body;
+        const userId = req.userId;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Não autenticado' });
+        }
+
+        if (!cpf) {
+            return res.status(400).json({ error: 'CPF é obrigatório para localizar o prestador' });
+        }
+
+        const prestador = await findPrestadorByCPF(cpf);
+
+        if (!prestador || !prestador.ID_PRESTADOR) {
+            return res.status(404).json({
+                error: 'Nenhum prestador foi encontrado no EasyDental com este CPF'
+            });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                cpf: formatCPF(cpf),
+                easyDentalPrestadorId: String(prestador.ID_PRESTADOR)
+            },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                cpf: true,
+                cro: true,
+                easyDentalPrestadorId: true
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: `Prestador ${prestador.NOME || ''} vinculado com sucesso!`,
+            user: updatedUser,
+            prestador
+        });
+    } catch (error: any) {
+        console.error('Erro ao vincular prestador por CPF:', error.message);
+        return res.status(500).json({ error: error.message || 'Erro ao vincular prestador' });
     }
 };
 

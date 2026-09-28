@@ -69,6 +69,8 @@ model User {
   nickname           String?
   // [NEW] CRO number
   cro                String?
+  cpf                String?
+  easyDentalPrestadorId String?
   avatarUrl          String?
   isSuperAdmin       Boolean            @default(false)
   tenantId           String
@@ -132,26 +134,29 @@ model UserAppAccess {
 }
 
 model Patient {
-  id               String      @id @default(uuid())
-  patientNumber    String? // Patient registration number (número do paciente)
-  paymentType      String? // Payment type: 'Convênio' or 'Particular'
-  insuranceCompany String? // Insurance company name
-  name             String
-  birthDate        DateTime?
-  email            String?
-  phone            String?
-  externalId       String?
-  tenantId         String
-  userId           String
-  clinicId         String
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  contracts        Contract[]
-  clinic           Clinic      @relation(fields: [clinicId], references: [id])
-  tenant           Tenant      @relation(fields: [tenantId], references: [id])
-  user             User        @relation(fields: [userId], references: [id])
-  plannings        Planning[]
-  treatments       Treatment[]
+  id                   String      @id @default(uuid())
+  patientNumber        String? // Patient registration number (número do paciente)
+  paymentType          String? // Payment type: 'Convênio' or 'Particular'
+  insuranceCompany     String? // Insurance company name
+  name                 String
+  cpf                  String?
+  birthDate            DateTime?
+  email                String?
+  phone                String?
+  externalId           String?
+  easyDentalId         String? // EasyDental internal ID_PACIENTE
+  easyDentalSyncStatus String?     @default("SINCRONIZADO") // "SINCRONIZADO" | "PENDENTE" | "ERRO"
+  tenantId             String
+  userId               String
+  clinicId             String
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  contracts            Contract[]
+  clinic               Clinic      @relation(fields: [clinicId], references: [id])
+  tenant               Tenant      @relation(fields: [tenantId], references: [id])
+  user                 User        @relation(fields: [userId], references: [id])
+  plannings            Planning[]
+  treatments           Treatment[]
 }
 
 model Planning {

@@ -37,6 +37,7 @@ const getTodayValue = () => new Date().toLocaleDateString('en-CA');
 
 const initialFormData = {
   nomePaciente: "",
+  cpf: "",
   dataNascimento: "",
   telefone: "",
   paymentType: "",
@@ -134,6 +135,7 @@ const NovoPlanejamentoIA = () => {
     setFormData(prev => ({
       ...prev,
       nomePaciente: patient.name,
+      cpf: patient.cpf || "",
       dataNascimento: patient.birthDate ? patient.birthDate.split('T')[0] : "",
       telefone: patient.phone || "",
       paymentType: patient.paymentType || "",
@@ -256,6 +258,15 @@ const NovoPlanejamentoIA = () => {
     setFormData({ ...formData, telefone: value });
   };
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 11) value = value.substring(0, 11);
+    value = value.replace(/(\d{3})(\d)/, "$1.$2");
+    value = value.replace(/(\d{3})(\d)/, "$1.$2");
+    value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    setFormData(prev => ({ ...prev, cpf: value }));
+  };
+
   const handleMultiSelectChange = (field: keyof typeof initialFormData, value: string) => {
     setFormData(prev => {
       const currentValues = (prev[field] as string[]) || [];
@@ -284,6 +295,11 @@ const NovoPlanejamentoIA = () => {
       return;
     }
 
+    if (!formData.cpf || formData.cpf.replace(/\D/g, "").length !== 11) {
+      toast.error("Por favor, informe um CPF válido para o paciente");
+      return;
+    }
+
     // if (selectedModel.startsWith('gpt') && !apiKey) {
     //   toast.error("A chave de API da OpenAI não está configurada.");
     //   return;
@@ -301,6 +317,7 @@ const NovoPlanejamentoIA = () => {
       // Save or find patient first
       const patientResult = await patientService.findOrCreatePatient({
         name: formData.nomePaciente,
+        cpf: formData.cpf || undefined,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
         patientNumber: formData.numeroPaciente || undefined,
@@ -536,12 +553,18 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
       return;
     }
 
+    if (!formData.cpf || formData.cpf.replace(/\D/g, "").length !== 11) {
+      toast.error("Por favor, informe um CPF válido para o paciente");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       // 1. Find or Create Patient
       const patientResult = await patientService.findOrCreatePatient({
         name: formData.nomePaciente,
+        cpf: formData.cpf || undefined,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
         patientNumber: formData.numeroPaciente || undefined,
@@ -939,6 +962,17 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
               <CardHeader><CardTitle>Dados do Paciente</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2"><Label htmlFor="nomePaciente">Nome do paciente *</Label><Input id="nomePaciente" required value={formData.nomePaciente} onChange={(e) => setFormData({ ...formData, nomePaciente: e.target.value })} /></div>
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF do paciente *</Label>
+                  <Input
+                    id="cpf"
+                    required
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    value={formData.cpf || ""}
+                    onChange={handleCpfChange}
+                  />
+                </div>
                 <div className="space-y-2"><Label htmlFor="dataNascimento">Data de nascimento *</Label><Input id="dataNascimento" type="date" required value={formData.dataNascimento} onChange={(e) => setFormData({ ...formData, dataNascimento: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="telefone">Telefone *</Label><Input id="telefone" required value={formData.telefone} onChange={handlePhoneChange} placeholder="(XX) XXXXX-XXXX" /></div>
                 <div className="space-y-2">

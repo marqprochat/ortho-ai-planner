@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma';
+import { formatCPF } from '../lib/easydental';
 
 export const getUsers = async (req: Request, res: Response) => {
     try {
@@ -39,7 +40,7 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
     try {
-        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient, canAccessDisparos } = req.body;
+        const { name, email, password, tenantId, isSuperAdmin, clinicIds, roleId, nickname, cro, cpf, easyDentalPrestadorId, canTransferPatient, canAccessDisparos } = req.body;
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -52,6 +53,8 @@ export const createUser = async (req: Request, res: Response) => {
                 isSuperAdmin: isSuperAdmin || false,
                 nickname,
                 cro,
+                cpf: cpf ? formatCPF(cpf) : undefined,
+                easyDentalPrestadorId: easyDentalPrestadorId || undefined,
                 canTransferPatient: canTransferPatient || false,
                 userClinics: clinicIds?.length ? {
                     create: clinicIds.map((clinicId: string) => ({ clinicId }))
@@ -99,7 +102,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro, canTransferPatient, canAccessDisparos } = req.body;
+        const { name, email, password, isSuperAdmin, clinicIds, roleId, nickname, cro, cpf, easyDentalPrestadorId, canTransferPatient, canAccessDisparos } = req.body;
 
         // Update user basic info
         const updateData: any = {
@@ -110,6 +113,9 @@ export const updateUser = async (req: Request, res: Response) => {
             cro, // Add cro
             canTransferPatient
         };
+
+        if (cpf !== undefined) updateData.cpf = cpf ? formatCPF(cpf) : null;
+        if (easyDentalPrestadorId !== undefined) updateData.easyDentalPrestadorId = easyDentalPrestadorId;
 
         if (password && password.trim() !== '') {
             updateData.password = await bcrypt.hash(password, 10);
