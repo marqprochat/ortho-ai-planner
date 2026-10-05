@@ -160,6 +160,8 @@ export default function App() {
     const [selectedModel, setSelectedModel] = useState('22180');
     const [totalToProcess, setTotalToProcess] = useState(0);
     const abortRef = useRef(false);
+    const revalidatingRef = useRef(false);
+    const [followUpSearch, setFollowUpSearch] = useState<{ dtInicio: string; dtTermino: string; unidades: string[] } | null>(null);
 
     const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
     const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -360,6 +362,7 @@ export default function App() {
                 });
 
                 setMessages(msgs);
+                setFollowUpSearch(null);
                 setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
                 const errCount = msgs.filter(m => m.status === 'error').length;
@@ -407,6 +410,7 @@ export default function App() {
                 });
 
                 setMessages(msgs);
+                setFollowUpSearch(isFollowUp ? { dtInicio: filters.dtInicio, dtTermino: filters.dtTermino, unidades: [...filters.unidades] } : null);
                 setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
                 const errCount = msgs.filter(m => m.status === 'error').length;
@@ -457,6 +461,7 @@ export default function App() {
                 });
 
                 setMessages(msgs);
+                setFollowUpSearch(null);
                 setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
                 // Auto-select statuses matching the chosen model
@@ -483,6 +488,7 @@ export default function App() {
 
     // Send messages
     const handleSend = useCallback(async () => {
+        if (revalidatingRef.current) return;
         let toSend = filteredMessages.filter(m => selectedIds.has(m.id) && m.status === 'pending');
         if (toSend.length === 0) {
             toast.error('Nenhuma mensagem selecionada para envio');
@@ -491,20 +497,24 @@ export default function App() {
 
         // Antes de enviar, confirma ao vivo no EasyDental quem continua sem reagendar.
         // Se nao for possivel confirmar, NAO envia nada.
-        if (isFollowUp) {
+        if (followUpSearch) {
             let eligible: Set<string>;
+            revalidatingRef.current = true;
             try {
                 const res = await api.revalidateFollowUp(
-                    filters.dtInicio,
-                    filters.dtTermino,
-                    filters.unidades,
+                    followUpSearch.dtInicio,
+                    followUpSearch.dtTermino,
+                    followUpSearch.unidades,
                     toSend.map(m => m.codPaciente)
                 );
+                if (!res.success || !Array.isArray(res.eligible)) throw new Error('Resposta inválida do servidor');
                 eligible = new Set(res.eligible);
             } catch (err: any) {
                 toast.error('Não foi possível confirmar a situação dos pacientes no EasyDental. Nenhuma mensagem foi enviada. ' + err.message);
                 setShowSendModal(false);
                 return;
+            } finally {
+                revalidatingRef.current = false;
             }
 
             const skipped = toSend.filter(m => !eligible.has(m.codPaciente));
@@ -631,7 +641,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, isFollowUp, filters]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, followUpSearch]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
