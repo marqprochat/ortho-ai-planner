@@ -133,6 +133,10 @@ const FALLBACK_PRESETS: Record<string, { name: string; dayOffset: number; status
     '19872': { name: 'Avaliação', dayOffset: -1, statusKeyword: 'atend' }
 };
 
+const FOLLOW_UP_MODE = 'tratamento-sem-reagendamento';
+// Janela da data da ultima consulta: inicio = dayOffset do modelo - 150 (ex.: -30 => de -180 a -30)
+const FOLLOW_UP_WINDOW_DAYS = 150;
+
 export default function App() {
     const [authenticated, setAuthenticated] = useState(false);
     const [loginEmail, setLoginEmail] = useState('');
@@ -185,6 +189,12 @@ export default function App() {
         }
         return null;
     }, [messageTemplates, selectedModel]);
+
+    // Modo "em tratamento sem reagendamento": derivado do modelo escolhido (sem estado extra que possa dessincronizar)
+    const isFollowUp = useMemo(
+        () => isUltimaConsulta && messageTemplates.find(t => t.code === selectedModel)?.searchMode === FOLLOW_UP_MODE,
+        [isUltimaConsulta, messageTemplates, selectedModel]
+    );
 
     // Auth: read token from URL or sessionStorage, then verify with backend
     useEffect(() => {
@@ -355,11 +365,8 @@ export default function App() {
                 const errCount = msgs.filter(m => m.status === 'error').length;
                 toast.success(`${msgs.length} aniversariante(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
             } else if (isUltimaConsulta) {
-                const res = await api.getUltimaConsulta(
-                    filters.dtInicio,
-                    filters.dtTermino,
-                    filters.unidades
-                );
+                const fetchRecords = isFollowUp ? api.getFollowUpTreatments : api.getUltimaConsulta;
+                const res = await fetchRecords(filters.dtInicio, filters.dtTermino, filters.unidades);
 
                 const records = res.success && Array.isArray(res.data) ? res.data : [];
                 setRawAgendamentos([]); // empty in this mode
@@ -472,14 +479,54 @@ export default function App() {
         } finally {
             setLoading(false);
         }
-    }, [filters, selectedModel, isUltimaConsulta, isAniversario]);
+    }, [filters, selectedModel, isUltimaConsulta, isAniversario, isFollowUp]);
 
     // Send messages
     const handleSend = useCallback(async () => {
-        const toSend = filteredMessages.filter(m => selectedIds.has(m.id) && m.status === 'pending');
+        let toSend = filteredMessages.filter(m => selectedIds.has(m.id) && m.status === 'pending');
         if (toSend.length === 0) {
             toast.error('Nenhuma mensagem selecionada para envio');
             return;
+        }
+
+        // Antes de enviar, confirma ao vivo no EasyDental quem continua sem reagendar.
+        // Se nao for possivel confirmar, NAO envia nada.
+        if (isFollowUp) {
+            let eligible: Set<string>;
+            try {
+                const res = await api.revalidateFollowUp(
+                    filters.dtInicio,
+                    filters.dtTermino,
+                    filters.unidades,
+                    toSend.map(m => m.codPaciente)
+                );
+                eligible = new Set(res.eligible);
+            } catch (err: any) {
+                toast.error('Não foi possível confirmar a situação dos pacientes no EasyDental. Nenhuma mensagem foi enviada. ' + err.message);
+                setShowSendModal(false);
+                return;
+            }
+
+            const skipped = toSend.filter(m => !eligible.has(m.codPaciente));
+            if (skipped.length > 0) {
+                const skippedIds = new Set(skipped.map(m => m.id));
+                setMessages(prev => prev.map(m =>
+                    skippedIds.has(m.id) ? { ...m, status: 'error' as const, errorMessage: 'Já reagendou — não enviado' } : m
+                ));
+                setSelectedIds(prev => {
+                    const next = new Set(prev);
+                    skippedIds.forEach(id => next.delete(id));
+                    return next;
+                });
+                toast.info(`${skipped.length} paciente(s) já reagendaram e foram retirados do envio`);
+                toSend = toSend.filter(m => eligible.has(m.codPaciente));
+            }
+
+            if (toSend.length === 0) {
+                toast.error('Todos os pacientes selecionados já reagendaram. Nada a enviar.');
+                setShowSendModal(false);
+                return;
+            }
         }
 
         // Group messages by normalized phone number (or unique id if no phone)
@@ -584,7 +631,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, isFollowUp, filters]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -607,10 +654,13 @@ export default function App() {
         setSelectedModel(newModel);
         const tpl = messageTemplates.find(t => t.code === newModel);
         if (tpl) {
+            const isFollowUpTpl = tpl.searchMode === FOLLOW_UP_MODE;
             const dateStr = dateOffset(tpl.dayOffset);
-            setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
-            
-            if (tpl.searchMode === 'ultima-consulta') {
+            // Em "tratamento sem reagendamento" a janela e a data da ultima consulta: de (dayOffset - 150) ate dayOffset
+            const startStr = isFollowUpTpl ? dateOffset(tpl.dayOffset - FOLLOW_UP_WINDOW_DAYS) : dateStr;
+            setFilters(prev => ({ ...prev, dtInicio: startStr, dtTermino: dateStr, statusAgendamento: [] }));
+
+            if (tpl.searchMode === 'ultima-consulta' || isFollowUpTpl) {
                 setIsUltimaConsulta(true);
                 setIsAniversario(false);
                 setOnlyWithoutScheduled(false);
