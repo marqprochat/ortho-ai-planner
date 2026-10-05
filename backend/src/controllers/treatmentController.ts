@@ -2,7 +2,7 @@ import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, hasPermission } from '../middleware/authMiddleware';
 import { syncTreatmentAppointments } from '../services/appointmentSync';
-import { findActiveClinicDentist } from '../services/dentists';
+import { resolveDentistChange, INVALID_DENTIST_ERROR } from '../services/dentists';
 
 // Get all treatments for tenant/clinic
 export const getAllTreatments = async (req: AuthRequest, res: Response) => {
@@ -174,14 +174,13 @@ return res.status(404).json({ error: 'Paciente não encontrado' });
 return res.status(400).json({ error: 'É necessário fornecer patientId ou planningId' });
 }
 
-let dentistData: { dentistId?: string; doctorName?: string; dentistCro?: string } = {};
-if (dentistId) {
-const dentist = await findActiveClinicDentist(dentistId, clinicId);
-if (!dentist) {
-return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+const dentistChange = await resolveDentistChange(dentistId, null, clinicId);
+if (dentistChange.kind === 'invalid') {
+return res.status(400).json({ error: INVALID_DENTIST_ERROR });
 }
-dentistData = { dentistId: dentist.id, doctorName: dentist.name, dentistCro: dentist.cro };
-}
+const dentistData = dentistChange.kind === 'set'
+? { dentistId: dentistChange.dentist.id, doctorName: dentistChange.dentist.name, dentistCro: dentistChange.dentist.cro }
+: {};
 
 const treatment = await prisma.treatment.create({
 data: {
@@ -245,15 +244,15 @@ if (!treatment) {
 return res.status(404).json({ error: 'Tratamento não encontrado' });
 }
 
-let dentistData: { dentistId?: string | null; doctorName?: string; dentistCro?: string | null } = {};
-if (dentistId === null || dentistId === '') {
-dentistData = { dentistId: null, dentistCro: null };
-} else if (dentistId !== undefined && dentistId !== treatment.dentistId) {
-const dentist = await findActiveClinicDentist(dentistId, clinicId);
-if (!dentist) {
-return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+const dentistChange = await resolveDentistChange(dentistId, treatment.dentistId, clinicId);
+if (dentistChange.kind === 'invalid') {
+return res.status(400).json({ error: INVALID_DENTIST_ERROR });
 }
-dentistData = { dentistId: dentist.id, doctorName: dentist.name, dentistCro: dentist.cro };
+let dentistData: { dentistId?: string | null; doctorName?: string; dentistCro?: string | null } = {};
+if (dentistChange.kind === 'clear') {
+dentistData = { dentistId: null, dentistCro: null };
+} else if (dentistChange.kind === 'set') {
+dentistData = { dentistId: dentistChange.dentist.id, doctorName: dentistChange.dentist.name, dentistCro: dentistChange.dentist.cro };
 }
 
 const updated = await prisma.treatment.update({
