@@ -218,6 +218,11 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                 <p className="text-xs text-muted-foreground">
                     Negativo = dias passados. Ex: <strong>-1 até -1</strong> = ontem · <strong>1 até 1</strong> = amanhã · <strong>-1 até 1</strong> = ontem, hoje e amanhã.
                 </p>
+                {form.searchMode === 'tratamento-sem-reagendamento' && (
+                    <p className="text-xs text-muted-foreground">
+                        Neste modo o período é a <strong>data da última consulta</strong>. Ex: <strong>-180 até -30</strong> = pacientes em tratamento cuja última consulta foi entre 180 e 30 dias atrás e que ainda não reagendaram. A situação é confirmada ao vivo no EasyDental a cada execução.
+                    </p>
+                )}
             </div>
 
             {/* Unidades */}
@@ -257,13 +262,19 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                                 agendas: [],
                                 periodos: [],
                                 motivo: '',
-                            })
+                            }),
+                            // Neste modo o periodo e a data da ultima consulta: padrao de 180 a 30 dias atras
+                            ...(val === 'tratamento-sem-reagendamento' && {
+                                dtInicioOffset: -180,
+                                dtTerminoOffset: -30,
+                            }),
                         });
                     }}
                 >
                     <option value="agendamento">Agendamento Padrão</option>
                     <option value="ultima-consulta">Última Consulta</option>
                     <option value="aniversario">Aniversário</option>
+                    <option value="tratamento-sem-reagendamento">Em tratamento sem reagendamento</option>
                 </select>
             </div>
 
@@ -430,6 +441,9 @@ function ScheduleCard({ schedule, messageTemplates, onEdit, onDelete, onTrigger,
                         )}
                         {schedule.searchMode === 'ultima-consulta' && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">Última Consulta</span>
+                        )}
+                        {schedule.searchMode === 'tratamento-sem-reagendamento' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 font-medium">Sem reagendamento</span>
                         )}
                         {(!schedule.searchMode || schedule.searchMode === 'agendamento') && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Agendamento</span>

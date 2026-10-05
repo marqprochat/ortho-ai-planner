@@ -7,6 +7,13 @@ import {
 import { api } from '../services/api';
 import type { MessageTemplate } from '../types';
 
+const SEARCH_MODE_LABELS: Record<string, string> = {
+    agendamento: 'Agendamento',
+    'ultima-consulta': 'Última Consulta',
+    aniversario: 'Aniversário',
+    'tratamento-sem-reagendamento': 'Em tratamento sem reagendamento',
+};
+
 export default function MessageTemplatesTab() {
     const [templates, setTemplates] = useState<MessageTemplate[]>([]);
     const [loading, setLoading] = useState(true);
@@ -243,7 +250,7 @@ export default function MessageTemplatesTab() {
                                 <div className="mt-6 pt-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground bg-muted/10 -mx-6 -mb-6 px-6 py-3 rounded-b-xl">
                                     <span className="flex items-center gap-1">
                                         <Settings2 className="w-3.5 h-3.5 opacity-70" />
-                                        Modo: <span className="font-semibold text-foreground">{tpl.searchMode === 'ultima-consulta' ? 'Última Consulta' : tpl.searchMode === 'aniversario' ? 'Aniversário' : 'Agendamento'}</span>
+                                        Modo: <span className="font-semibold text-foreground">{SEARCH_MODE_LABELS[tpl.searchMode || 'agendamento'] || 'Agendamento'}</span>
                                     </span>
                                     <div className="flex items-center gap-2 font-medium text-foreground">
                                         <span>
@@ -369,6 +376,7 @@ export default function MessageTemplatesTab() {
                                             <option value="agendamento">Agendamento Padrão</option>
                                             <option value="ultima-consulta">Última Consulta</option>
                                             <option value="aniversario">Aniversário</option>
+                                            <option value="tratamento-sem-reagendamento">Em tratamento sem reagendamento</option>
                                         </select>
                                     </div>
 
@@ -379,7 +387,9 @@ export default function MessageTemplatesTab() {
                                             <span className="group relative">
                                                 <HelpCircle className="w-3 h-3 cursor-pointer opacity-70" />
                                                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity leading-tight z-50">
-                                                    Dias relativos a hoje. Ex: 1 para amanhã, -1 para ontem, 0 para hoje.
+                                                    {searchMode === 'tratamento-sem-reagendamento'
+                                                        ? 'Dias desde a última consulta (negativo). Ex: -30 busca quem teve a última consulta há 30 dias ou mais, nos 150 dias anteriores a isso.'
+                                                        : 'Dias relativos a hoje. Ex: 1 para amanhã, -1 para ontem, 0 para hoje.'}
                                                 </span>
                                             </span>
                                         </label>
