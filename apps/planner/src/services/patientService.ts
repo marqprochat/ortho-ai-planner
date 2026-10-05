@@ -82,6 +82,8 @@ lastAppointment?: string;
 nextAppointment?: string;
 notes?: string;
 doctorName?: string;
+dentistId?: string | null;
+dentistCro?: string | null;
 createdAt: string;
 updatedAt: string;
 }
@@ -251,7 +253,7 @@ export const patientService = {
         }
     },
 
-    async createPlanning(data: { patientId: string; title: string; originalReport?: string; status?: string; structuredPlan?: any }): Promise<Planning> {
+    async createPlanning(data: { patientId: string; title: string; originalReport?: string; status?: string; structuredPlan?: any; dentistId?: string | null }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -265,7 +267,7 @@ export const patientService = {
         return response.json();
     },
 
-    async updatePlanning(id: string, data: { status?: string; aiResponse?: string; structuredPlan?: any }): Promise<Planning> {
+    async updatePlanning(id: string, data: { status?: string; aiResponse?: string; structuredPlan?: any; dentistId?: string | null }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -380,7 +382,7 @@ export const patientService = {
         return response.json();
     },
 
-async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string | null; dentistId?: string | null }): Promise<Treatment> {
 const response = await fetch(`${API_URL}/treatments`, {
 method: 'POST',
 headers: getAuthHeaders(),
@@ -408,7 +410,7 @@ throw new Error(err.error || 'Erro ao sincronizar consultas');
 return response.json();
 },
 
-async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string | null; dentistId?: string | null }): Promise<Treatment> {
 const response = await fetch(`${API_URL}/treatments/${id}`, {
 method: 'PUT',
 headers: getAuthHeaders(),

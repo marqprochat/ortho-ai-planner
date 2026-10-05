@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
+import { DentistSelect } from "@/components/DentistSelect";
+import type { Dentist } from "@/services/dentistService";
 import { patientService, Treatment } from "@/services/patientService";
 import { formatDateForInput as formatDateInputValue } from "@/lib/dateUtils";
 
@@ -48,6 +50,7 @@ const [nextAppointment, setNextAppointment] = useState("");
 const [status, setStatus] = useState("EM_ANDAMENTO");
 const [notes, setNotes] = useState("");
 const [doctorName, setDoctorName] = useState("");
+const [dentistId, setDentistId] = useState("");
 
     useEffect(() => {
         if (!planningId && !patientId) {
@@ -73,6 +76,7 @@ setNextAppointment(formatDateInputValue(treatment.nextAppointment));
 setStatus(treatment.status);
 setNotes(treatment.notes || "");
 setDoctorName(treatment.doctorName || "");
+setDentistId(treatment.dentistId || "");
 } else if (planningId) {
 const treatment = await patientService.getTreatment(planningId);
 setExistingTreatment(treatment);
@@ -84,6 +88,7 @@ setNextAppointment(formatDateInputValue(treatment.nextAppointment));
 setStatus(treatment.status);
 setNotes(treatment.notes || "");
 setDoctorName(treatment.doctorName || "");
+setDentistId(treatment.dentistId || "");
 }
 } else {
 setStartDate(new Date().toISOString().split("T")[0]);
@@ -93,6 +98,11 @@ setStartDate(new Date().toISOString().split("T")[0]);
 } finally {
 setIsLoading(false);
 }
+};
+
+const handleSelectDentist = (dentist: Dentist | null) => {
+setDentistId(dentist?.id ?? "");
+setDoctorName(dentist?.name ?? "");
 };
 
 const handleSave = async () => {
@@ -107,7 +117,8 @@ lastAppointment: lastAppointment || undefined,
 nextAppointment: nextAppointment || undefined,
 status,
 notes: notes || undefined,
-doctorName: doctorName || undefined,
+doctorName: doctorName || null,
+dentistId: dentistId || null,
 };
 
             if (existingTreatment) {
@@ -262,16 +273,14 @@ onChange={(e) => setNextAppointment(e.target.value)}
 
 {/* Dentista */}
 <div className="space-y-2">
-<Label htmlFor="doctorName" className="flex items-center gap-1">
+<Label htmlFor="dentistId" className="flex items-center gap-1">
 <User className="h-4 w-4 text-teal-500" />
 Dentista Responsável
 </Label>
-<Input
-id="doctorName"
-placeholder="Nome do dentista"
-value={doctorName}
-onChange={(e) => setDoctorName(e.target.value)}
-/>
+<DentistSelect id="dentistId" value={dentistId} onChange={handleSelectDentist} fallbackLabel={doctorName} />
+{!dentistId && doctorName && (
+<p className="text-sm text-muted-foreground">Dentista atual (texto livre): {doctorName}</p>
+)}
 </div>
 
 {/* Notes */}

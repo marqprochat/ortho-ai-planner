@@ -15,6 +15,8 @@ import Sidebar from "@/components/Sidebar";
 import { useAuth } from "@/context/AuthContext";
 import { patientService, Patient } from "@/services/patientService";
 import { PatientSelector } from "@/components/PatientSelector";
+import { DentistSelect } from "@/components/DentistSelect";
+import type { Dentist } from "@/services/dentistService";
 import { getCookie } from "@/lib/cookieUtils";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -66,6 +68,7 @@ const initialFormData = {
   consideracoes: "",
   nomeOrtodontista: "",
   croOrtodontista: "",
+  dentistId: "",
   dataPlanejamento: getTodayValue(),
 };
 
@@ -145,6 +148,12 @@ const NovoPlanejamentoIA = () => {
     setPatientId(patient.id);
     setIsPatientSearchOpen(false);
     toast.success(`Paciente ${patient.name} selecionado!`);
+  };
+
+  const handleSelectDentist = (dentist: Dentist | null) => {
+    setFormData(prev => dentist
+      ? { ...prev, dentistId: dentist.id, nomeOrtodontista: dentist.name, croOrtodontista: dentist.cro }
+      : { ...prev, dentistId: "" });
   };
 
   // Reset form when "isNew" state is passed from navigation
@@ -578,6 +587,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         await patientService.updatePlanning(planningId, {
           status: 'DOCUMENTACAO_ENVIADA',
           structuredPlan: { ...formData, patientId: patientResult.patient.id },
+          dentistId: formData.dentistId || null,
         });
         toast.success("Documentação atualizada com sucesso!");
       } else {
@@ -586,6 +596,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
           title: `Documentação Inicial - ${new Date().toLocaleDateString()}`,
           status: 'DOCUMENTACAO_ENVIADA',
           structuredPlan: { ...formData, patientId: patientResult.patient.id },
+          dentistId: formData.dentistId || null,
         });
         setPlanningId(newPlanning.id);
         toast.success("Documentação salva com sucesso!");
@@ -1090,9 +1101,10 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
             {/* Responsável Técnico */}
             <Card>
               <CardHeader><CardTitle>Responsável Técnico</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2"><Label htmlFor="nomeOrtodontista">Nome do ortodontista *</Label><Input id="nomeOrtodontista" required value={formData.nomeOrtodontista} onChange={(e) => setFormData({ ...formData, nomeOrtodontista: e.target.value })} /></div>
-                <div className="space-y-2"><Label htmlFor="croOrtodontista">CRO do ortodontista *</Label><Input id="croOrtodontista" required value={formData.croOrtodontista} onChange={(e) => setFormData({ ...formData, croOrtodontista: e.target.value })} /></div>
+              <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2"><Label htmlFor="dentistId">Ortodontista cadastrado</Label><DentistSelect id="dentistId" value={formData.dentistId} onChange={handleSelectDentist} fallbackLabel={formData.nomeOrtodontista} /></div>
+                <div className="space-y-2"><Label htmlFor="nomeOrtodontista">Nome do ortodontista *</Label><Input id="nomeOrtodontista" required readOnly={!!formData.dentistId} value={formData.nomeOrtodontista} onChange={(e) => setFormData({ ...formData, nomeOrtodontista: e.target.value })} /></div>
+                <div className="space-y-2"><Label htmlFor="croOrtodontista">CRO do ortodontista *</Label><Input id="croOrtodontista" required readOnly={!!formData.dentistId} value={formData.croOrtodontista} onChange={(e) => setFormData({ ...formData, croOrtodontista: e.target.value })} /></div>
                 <div className="space-y-2"><Label htmlFor="dataPlanejamento">Data *</Label><Input id="dataPlanejamento" type="date" required value={formData.dataPlanejamento} onChange={(e) => setFormData({ ...formData, dataPlanejamento: e.target.value })} /></div>
               </CardContent>
             </Card>
