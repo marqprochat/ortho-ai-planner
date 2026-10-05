@@ -47,6 +47,7 @@ model Clinic {
   tenant      Tenant       @relation(fields: [tenantId], references: [id])
   patients    Patient[]
   userClinics UserClinic[]
+  dentists    Dentist[]
 }
 
 model UserClinic {
@@ -167,17 +168,21 @@ model Planning {
   originalReport String?
   aiResponse     String?
   structuredPlan Json?
+  dentistId      String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   contracts      Contract[]
   treatment      Treatment?
   patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dentist        Dentist?   @relation(fields: [dentistId], references: [id], onDelete: SetNull)
 }
 
 model Treatment {
 id String @id @default(uuid())
 planningId String? @unique
 patientId String?
+dentistId String?
+dentistCro String? // CRO do dentista no momento do vínculo (cópia)
 status String @default("EM_ANDAMENTO") // EM_ANDAMENTO | CONCLUIDO | CANCELADO
 startDate DateTime @default(now()) // Data de início do tratamento
 deadline DateTime? // Prazo final (convênio ou estipulado)
@@ -190,6 +195,7 @@ createdAt DateTime @default(now())
 updatedAt DateTime @updatedAt
 planning Planning? @relation(fields: [planningId], references: [id], onDelete: Cascade)
 patient Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+dentist Dentist? @relation(fields: [dentistId], references: [id], onDelete: SetNull)
 }
 
 model Contract {
@@ -320,4 +326,20 @@ model DisparoIndividualLog {
 
   @@index([scheduleLogId])
   @@index([executedAt])
+}
+
+model Dentist {
+  id           String      @id @default(uuid())
+  clinicId     String
+  easyDentalId String?
+  name         String
+  cro          String
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  clinic       Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  plannings    Planning[]
+  treatments   Treatment[]
+
+  @@unique([clinicId, cro])
 }
