@@ -103,6 +103,15 @@ const getAuthHeaders = () => {
     return headers;
 };
 
+const errorFrom = async (response: Response, fallback: string): Promise<Error> => {
+    try {
+        const body = await response.json();
+        return new Error(body?.error || fallback);
+    } catch {
+        return new Error(fallback);
+    }
+};
+
 export const patientService = {
     async getPatients(): Promise<Patient[]> {
         const response = await fetch(`${API_URL}/patients`, {
@@ -261,7 +270,7 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao criar planejamento');
+            throw await errorFrom(response, 'Erro ao criar planejamento');
         }
 
         return response.json();
@@ -275,7 +284,7 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao atualizar planejamento');
+            throw await errorFrom(response, 'Erro ao atualizar planejamento');
         }
 
         return response.json();
@@ -390,7 +399,7 @@ body: JSON.stringify(data),
 });
 
 if (!response.ok) {
-throw new Error('Erro ao criar tratamento');
+throw await errorFrom(response, 'Erro ao criar tratamento');
 }
 
 return response.json();
@@ -418,7 +427,7 @@ body: JSON.stringify(data),
 });
 
 if (!response.ok) {
-throw new Error('Erro ao atualizar tratamento');
+throw await errorFrom(response, 'Erro ao atualizar tratamento');
 }
 
 return response.json();

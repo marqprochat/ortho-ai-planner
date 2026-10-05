@@ -714,7 +714,8 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
         patientName: formData.nomePaciente,
         isDentistPlan,
         aparelhos,
-        frequenciaRetorno: formData.frequenciaRetorno
+        frequenciaRetorno: formData.frequenciaRetorno,
+        dentistId: formData.dentistId || null
       },
     });
   };

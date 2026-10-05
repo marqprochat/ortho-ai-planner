@@ -136,7 +136,7 @@ dentistId: dentistId || null,
             }
         } catch (error) {
             console.error(error);
-            toast.error("Erro ao salvar tratamento");
+            toast.error((error as Error)?.message || "Erro ao salvar tratamento");
         } finally {
             setIsSaving(false);
         }
