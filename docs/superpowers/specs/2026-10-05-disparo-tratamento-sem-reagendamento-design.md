@@ -17,13 +17,19 @@ No Disparador (Dental Connect), listar e enviar mensagem aos pacientes que estã
 
 Novo valor de `searchMode`: `tratamento-sem-reagendamento` (ao lado de `agendamento`, `ultima-consulta`, `aniversario`). `searchMode` é texto livre em `MessageTemplate` e `ScheduledDisparo`, então não há mudança de schema nem migration.
 
-A lista é a interseção de três fontes que já existem:
+A lista é a interseção de quatro fontes que já existem:
 
 1. EasyDental ao vivo: `RPCGetUltimaConsulta` (via `fetchUltimaConsulta` em `backend/src/lib/easydental.ts`) na janela de datas informada. Cada registro traz `PACIENTE`, `CODIGO`, `ULTIMA_CONSULTA`, `CELULAR`, `CONSULTA_AGENDADA`, `UNIDADE`.
 2. Filtro "sem consulta futura": `CONSULTA_AGENDADA` vazia.
 3. Tratamentos `EM_ANDAMENTO` do tenant no Planner, ligados ao registro do EasyDental pelo "Número do Paciente" (`Patient.patientNumber`), usando `normalizeCode` de `backend/src/services/appointmentSync.ts`. Quem não está em tratamento, ou não tem número de paciente correspondente, fica fora.
+4. Exclui quem teve QUALQUER consulta depois do fim da janela (consulta em todas as unidades de dtTermino+1 até hoje), porque ULTIMA_CONSULTA é a última dentro da janela e não a última do paciente.
 
-Pressuposto a confirmar no teste: a janela `dt_inicio`/`dt_termino` de `RPCGetUltimaConsulta` filtra pela data da última consulta (é como o modo "Última consulta" e o `appointmentSync` já a usam).
+Semântica medida do `RPCGetUltimaConsulta` (verificada em dados reais em 2026-10-05):
+
+- As datas (`ULTIMA_CONSULTA`, `CONSULTA_AGENDADA`) chegam como ISO (`2026-09-11T00:00:00.000Z`); compara-se só `AAAA-MM-DD`.
+- `ULTIMA_CONSULTA` NÃO é a última consulta do paciente: é a última dentro da janela `[dt_inicio, dt_termino]` consultada, e por unidade. Houve 188 pacientes em duas janelas disjuntas com `ULTIMA_CONSULTA` diferente em cada uma. Por isso a busca "−210..−30 dias" também devolve quem voltou depois do dia −30; a regra 4 tira esses pacientes (busca extra, em todas as unidades, de dtTermino+1 até hoje).
+- `CONSULTA_AGENDADA` é do paciente (igual em todas as unidades) e só traz datas futuras; logo "consulta agendada em qualquer unidade exclui o paciente" vale mesmo com filtro de unidade.
+- Todo `ULTIMA_CONSULTA` devolvido cai dentro da janela pedida; a checagem defensiva da janela não descarta registro legítimo.
 
 "Há mais de N dias" não ganha campo novo: é a própria janela. Término = hoje − N; início = hoje − janela máxima (padrão 180 dias). No Manual, o modelo de mensagem preenche essas datas por padrão e o usuário ajusta na tela. No cron, valem `dtInicioOffset`/`dtTerminoOffset` do agendamento (por exemplo −180 e −30).
 
@@ -65,6 +71,7 @@ Cron: dispara → resolve o tenant por `createdBy` → mesma busca ao vivo → e
 - Gravar dados no Planner a partir do Disparador; sincronizar tratamentos como efeito da busca.
 - Filtrar por clínica do Planner (o filtro de unidades do EasyDental já cobre).
 - Mudanças de schema.
+- Limitação conhecida: a tabela de disparos agendados não tem coluna de tenant, então os agendamentos só são isolados por tenant via `createdBy`.
 
 ## Testes
 
