@@ -57,7 +57,7 @@ Cron: dispara → resolve o tenant por `createdBy` → mesma busca ao vivo → e
 ## Segurança e privacidade
 
 - O tenant é sempre derivado do usuário autenticado (ou de `createdBy` no cron); o body da requisição não escolhe tenant.
-- Nenhum teste pode acionar envio real: o `docker-compose.yml` traz uma URL de webhook do BotConversa por padrão. No ambiente de teste, `BOTCONVERSA_WEBHOOK_URL` deve ficar vazia ou apontar para um destino fictício. Os testes só leem do EasyDental.
+- Nenhum teste pode acionar envio real: o `docker-compose.yml` traz uma URL de webhook do BotConversa por padrão. No ambiente de teste, `BOTCONVERSA_WEBHOOK_URL` deve apontar para um destino fictício inalcançável (por exemplo `http://127.0.0.1:9/disabled`). Vazia não serve: o compose usa `${VAR:-padrão}`, que volta ao webhook real quando a variável está vazia. Os testes só leem do EasyDental.
 - O Disparador não grava nada no Planner.
 
 ## Fora do escopo
