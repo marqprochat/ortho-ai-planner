@@ -37,7 +37,7 @@ Semântica medida do `RPCGetUltimaConsulta` (verificada em dados reais em 2026-1
 
 Backend (`backend/src/`):
 - `lib/followUp.ts` (novo, puro, testável): funções que recebem registros do EasyDental e o conjunto de códigos em tratamento e devolvem os registros elegíveis; sem Prisma nem rede.
-- `services/treatmentFollowUp.ts` (novo): `findTreatmentsWithoutReschedule({ tenantId, dtInicio, dtTermino, unidades })` busca os registros ao vivo, carrega os códigos dos tratamentos `EM_ANDAMENTO` do tenant e aplica `lib/followUp.ts`; e `revalidateFollowUp(...)`, que refaz a busca e devolve os códigos que continuam elegíveis.
+- `services/treatmentFollowUp.ts` (novo): `findTreatmentsWithoutReschedule({ tenantId, dtInicio, dtTermino, unidades })` busca os registros ao vivo (modo estrito) na janela e, em paralelo, os registros de todas as unidades de `dtTermino+1` até hoje (quem consultou depois da janela sai), carrega os códigos dos tratamentos `EM_ANDAMENTO` do tenant e aplica `lib/followUp.ts`; e `revalidateFollowUp(...)`, que refaz a busca e devolve os códigos que continuam elegíveis.
 - `controllers/followUpController.ts` (novo): `POST /api/follow-up/treatments` e `POST /api/follow-up/treatments/revalidate`, ambos com `authMiddleware` e `requireAppAccess('disparos')`; o tenant vem do usuário autenticado, nunca do body.
 - `jobs/disparoCron.ts`: novo ramo para `tratamento-sem-reagendamento`; o tenant é o do usuário em `createdBy`. Nos pontos que hoje tratam `ultima-consulta` (montagem do payload, `data_agendamento`, `data`, `inicio`), o novo modo se comporta igual.
 - `index.ts`: registro das rotas.
@@ -75,5 +75,5 @@ Cron: dispara → resolve o tenant por `createdBy` → mesma busca ao vivo → e
 
 ## Testes
 
-- Unitários (`node:test`) em `lib/followUp.ts`: registro sem consulta agendada entra; com consulta agendada sai; paciente fora do conjunto de tratamentos sai; normalização de código (`653` x `000653`); duplicados de unidades; datas vazias.
-- Verificação no host de teste (`192.168.15.7`): rotas respondem, o tenant vem do token, a janela de datas se comporta como o pressuposto, a revalidação tira quem reagendou, e o cron com `createdBy` inválido falha com erro claro. Sem envio real.
+- Unitários (`node:test`) em `lib/followUp.ts`: registro sem consulta agendada entra; com consulta agendada sai; paciente fora do conjunto de tratamentos sai; normalização de código (`653` x `000653`); duplicados de unidades; datas vazias; checagem da janela de datas (limites inclusivos, data ausente ou ilegível excluída); exclusão de quem consultou depois da janela (`seenAfterCodes`); `addDays` e `recentWindow`. O serviço e o modo estrito não têm teste automatizado (dependem de EasyDental e Prisma): são cobertos pela verificação ao vivo abaixo.
+- Verificação no host de teste (`192.168.15.7`): rotas respondem, o tenant vem do token, o modo estrito funciona com todas as unidades reais (nenhuma resposta fora do formato de lista) e quem consultou depois da janela não aparece, a revalidação tira quem reagendou, e o cron com `createdBy` inválido falha com erro claro. Sem envio real.
