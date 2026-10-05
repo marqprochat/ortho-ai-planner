@@ -38,11 +38,14 @@ export interface UltimaConsultaRecord {
     UNIDADE: string;
 }
 
-// RPCGetUltimaConsulta em todas as unidades informadas (ou todas as ativas)
+// RPCGetUltimaConsulta em todas as unidades informadas (ou todas as ativas).
+// Por padrao, a falha de uma unidade e registrada e ignorada. Com { strict: true }
+// qualquer falha e propagada (usado quando uma lista vazia por erro seria enganosa).
 export async function fetchUltimaConsulta(
     dt_inicio: string,
     dt_termino: string,
-    unidades?: string[]
+    unidades?: string[],
+    options: { strict?: boolean } = {}
 ): Promise<UltimaConsultaRecord[]> {
     const targetUnits = unidades && unidades.length > 0 ? unidades : await listUnidades();
     if (targetUnits.length === 0) return [];
@@ -52,6 +55,7 @@ export async function fetchUltimaConsulta(
             rpcCall('RPCGetUltimaConsulta', { dt_inicio, dt_termino, nm_unidade })
                 .then((data) => (Array.isArray(data) ? data : data ? [data] : []))
                 .catch((err) => {
+                    if (options.strict) throw err;
                     console.error(`Error fetching ultima consulta for unit ${nm_unidade}:`, err.message);
                     return [];
                 })

@@ -25,6 +25,7 @@ import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, ge
 import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
 import { listMessageTemplates, getMessageTemplate, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate } from './controllers/messageTemplateController';
+import { searchFollowUpTreatments, revalidateFollowUpTreatments } from './controllers/followUpController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -147,6 +148,10 @@ app.post('/api/easydental/ultima-consulta', authMiddleware, requireAppAccess('di
 app.post('/api/easydental/aniversarios', authMiddleware, requireAppAccess('disparos'), getAniversarios);
 app.post('/api/easydental/paciente/search', authMiddleware, requireAppAccess('planner'), searchPaciente);
 app.post('/api/easydental/prestador/link', authMiddleware, requireAppAccess('planner'), linkPrestadorCPF);
+
+// Follow-up Planner x Disparador (pacientes em tratamento sem reagendamento)
+app.post('/api/follow-up/treatments', authMiddleware, requireAppAccess('disparos'), searchFollowUpTreatments);
+app.post('/api/follow-up/treatments/revalidate', authMiddleware, requireAppAccess('disparos'), revalidateFollowUpTreatments);
 
 // Message Dispatch Routes (BotConversa)
 app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sendMessage);
