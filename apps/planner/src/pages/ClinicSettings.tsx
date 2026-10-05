@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DentistManager } from "@/components/DentistManager";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { useClinic } from "@/context/ClinicContext";
@@ -164,6 +166,12 @@ export default function ClinicSettings() {
                         <p className="text-muted-foreground">Gerencie as informações da sua clínica para uso em contratos e documentos</p>
                     </div>
 
+                    <Tabs defaultValue="dados" className="space-y-6">
+                        <TabsList>
+                            <TabsTrigger value="dados">Dados da Clínica</TabsTrigger>
+                            <TabsTrigger value="dentistas">Dentistas</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="dados">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
@@ -399,6 +407,11 @@ export default function ClinicSettings() {
                             </div>
                         </form>
                     </Form>
+                        </TabsContent>
+                        <TabsContent value="dentistas">
+                            <DentistManager clinicId={currentClinic.id} />
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </main>
         </div>
