@@ -33,7 +33,7 @@ model Dentist {
 }
 ```
 
-- `Planning.dentistId String?` com `onDelete: SetNull`; `Planning.dentistName String?` e `Planning.dentistCro String?` como cópia.
+- `Planning.dentistId String?` com `onDelete: SetNull`. A cópia de nome e CRO do planejamento já existe em `structuredPlan` (`nomeOrtodontista`, `croOrtodontista`), então não há colunas novas de nome/CRO em `Planning`.
 - `Treatment.dentistId String?` com `onDelete: SetNull`; `Treatment.doctorName` permanece como cópia; adicionar `Treatment.dentistCro String?`.
 - Migration apenas aditiva (campos novos opcionais).
 
