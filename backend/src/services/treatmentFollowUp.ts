@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { fetchUltimaConsulta, UltimaConsultaRecord } from '../lib/easydental';
 import { normalizeCode } from '../lib/patientCode';
-import { selectFollowUpRecords } from '../lib/followUp';
+import { selectFollowUpRecords, recentWindow } from '../lib/followUp';
 
 export interface FollowUpQuery {
     tenantId: string;
@@ -41,11 +41,30 @@ export const findTreatmentsWithoutReschedule = async (query: FollowUpQuery): Pro
     // Um tenantId indefinido viraria "sem filtro" no Prisma: nunca prosseguir sem ele.
     if (!query.tenantId) throw new Error('tenantId é obrigatório');
 
-    const [records, treatmentCodes] = await Promise.all([
+    // ULTIMA_CONSULTA e a ultima DENTRO da janela: quem foi atendido depois do fim dela (em qualquer unidade)
+    // nao tem consulta futura apenas por ter acabado de vir e nao deve ser listado.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const recent = recentWindow(query.dtTermino, todayIso);
+
+    const [records, recentRecords, treatmentCodes] = await Promise.all([
         fetchUltimaConsulta(query.dtInicio, query.dtTermino, query.unidades, { strict: true }),
+        recent
+            ? fetchUltimaConsulta(recent.dtInicio, recent.dtTermino, undefined, { strict: true })
+            : Promise.resolve([] as UltimaConsultaRecord[]),
         loadTreatmentCodes(query.tenantId),
     ]);
-    return selectFollowUpRecords(records, treatmentCodes);
+
+    const seenAfterCodes = new Set<string>();
+    for (const rec of recentRecords) {
+        const code = normalizeCode(rec?.CODIGO);
+        if (code) seenAfterCodes.add(code);
+    }
+
+    return selectFollowUpRecords(records, treatmentCodes, {
+        dtInicio: query.dtInicio,
+        dtTermino: query.dtTermino,
+        seenAfterCodes,
+    });
 };
 
 // Refaz a busca ao vivo e devolve, dos `codigos` recebidos, os que continuam elegiveis.

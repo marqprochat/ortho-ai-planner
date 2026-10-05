@@ -48,12 +48,20 @@ export async function fetchUltimaConsulta(
     options: { strict?: boolean } = {}
 ): Promise<UltimaConsultaRecord[]> {
     const targetUnits = unidades && unidades.length > 0 ? unidades : await listUnidades();
-    if (targetUnits.length === 0) return [];
+    if (targetUnits.length === 0) {
+        if (options.strict) throw new Error('Nenhuma unidade de atendimento encontrada no EasyDental');
+        return [];
+    }
 
     const results = await Promise.all(
         targetUnits.map((nm_unidade) =>
             rpcCall('RPCGetUltimaConsulta', { dt_inicio, dt_termino, nm_unidade })
-                .then((data) => (Array.isArray(data) ? data : data ? [data] : []))
+                .then((data) => {
+                    if (options.strict && data != null && !Array.isArray(data)) {
+                        throw new Error('Resposta inesperada do EasyDental para a unidade ' + nm_unidade);
+                    }
+                    return Array.isArray(data) ? data : data ? [data] : [];
+                })
                 .catch((err) => {
                     if (options.strict) throw err;
                     console.error(`Error fetching ultima consulta for unit ${nm_unidade}:`, err.message);

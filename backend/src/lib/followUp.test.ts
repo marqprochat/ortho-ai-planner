@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeCode } from './patientCode';
-import { selectFollowUpRecords, parseFollowUpParams, FOLLOW_UP_SEARCH_MODE } from './followUp';
+import { selectFollowUpRecords, parseFollowUpParams, FOLLOW_UP_SEARCH_MODE, addDays, recentWindow } from './followUp';
 import type { UltimaConsultaRecord } from './easydental';
 
 const rec = (over: Partial<UltimaConsultaRecord> = {}): UltimaConsultaRecord => ({
@@ -142,4 +142,93 @@ test('parseFollowUpParams limita a quantidade de códigos', () => {
     const codigos = Array.from({ length: 5001 }, (_, i) => String(i));
     const result = parseFollowUpParams({ dt_inicio: '2026-04-01', dt_termino: '2026-09-01', codigos }, { requireCodes: true });
     assert.deepEqual(result, { ok: false, error: 'codigos excede o limite de 5000' });
+});
+
+test('addDays soma dias em UTC atravessando mês, ano e valores negativos', () => {
+    assert.equal(addDays('2026-10-05', 1), '2026-10-06');
+    assert.equal(addDays('2026-01-31', 1), '2026-02-01');
+    assert.equal(addDays('2026-12-31', 1), '2027-01-01');
+    assert.equal(addDays('2026-03-01', -1), '2026-02-28');
+    assert.equal(addDays('2026-01-01', -1), '2025-12-31');
+    assert.equal(addDays('2026-10-05', 0), '2026-10-05');
+});
+
+test('recentWindow devolve [dtTermino+1, hoje] ou null', () => {
+    assert.deepEqual(recentWindow('2026-09-05', '2026-10-05'), { dtInicio: '2026-09-06', dtTermino: '2026-10-05' });
+    assert.equal(recentWindow('2026-10-05', '2026-10-05'), null);
+    assert.equal(recentWindow('2026-10-20', '2026-10-05'), null);
+    assert.deepEqual(recentWindow('2026-10-04', '2026-10-05'), { dtInicio: '2026-10-05', dtTermino: '2026-10-05' });
+});
+
+test('janela dtInicio/dtTermino: mantém dentro (limites inclusivos) e exclui fora', () => {
+    const opts = { dtInicio: '2026-03-01', dtTermino: '2026-09-01' };
+    const result = selectFollowUpRecords(
+        [
+            rec({ CODIGO: '000001', ULTIMA_CONSULTA: '2026-06-15' }),
+            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '2026-03-01' }),
+            rec({ CODIGO: '000003', ULTIMA_CONSULTA: '2026-09-01' }),
+            rec({ CODIGO: '000004', ULTIMA_CONSULTA: '2026-02-28' }),
+            rec({ CODIGO: '000005', ULTIMA_CONSULTA: '2026-09-02' }),
+        ],
+        codes('1', '2', '3', '4', '5'),
+        opts
+    );
+    assert.deepEqual(result.map((r) => r.CODIGO), ['000001', '000002', '000003']);
+});
+
+test('janela: ULTIMA_CONSULTA ausente ou ilegível é excluída', () => {
+    const opts = { dtInicio: '2026-03-01', dtTermino: '2026-09-01' };
+    const result = selectFollowUpRecords(
+        [
+            rec({ CODIGO: '000001', ULTIMA_CONSULTA: null as unknown as string }),
+            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '' }),
+            rec({ CODIGO: '000003', ULTIMA_CONSULTA: 'ontem' }),
+            rec({ CODIGO: '000004', ULTIMA_CONSULTA: undefined as unknown as string }),
+        ],
+        codes('1', '2', '3', '4'),
+        opts
+    );
+    assert.equal(result.length, 0);
+});
+
+test('janela: aceita ISO com horário (2026-09-11T00:00:00.000Z)', () => {
+    const opts = { dtInicio: '2026-09-01', dtTermino: '2026-09-11' };
+    const result = selectFollowUpRecords(
+        [
+            rec({ CODIGO: '000001', ULTIMA_CONSULTA: '2026-09-11T00:00:00.000Z' }),
+            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '2026-09-12T00:00:00.000Z' }),
+        ],
+        codes('1', '2'),
+        opts
+    );
+    assert.deepEqual(result.map((r) => r.CODIGO), ['000001']);
+});
+
+test('seenAfterCodes exclui quem consultou depois da janela (código normalizado vs registro com zeros)', () => {
+    const seenAfterCodes = new Set([normalizeCode('653') as string]);
+    const result = selectFollowUpRecords(
+        [rec({ CODIGO: '000653' }), rec({ CODIGO: '000700' })],
+        codes('653', '700'),
+        { seenAfterCodes }
+    );
+    assert.deepEqual(result.map((r) => r.CODIGO), ['000700']);
+});
+
+test('regressão: 000653 sem agenda na unidade A e 653 com agenda na unidade B sai por completo', () => {
+    const result = selectFollowUpRecords(
+        [
+            rec({ CODIGO: '000653', UNIDADE: 'Unidade A', CONSULTA_AGENDADA: null }),
+            rec({ CODIGO: '653', UNIDADE: 'Unidade B', CONSULTA_AGENDADA: '2026-10-20T00:00:00.000Z' }),
+        ],
+        codes('653'),
+        { dtInicio: '2026-03-01', dtTermino: '2026-09-01' }
+    );
+    assert.equal(result.length, 0);
+});
+
+test('sem options mantém o comportamento antigo (sem checar janela nem seenAfter)', () => {
+    const result = selectFollowUpRecords([rec({ ULTIMA_CONSULTA: 'qualquer coisa' })], codes('653'));
+    assert.equal(result.length, 1);
+    const withEmpty = selectFollowUpRecords([rec({ ULTIMA_CONSULTA: 'qualquer coisa' })], codes('653'), {});
+    assert.equal(withEmpty.length, 1);
 });
