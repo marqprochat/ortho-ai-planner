@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, hasPermission } from '../middleware/authMiddleware';
+import { findActiveClinicDentist } from '../services/dentists';
 
 // Get all plannings for a patient
 export const getPlannings = async (req: AuthRequest, res: Response) => {
@@ -39,7 +40,7 @@ export const getPlannings = async (req: AuthRequest, res: Response) => {
 // Create a new planning
 export const createPlanning = async (req: AuthRequest, res: Response) => {
     try {
-        const { patientId, title, originalReport, status, structuredPlan } = req.body;
+        const { patientId, title, originalReport, status, structuredPlan, dentistId } = req.body;
         const { tenantId, clinicId } = req; // Proper destructuring from AuthRequest
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -58,13 +59,23 @@ export const createPlanning = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ error: 'Paciente não encontrado' });
         }
 
+        let validDentistId: string | null = null;
+        if (dentistId) {
+            const dentist = await findActiveClinicDentist(dentistId, clinicId);
+            if (!dentist) {
+                return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+            }
+            validDentistId = dentist.id;
+        }
+
         const planning = await prisma.planning.create({
             data: {
                 title,
                 originalReport,
                 patientId,
                 status: status || 'DRAFT',
-                structuredPlan
+                structuredPlan,
+                dentistId: validDentistId
             }
         });
 
@@ -79,7 +90,7 @@ export const createPlanning = async (req: AuthRequest, res: Response) => {
 export const updatePlanning = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { status, aiResponse, structuredPlan } = req.body;
+        const { status, aiResponse, structuredPlan, dentistId } = req.body;
         const { tenantId, clinicId } = req;
 
         const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -100,12 +111,24 @@ export const updatePlanning = async (req: AuthRequest, res: Response) => {
             return res.status(404).json({ error: 'Planejamento não encontrado' });
         }
 
+        let dentistData: { dentistId?: string | null } = {};
+        if (dentistId === null || dentistId === '') {
+            dentistData = { dentistId: null };
+        } else if (dentistId !== undefined && dentistId !== planning.dentistId) {
+            const dentist = await findActiveClinicDentist(dentistId, clinicId);
+            if (!dentist) {
+                return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+            }
+            dentistData = { dentistId: dentist.id };
+        }
+
         const updated = await prisma.planning.update({
             where: { id },
             data: {
                 status,
                 aiResponse,
-                structuredPlan
+                structuredPlan,
+                ...dentistData
             }
         });
 

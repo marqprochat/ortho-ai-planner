@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, hasPermission } from '../middleware/authMiddleware';
 import { syncTreatmentAppointments } from '../services/appointmentSync';
+import { findActiveClinicDentist } from '../services/dentists';
 
 // Get all treatments for tenant/clinic
 export const getAllTreatments = async (req: AuthRequest, res: Response) => {
@@ -122,7 +123,7 @@ export const getTreatmentById = async (req: AuthRequest, res: Response) => {
 // Create treatment
 export const createTreatment = async (req: AuthRequest, res: Response) => {
 try {
-const { planningId, patientId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName } = req.body;
+const { planningId, patientId, startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName, dentistId } = req.body;
 const { tenantId, clinicId } = req;
 
 const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -173,6 +174,15 @@ return res.status(404).json({ error: 'Paciente não encontrado' });
 return res.status(400).json({ error: 'É necessário fornecer patientId ou planningId' });
 }
 
+let dentistData: { dentistId?: string; doctorName?: string; dentistCro?: string } = {};
+if (dentistId) {
+const dentist = await findActiveClinicDentist(dentistId, clinicId);
+if (!dentist) {
+return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+}
+dentistData = { dentistId: dentist.id, doctorName: dentist.name, dentistCro: dentist.cro };
+}
+
 const treatment = await prisma.treatment.create({
 data: {
 planningId: planningId || null,
@@ -184,7 +194,8 @@ lastAppointment: lastAppointment ? new Date(lastAppointment) : null,
 nextAppointment: nextAppointment ? new Date(nextAppointment) : null,
 notes: notes || null,
 status: status || 'EM_ANDAMENTO',
-doctorName: doctorName || null
+doctorName: doctorName || null,
+...dentistData
 },
 include: {
 planning: {
@@ -213,7 +224,7 @@ res.status(500).json({ error: 'Erro ao criar tratamento' });
 export const updateTreatment = async (req: AuthRequest, res: Response) => {
 try {
 const { id } = req.params;
-const { startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName } = req.body;
+const { startDate, deadline, endDate, lastAppointment, nextAppointment, notes, status, doctorName, dentistId } = req.body;
 const { tenantId, clinicId } = req;
 
 const canManageAll = hasPermission(req.user, 'manage', 'planning');
@@ -234,6 +245,17 @@ if (!treatment) {
 return res.status(404).json({ error: 'Tratamento não encontrado' });
 }
 
+let dentistData: { dentistId?: string | null; doctorName?: string; dentistCro?: string | null } = {};
+if (dentistId === null || dentistId === '') {
+dentistData = { dentistId: null, dentistCro: null };
+} else if (dentistId !== undefined && dentistId !== treatment.dentistId) {
+const dentist = await findActiveClinicDentist(dentistId, clinicId);
+if (!dentist) {
+return res.status(400).json({ error: 'Dentista inválido para esta clínica' });
+}
+dentistData = { dentistId: dentist.id, doctorName: dentist.name, dentistCro: dentist.cro };
+}
+
 const updated = await prisma.treatment.update({
 where: { id },
 data: {
@@ -244,7 +266,8 @@ data: {
 ...(nextAppointment !== undefined && { nextAppointment: nextAppointment ? new Date(nextAppointment) : null }),
 ...(notes !== undefined && { notes }),
 ...(status !== undefined && { status }),
-...(doctorName !== undefined && { doctorName })
+...(doctorName !== undefined && { doctorName }),
+...dentistData
 }
 });
 
