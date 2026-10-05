@@ -1,6 +1,8 @@
 import cron from 'node-cron';
 import prisma from '../lib/prisma';
 import type { ScheduledDisparo } from '@prisma/client';
+import { FOLLOW_UP_SEARCH_MODE } from '../lib/followUp';
+import { findTreatmentsWithoutReschedule, resolveTenantByUserId } from '../services/treatmentFollowUp';
 
 const EASYDENTAL_API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1/rpc';
 const EASYDENTAL_API_KEY = process.env.EASYDENTAL_API_KEY || '';
@@ -150,6 +152,9 @@ async function sendViaBotConversa(payload: Record<string, string>): Promise<void
 export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promise<void> {
     const dtInicio = offsetDate(schedule.dtInicioOffset);
     const dtTermino = offsetDate(schedule.dtTerminoOffset);
+    // Os dois modos usam registros no formato do RPCGetUltimaConsulta
+    const usesUltimaConsultaFormat =
+        schedule.searchMode === 'ultima-consulta' || schedule.searchMode === FOLLOW_UP_SEARCH_MODE;
 
     console.log(`[DisparoCron] Running "${schedule.name}" (${schedule.id}) — ${dtInicio} to ${dtTermino}`);
 
@@ -255,6 +260,18 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                     agendamentos = Array.isArray(data) ? data : [];
                 }
             }
+        } else if (schedule.searchMode === FOLLOW_UP_SEARCH_MODE) {
+            // Sem usuario logado no cron: o tenant vem do usuario que criou o agendamento.
+            const tenantId = await resolveTenantByUserId(schedule.createdBy);
+            if (!tenantId) {
+                throw new Error('Não foi possível determinar o tenant do agendamento (usuário criador inválido). Recrie o agendamento com um usuário válido.');
+            }
+            agendamentos = await findTreatmentsWithoutReschedule({
+                tenantId,
+                dtInicio,
+                dtTermino,
+                unidades: schedule.unidades,
+            });
         } else {
             if (schedule.unidades.length > 0) {
                 const results = await Promise.all(
@@ -303,7 +320,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             if (schedule.searchMode === 'aniversario') {
                 dataAg = ag.DT_ANIV || ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
                 horaAg = '';
-            } else if (schedule.searchMode === 'ultima-consulta') {
+            } else if (usesUltimaConsultaFormat) {
                 dataAg = ag.ULTIMA_CONSULTA || '';
                 horaAg = ag.CONSULTA_AGENDADA || '';
             } else {
@@ -393,7 +410,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                     if (schedule.searchMode === 'aniversario') {
                         dataAg = ag.DT_ANIV || ag.DT_NASCIMENTO || ag.ANIVERSARIO || ag.DATA || '';
                         horaAg = '';
-                    } else if (schedule.searchMode === 'ultima-consulta') {
+                    } else if (usesUltimaConsultaFormat) {
                         dataAg = ag.ULTIMA_CONSULTA || '';
                         horaAg = ag.CONSULTA_AGENDADA || '';
                     } else {
@@ -406,15 +423,15 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         telefone: phone,
                         unidade: extractUnit(ag),
                         modelo: schedule.modelo,
-                        data_agendamento: (schedule.searchMode === 'aniversario' || schedule.searchMode === 'ultima-consulta') ? '' : formatAgendamento(dataAg, horaAg),
+                        data_agendamento: (schedule.searchMode === 'aniversario' || usesUltimaConsultaFormat) ? '' : formatAgendamento(dataAg, horaAg),
                         dentista: extractProvider(ag),
                         motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
                         status: extractStatus(ag),
                         tx_codigo_paciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || '',
                         paciente: fullName,
                         celular: phone,
-                        data: schedule.searchMode === 'ultima-consulta' ? (ag.ULTIMA_CONSULTA || '') : dataAg,
-                        inicio: schedule.searchMode === 'ultima-consulta' ? '' : horaAg,
+                        data: usesUltimaConsultaFormat ? (ag.ULTIMA_CONSULTA || '') : dataAg,
+                        inicio: usesUltimaConsultaFormat ? '' : horaAg,
                     };
 
                     // Aggregate all appointment IDs for the same phone: id_agenda_item, Id_agenda_item2, Id_agenda_item3...
