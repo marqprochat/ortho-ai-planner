@@ -168,6 +168,7 @@ export default function App() {
 
     const [isUltimaConsulta, setIsUltimaConsulta] = useState(false);
     const [isAniversario, setIsAniversario] = useState(false);
+    const [isFollowUp, setIsFollowUp] = useState(false);
     const [onlyWithoutScheduled, setOnlyWithoutScheduled] = useState(false);
 
     const currentPreset = useMemo(() => {
@@ -191,12 +192,6 @@ export default function App() {
         }
         return null;
     }, [messageTemplates, selectedModel]);
-
-    // Modo "em tratamento sem reagendamento": derivado do modelo escolhido (sem estado extra que possa dessincronizar)
-    const isFollowUp = useMemo(
-        () => isUltimaConsulta && messageTemplates.find(t => t.code === selectedModel)?.searchMode === FOLLOW_UP_MODE,
-        [isUltimaConsulta, messageTemplates, selectedModel]
-    );
 
     // Auth: read token from URL or sessionStorage, then verify with backend
     useEffect(() => {
@@ -265,7 +260,7 @@ export default function App() {
     // Apply frontend filters
     const filteredMessages = useMemo(() => {
         return messages.filter(msg => {
-            if (isUltimaConsulta || isAniversario) {
+            if (isUltimaConsulta || isAniversario || isFollowUp) {
                 if (isUltimaConsulta && onlyWithoutScheduled && msg.consultaAgendada) {
                     return false;
                 }
@@ -305,7 +300,7 @@ export default function App() {
 
             return true;
         });
-    }, [messages, rawAgendamentos, filters, isUltimaConsulta, isAniversario, onlyWithoutScheduled]);
+    }, [messages, rawAgendamentos, filters, isUltimaConsulta, isAniversario, isFollowUp, onlyWithoutScheduled]);
 
     // Fetch agendamentos
     const handleSearch = useCallback(async () => {
@@ -367,7 +362,7 @@ export default function App() {
 
                 const errCount = msgs.filter(m => m.status === 'error').length;
                 toast.success(`${msgs.length} aniversariante(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
-            } else if (isUltimaConsulta) {
+            } else if (isUltimaConsulta || isFollowUp) {
                 const fetchRecords = isFollowUp ? api.getFollowUpTreatments : api.getUltimaConsulta;
                 const res = await fetchRecords(filters.dtInicio, filters.dtTermino, filters.unidades);
 
@@ -583,7 +578,7 @@ export default function App() {
             const results = await Promise.allSettled(
                 batch.map(group => {
                     const msg = group.firstMsg;
-                    const formattedDate = (isUltimaConsulta || isAniversario) ? '' : formatAgendamento(msg.data, msg.hora);
+                    const formattedDate = (isUltimaConsulta || isAniversario || isFollowUp) ? '' : formatAgendamento(msg.data, msg.hora);
 
                     const extraData: Record<string, any> = {
                         dentista: msg.dentista || '',
@@ -592,8 +587,8 @@ export default function App() {
                         tx_codigo_paciente: msg.txCodigoPaciente || msg.codPaciente || '',
                         paciente: msg.nomeCompleto,
                         celular: msg.telefone,
-                        data: (isUltimaConsulta || isAniversario) ? (msg.ultimaConsulta || msg.data || '') : (msg.data || ''),
-                        inicio: (isUltimaConsulta || isAniversario) ? '' : (msg.hora || '')
+                        data: (isUltimaConsulta || isAniversario || isFollowUp) ? (msg.ultimaConsulta || msg.data || '') : (msg.data || ''),
+                        inicio: (isUltimaConsulta || isAniversario || isFollowUp) ? '' : (msg.hora || '')
                     };
 
                     // Aggregate all appointment IDs for the same phone: id_agenda_item, Id_agenda_item2, Id_agenda_item3...
@@ -641,7 +636,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, followUpSearch]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, isFollowUp, followUpSearch]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -670,15 +665,23 @@ export default function App() {
             const startStr = isFollowUpTpl ? dateOffset(tpl.dayOffset - FOLLOW_UP_WINDOW_DAYS) : dateStr;
             setFilters(prev => ({ ...prev, dtInicio: startStr, dtTermino: dateStr, statusAgendamento: [] }));
 
-            if (tpl.searchMode === 'ultima-consulta' || isFollowUpTpl) {
+            if (isFollowUpTpl) {
+                setIsFollowUp(true);
+                setIsUltimaConsulta(false);
+                setIsAniversario(false);
+                setOnlyWithoutScheduled(false);
+            } else if (tpl.searchMode === 'ultima-consulta') {
+                setIsFollowUp(false);
                 setIsUltimaConsulta(true);
                 setIsAniversario(false);
                 setOnlyWithoutScheduled(false);
             } else if (tpl.searchMode === 'aniversario') {
+                setIsFollowUp(false);
                 setIsUltimaConsulta(false);
                 setIsAniversario(true);
                 setOnlyWithoutScheduled(false);
             } else {
+                setIsFollowUp(false);
                 setIsUltimaConsulta(false);
                 setIsAniversario(false);
             }
@@ -688,6 +691,7 @@ export default function App() {
                 const dateStr = dateOffset(fb.dayOffset);
                 setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
             }
+            setIsFollowUp(false);
             setIsUltimaConsulta(false);
             setIsAniversario(false);
         }
@@ -874,6 +878,7 @@ export default function App() {
                                 onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
                                 isUltimaConsulta={isUltimaConsulta}
                                 isAniversario={isAniversario}
+                                isFollowUp={isFollowUp}
                             />
                         </div>
                     </div>
@@ -907,6 +912,12 @@ export default function App() {
                                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-xs text-primary font-medium mt-4">
                                         <Search className="w-3.5 h-3.5 opacity-70" />
                                         Padrão: {currentPreset.hint}
+                                    </div>
+                                )}
+                                {isFollowUp && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-4 animate-fade-in">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        Modo: Pacientes em tratamento no Planner sem consulta agendada no EasyDental
                                     </div>
                                 )}
                             </div>
@@ -991,6 +1002,7 @@ export default function App() {
                                                     setIsUltimaConsulta(e.target.checked);
                                                     if (e.target.checked) {
                                                         setIsAniversario(false);
+                                                        setIsFollowUp(false);
                                                     }
                                                     setMessages([]);
                                                     setRawAgendamentos([]);
@@ -1026,6 +1038,7 @@ export default function App() {
                                                     setIsAniversario(e.target.checked);
                                                     if (e.target.checked) {
                                                         setIsUltimaConsulta(false);
+                                                        setIsFollowUp(false);
                                                         setOnlyWithoutScheduled(false);
                                                     }
                                                     setMessages([]);
@@ -1033,6 +1046,41 @@ export default function App() {
                                                 }}
                                             />
                                             <span>Aniversário</span>
+                                        </label>
+                                    </div>
+
+                                    {/* Em Tratamento Sem Reagendamento Checkbox */}
+                                    <div className="flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 shadow-sm h-[38px] select-none animate-fade-in">
+                                        <label className="flex items-center gap-1.5 text-sm font-semibold text-foreground/80 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="filter-checkbox"
+                                                checked={isFollowUp}
+                                                onChange={e => {
+                                                    const checked = e.target.checked;
+                                                    setIsFollowUp(checked);
+                                                    if (checked) {
+                                                        setIsUltimaConsulta(false);
+                                                        setIsAniversario(false);
+                                                        setOnlyWithoutScheduled(false);
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            dtInicio: dateOffset(-180),
+                                                            dtTermino: dateOffset(-30),
+                                                            statusAgendamento: []
+                                                        }));
+                                                    } else {
+                                                        setFilters(prev => ({
+                                                            ...prev,
+                                                            dtInicio: dateOffset(1),
+                                                            dtTermino: dateOffset(1)
+                                                        }));
+                                                    }
+                                                    setMessages([]);
+                                                    setRawAgendamentos([]);
+                                                }}
+                                            />
+                                            <span>Em tratamento sem reagendamento</span>
                                         </label>
                                     </div>
 
@@ -1072,6 +1120,7 @@ export default function App() {
                             isSending={isSending}
                             isUltimaConsulta={isUltimaConsulta}
                             isAniversario={isAniversario}
+                            isFollowUp={isFollowUp}
                             loading={loading}
                         />
                     </div>

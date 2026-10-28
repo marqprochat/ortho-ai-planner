@@ -10,6 +10,7 @@ interface MessageTableProps {
     isSending: boolean;
     isUltimaConsulta?: boolean;
     isAniversario?: boolean;
+    isFollowUp?: boolean;
     loading?: boolean;
 }
 
@@ -78,7 +79,8 @@ function StatusBadge({ status, error }: { status: MessageStatus; error?: string 
     );
 }
 
-export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending, isUltimaConsulta, isAniversario, loading }: MessageTableProps) {
+export default function MessageTable({ messages, selectedIds, onToggleSelect, onSelectAll, isSending, isUltimaConsulta, isAniversario, isFollowUp, loading }: MessageTableProps) {
+    const isLastOrFollowUp = isUltimaConsulta || isFollowUp;
     const allSelected = messages.length > 0 && selectedIds.size === messages.filter(m => m.status === 'pending').length;
     const stats = {
         total: messages.length,
@@ -151,13 +153,13 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                             <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                 <div className="flex items-center gap-1">
                                     <Calendar className="w-3.5 h-3.5" />
-                                    {isAniversario ? 'Data Nascimento' : isUltimaConsulta ? 'Última Consulta' : 'Data'}
+                                    {isAniversario ? 'Data Nascimento' : isLastOrFollowUp ? 'Última Consulta' : 'Data'}
                                 </div>
                             </th>
                             {!isAniversario && (
                                 <th className="px-3 py-3 text-left font-semibold text-foreground/70">
                                     <div className="flex items-center gap-1">
-                                        {isUltimaConsulta ? (
+                                        {isLastOrFollowUp ? (
                                             <>
                                                 <Calendar className="w-3.5 h-3.5" />
                                                 <span>Consulta Agendada</span>
@@ -230,11 +232,11 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                 </td>
                                 <td className="px-3 py-2.5 font-medium">{msg.nomeCompleto}</td>
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
-                                    {isAniversario ? formatSimpleDate(msg.data) : isUltimaConsulta ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
+                                    {isAniversario ? formatSimpleDate(msg.data) : isLastOrFollowUp ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
                                 </td>
                                 {!isAniversario && (
                                     <td className="px-3 py-2.5 text-muted-foreground text-xs">
-                                        {isUltimaConsulta ? (
+                                        {isLastOrFollowUp ? (
                                             formatSimpleDate(msg.consultaAgendada) || (
                                                 <span className="text-muted-foreground/60 italic font-normal">Nenhuma</span>
                                             )
