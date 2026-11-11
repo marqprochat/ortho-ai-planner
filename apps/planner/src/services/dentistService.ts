@@ -18,6 +18,50 @@ export interface DentistInput {
     isActive?: boolean;
 }
 
+export type StandardizationRecordType = 'treatment' | 'planning' | 'contract';
+
+export interface StandardizationCandidateItem {
+    id: string;
+    type: StandardizationRecordType;
+    patientId: string | null;
+    patientName: string;
+    label: string;
+    currentName: string | null;
+    currentCro: string | null;
+    currentDentistId: string | null;
+    score: number;
+    reason: string;
+    isSigned?: boolean;
+    snippet?: string;
+}
+
+export interface StandardizationPreviewResult {
+    dentist: { id: string; name: string; cro: string; isActive: boolean };
+    items: StandardizationCandidateItem[];
+    summary: {
+        total: number;
+        treatments: number;
+        plannings: number;
+        contracts: number;
+    };
+}
+
+export interface StandardizationSelection {
+    treatmentIds: string[];
+    planningIds: string[];
+    contractIds: string[];
+}
+
+export interface StandardizationApplyResult {
+    dentist: { id: string; name: string; cro: string };
+    updated: {
+        treatments: number;
+        plannings: number;
+        contracts: number;
+        total: number;
+    };
+}
+
 const getAuthHeaders = () => {
     const token = getCookie('token');
     const selectedClinicId = localStorage.getItem('selectedClinicId');
@@ -78,6 +122,25 @@ export const dentistService = {
             headers: getAuthHeaders(),
         });
         if (!response.ok) throw await failure(response, 'Erro ao excluir dentista');
+        return response.json();
+    },
+
+    async previewStandardization(id: string): Promise<StandardizationPreviewResult> {
+        const response = await fetch(`${API_URL}/dentists/${id}/standardize/preview`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) throw await failure(response, 'Erro ao buscar registros semelhantes');
+        return response.json();
+    },
+
+    async applyStandardization(id: string, selection: StandardizationSelection): Promise<StandardizationApplyResult> {
+        const response = await fetch(`${API_URL}/dentists/${id}/standardize/apply`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(selection),
+        });
+        if (!response.ok) throw await failure(response, 'Erro ao padronizar registros');
         return response.json();
     },
 };

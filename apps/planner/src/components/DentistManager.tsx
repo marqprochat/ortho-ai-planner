@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useHasPermission } from "@/hooks/useHasPermission";
 import { dentistService, Dentist } from "@/services/dentistService";
+import { StandardizeDentistDialog } from "@/components/StandardizeDentistDialog";
 
 const emptyForm = { easyDentalId: "", name: "", cro: "" };
 
@@ -28,6 +29,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
     const [editing, setEditing] = useState<Dentist | null>(null);
     const [form, setForm] = useState(emptyForm);
     const [toDelete, setToDelete] = useState<Dentist | null>(null);
+    const [toStandardize, setToStandardize] = useState<Dentist | null>(null);
 
     const load = async () => {
         try {
@@ -149,6 +151,16 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                                     </TableCell>
                                     {canManage && (
                                         <TableCell className="text-right space-x-1">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setToStandardize(d)}
+                                                title="Buscar registros semelhantes e forçar padrão deste dentista"
+                                            >
+                                                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                                Forçar padrão
+                                            </Button>
                                             <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(d)} aria-label="Editar">
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
@@ -211,6 +223,13 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <StandardizeDentistDialog
+                dentist={toStandardize}
+                open={!!toStandardize}
+                onOpenChange={(open) => !open && setToStandardize(null)}
+                onApplied={load}
+            />
         </Card>
     );
 }

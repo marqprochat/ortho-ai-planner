@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "..",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "src/**/*",
+    "../backend/src/lib/dentist.ts",
+    "../backend/src/lib/dentistMatcher.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "../backend/src/**/*.test.ts"
+  ]
+}
+

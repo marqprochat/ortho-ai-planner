@@ -2,6 +2,11 @@ import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { parseDentistInput } from '../lib/dentist';
+import { getAuditMetadataFromRequest, logAudit } from '../services/auditService';
+import {
+    applyDentistStandardization,
+    previewDentistStandardization,
+} from '../services/dentistStandardization';
 
 const DUPLICATE_CRO_ERROR = 'Já existe um dentista com este CRO nesta clínica';
 
@@ -97,5 +102,61 @@ export const deleteDentist = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('Error deleting dentist:', error);
         res.status(500).json({ error: 'Erro ao excluir dentista' });
+    }
+};
+
+export const previewStandardizeDentist = async (req: AuthRequest, res: Response) => {
+    try {
+        const clinic = await resolveClinic(req);
+        if (!clinic) return res.status(400).json({ error: 'Clínica não selecionada ou inválida' });
+
+        const { id } = req.params;
+        const preview = await previewDentistStandardization(id, clinic.id);
+        if (!preview) return res.status(404).json({ error: 'Dentista não encontrado' });
+
+        res.json(preview);
+    } catch (error) {
+        console.error('Error previewing dentist standardization:', error);
+        res.status(500).json({ error: 'Erro ao buscar registros semelhantes ao dentista' });
+    }
+};
+
+export const applyStandardizeDentist = async (req: AuthRequest, res: Response) => {
+    try {
+        const clinic = await resolveClinic(req);
+        if (!clinic) return res.status(400).json({ error: 'Clínica não selecionada ou inválida' });
+
+        const { id } = req.params;
+        const { treatmentIds, planningIds, contractIds } = req.body ?? {};
+        const toStringArray = (val: unknown): string[] =>
+            Array.isArray(val) ? val.filter((v): v is string => typeof v === 'string' && v.trim().length > 0) : [];
+
+        const selection = {
+            treatmentIds: toStringArray(treatmentIds),
+            planningIds: toStringArray(planningIds),
+            contractIds: toStringArray(contractIds),
+        };
+
+        const result = await applyDentistStandardization(id, clinic.id, selection);
+        if (!result) return res.status(404).json({ error: 'Dentista não encontrado' });
+
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            clinicId: clinic.id,
+            action: 'UPDATE',
+            resource: 'CLINIC',
+            resourceId: id,
+            details: {
+                operation: 'STANDARDIZE_DENTIST',
+                dentistName: result.dentist.name,
+                dentistCro: result.dentist.cro,
+                updated: result.updated,
+            },
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error applying dentist standardization:', error);
+        res.status(500).json({ error: 'Erro ao padronizar registros do dentista' });
     }
 };

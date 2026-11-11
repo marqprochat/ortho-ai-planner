@@ -1,0 +1,27 @@
+{
+  "name": "ortho-ai-planner-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Ortho AI Planner data access, mutations, and dentist standardization",
+  "main": "dist/mcp-server/src/index.js",
+  "bin": {
+    "ortho-planner-mcp": "dist/mcp-server/src/index.js"
+  },
+  "scripts": {
+    "prisma:generate": "prisma generate --schema=../backend/prisma/schema.prisma && node -e \"require('fs').cpSync('../backend/node_modules/.prisma', './node_modules/.prisma', { recursive: true })\"",
+    "build": "tsc",
+    "start": "node dist/mcp-server/src/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@prisma/client": "^6.19.1",
+    "dotenv": "^17.2.3",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "prisma": "^6.19.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
