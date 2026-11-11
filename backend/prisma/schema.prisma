@@ -321,3 +321,27 @@ model DisparoIndividualLog {
   @@index([scheduleLogId])
   @@index([executedAt])
 }
+
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  clinicId   String?
+  userId     String?
+  userName   String?
+  userEmail  String?
+  action     String   // "LOGIN" | "LOGOUT" | "LOGIN_FAILED" | "CREATE" | "READ" | "UPDATE" | "DELETE" | "EXPORT"
+  resource   String   // "AUTH" | "PATIENT" | "PLANNING" | "CONTRACT" | "TREATMENT" | "USER" | "CLINIC" | "REPORT"
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([resourceId])
+  @@index([createdAt])
+}

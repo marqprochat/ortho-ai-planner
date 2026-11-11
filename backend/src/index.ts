@@ -18,6 +18,7 @@ import { listKeys, createKey, updateKey, deleteKey } from './controllers/aiKeyCo
 import { generateCompletion } from './controllers/aiController';
 import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
+import { getAuditLogs, getAuditStats } from './controllers/auditLogController';
 import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
 import { initAppointmentSyncCron } from './jobs/appointmentSyncCron';
@@ -120,7 +121,6 @@ app.get('/api/reports/contracts', authMiddleware, requireAppAccess('planner'), r
 app.get('/api/reports/treatments', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'report_tratamentos'), getTreatmentsReport);
 
 // AI API Key Routes (Super Admin)
-
 app.get('/api/ai-keys', authMiddleware, requireSuperAdmin, listKeys);
 app.post('/api/ai-keys', authMiddleware, requireSuperAdmin, createKey);
 app.put('/api/ai-keys/:id', authMiddleware, requireSuperAdmin, updateKey);
@@ -132,6 +132,10 @@ app.post('/api/notifications/:id/read', authMiddleware, markAsRead);
 app.post('/api/admin/notifications/broadcast', authMiddleware, requireSuperAdmin, broadcastGlobal);
 app.get('/api/admin/notifications/config', authMiddleware, requireSuperAdmin, getAutomationConfigs);
 app.put('/api/admin/notifications/config/:type', authMiddleware, requireSuperAdmin, updateAutomationConfig);
+
+// Audit Log Routes (Super Admin)
+app.get('/api/admin/audit-logs', authMiddleware, requireSuperAdmin, getAuditLogs);
+app.get('/api/admin/audit-logs/stats', authMiddleware, requireSuperAdmin, getAuditStats);
 
 // Legacy routes (for older frontend builds)
 app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);

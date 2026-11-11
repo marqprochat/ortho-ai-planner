@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { logAudit, getClientIp } from '../services/auditService';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-me';
@@ -80,6 +81,19 @@ export const register = async (req: Request, res: Response) => {
             }
         }
 
+        logAudit({
+            action: 'CREATE',
+            resource: 'USER',
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            tenantId: user.tenantId,
+            resourceId: user.id,
+            ipAddress: getClientIp(req),
+            userAgent: req.headers['user-agent'],
+            details: { action: 'Cadastro de usuário', email: user.email }
+        });
+
         // Generate JWT
         const token = jwt.sign(
             { userId: user.id, tenantId: user.tenantId, isSuperAdmin: user.isSuperAdmin },
@@ -122,14 +136,45 @@ export const login = async (req: Request, res: Response) => {
         });
 
         if (!user) {
+            logAudit({
+                action: 'LOGIN_FAILED',
+                resource: 'AUTH',
+                userEmail: email,
+                ipAddress: getClientIp(req),
+                userAgent: req.headers['user-agent'],
+                details: { reason: 'Usuário não encontrado' }
+            });
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
 
         // Verify password
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
+            logAudit({
+                action: 'LOGIN_FAILED',
+                resource: 'AUTH',
+                userId: user.id,
+                userName: user.name,
+                userEmail: user.email,
+                tenantId: user.tenantId,
+                ipAddress: getClientIp(req),
+                userAgent: req.headers['user-agent'],
+                details: { reason: 'Senha incorreta' }
+            });
             return res.status(401).json({ error: 'Credenciais inválidas' });
         }
+
+        logAudit({
+            action: 'LOGIN',
+            resource: 'AUTH',
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            tenantId: user.tenantId,
+            ipAddress: getClientIp(req),
+            userAgent: req.headers['user-agent'],
+            details: { message: 'Login realizado com sucesso' }
+        });
 
         // Generate JWT
         const token = jwt.sign(

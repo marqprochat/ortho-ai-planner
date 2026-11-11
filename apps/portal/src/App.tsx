@@ -9,6 +9,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import RoleManagement from "./pages/admin/RoleManagement";
 import AiKeyManagement from "./pages/admin/AiKeyManagement";
 import NotificationConfig from "./pages/admin/NotificationConfig";
+import AuditLogManagement from "./pages/admin/AuditLogManagement";
 import { Toaster } from "sonner";
 
 // Protected route wrapper
@@ -107,6 +108,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <NotificationConfig />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/audit-logs"
+                element={
+                    <ProtectedRoute>
+                        <AuditLogManagement />
                     </ProtectedRoute>
                 }
             />

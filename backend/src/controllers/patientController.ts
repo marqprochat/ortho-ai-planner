@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest, hasPermission } from '../middleware/authMiddleware';
 import { formatCPF, cleanDigits, findPacienteByCPF, createEasyDentalPatient, findPrestadorByCPF, getPacienteByCod } from '../lib/easydental';
+import { logAudit, getAuditMetadataFromRequest } from '../services/auditService';
 
 // Resolve ID do prestador do dentista logado ou usa o padrão
 async function resolvePrestadorId(userId: string): Promise<string> {
@@ -179,6 +180,14 @@ export const createPatient = async (req: AuthRequest, res: Response) => {
             }
         });
 
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'CREATE',
+            resource: 'PATIENT',
+            resourceId: patient.id,
+            details: { name: patient.name, cpf: patient.cpf, patientNumber: patient.patientNumber }
+        });
+
         res.status(201).json({ ...patient, warning: syncWarning });
     } catch (error: any) {
         console.error('Erro ao criar paciente:', error);
@@ -219,36 +228,48 @@ export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
         const orConditions: any[] = [];
         if (formattedCpf) {
             orConditions.push({ cpf: formattedCpf });
+        }
+        if (cleanCpf) {
             orConditions.push({ cpf: cleanCpf });
         }
         if (patientNumber) {
             orConditions.push({ patientNumber: String(patientNumber) });
             orConditions.push({ externalId: String(patientNumber) });
         }
-        if (orConditions.length === 0) {
-            orConditions.push({ name: name.trim() });
+        if (easyDentalId) {
+            orConditions.push({ easyDentalId: String(easyDentalId) });
         }
 
-        const existing = await prisma.patient.findFirst({
-            where: {
-                tenantId,
-                clinicId,
-                ...(canManageAll ? {} : { userId }),
-                OR: orConditions
-            }
-        });
-
-        if (existing) {
-            return res.json({ patient: existing, isNew: false });
+        let existingPatient = null;
+        if (orConditions.length > 0) {
+            existingPatient = await prisma.patient.findFirst({
+                where: {
+                    tenantId: tenantId!,
+                    clinicId: clinicId,
+                    ...(canManageAll ? {} : { userId: userId! }),
+                    OR: orConditions
+                }
+            });
         }
 
-        // Se paciente não existe, cria com sincronização EasyDental
+        if (existingPatient) {
+            logAudit({
+                ...getAuditMetadataFromRequest(req),
+                action: 'READ',
+                resource: 'PATIENT',
+                resourceId: existingPatient.id,
+                details: { name: existingPatient.name, reason: 'findOrCreate (reutilizado)' }
+            });
+            return res.json({ patient: existingPatient, isNew: false });
+        }
+
+        // Se não encontrou, cria novo paciente
         let finalPatientNumber = patientNumber ? String(patientNumber) : (externalId ? String(externalId) : null);
         let finalEasyDentalId = easyDentalId ? String(easyDentalId) : null;
         let syncStatus = 'SINCRONIZADO';
         let syncWarning: string | null = null;
 
-        if (formattedCpf && !finalEasyDentalId) {
+        if (!finalEasyDentalId && formattedCpf) {
             try {
                 let easyMatch = await findPacienteByCPF(formattedCpf);
                 if (!easyMatch && finalPatientNumber) {
@@ -261,6 +282,7 @@ export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
                 if (easyMatch && (easyMatch.ID_PACIENTE || easyMatch.CODIGO_PACIENTE)) {
                     finalEasyDentalId = String(easyMatch.ID_PACIENTE || '');
                     finalPatientNumber = String(easyMatch.CODIGO_PACIENTE || finalPatientNumber || '');
+                    syncStatus = 'SINCRONIZADO';
                 } else {
                     const prestadorId = await resolvePrestadorId(userId!);
                     const createdEasy = await createEasyDentalPatient({
@@ -274,11 +296,12 @@ export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
                     if (createdEasy.codigo_paciente) {
                         finalPatientNumber = createdEasy.codigo_paciente;
                     }
+                    syncStatus = 'SINCRONIZADO';
                 }
             } catch (easyErr: any) {
-                console.error('Aviso ao sincronizar paciente com EasyDental no findOrCreate:', easyErr.message);
+                console.error('Aviso ao sincronizar paciente no EasyDental:', easyErr.message);
                 syncStatus = 'PENDENTE';
-                syncWarning = 'Paciente salvo no Planner, mas a sincronização com o EasyDental está pendente.';
+                syncWarning = 'Paciente salvo no Planner, mas a sincronização com o EasyDental está pendente devido à instabilidade do serviço.';
             }
         }
 
@@ -301,13 +324,20 @@ export const findOrCreatePatient = async (req: AuthRequest, res: Response) => {
             }
         });
 
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'CREATE',
+            resource: 'PATIENT',
+            resourceId: patient.id,
+            details: { name: patient.name, cpf: patient.cpf, patientNumber: patient.patientNumber, origin: 'findOrCreate' }
+        });
+
         res.status(201).json({ patient, isNew: true, warning: syncWarning });
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ error: error.message || 'Erro ao buscar/criar paciente' });
     }
 };
-
 
 // Get a single patient
 export const getPatient = async (req: AuthRequest, res: Response) => {
@@ -344,6 +374,14 @@ export const getPatient = async (req: AuthRequest, res: Response) => {
         if (!patient) {
             return res.status(404).json({ error: 'Paciente não encontrado' });
         }
+
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'READ',
+            resource: 'PATIENT',
+            resourceId: patient.id,
+            details: { name: patient.name, patientNumber: patient.patientNumber }
+        });
 
         res.json(patient);
     } catch (error) {
@@ -391,6 +429,14 @@ export const updatePatient = async (req: AuthRequest, res: Response) => {
             }
         });
 
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'UPDATE',
+            resource: 'PATIENT',
+            resourceId: patient.id,
+            details: { name: patient.name, updatedFields: Object.keys(req.body) }
+        });
+
         res.json(patient);
     } catch (error) {
         console.error(error);
@@ -421,6 +467,14 @@ export const deletePatient = async (req: AuthRequest, res: Response) => {
 
         await prisma.patient.delete({
             where: { id }
+        });
+
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'DELETE',
+            resource: 'PATIENT',
+            resourceId: id,
+            details: { name: existing.name, cpf: existing.cpf }
         });
 
         res.status(204).send();
@@ -494,6 +548,14 @@ export const transferPatient = async (req: AuthRequest, res: Response) => {
                 clinicId: targetClinicId,
                 tenantId: targetTenantId
             }
+        });
+
+        logAudit({
+            ...getAuditMetadataFromRequest(req),
+            action: 'UPDATE',
+            resource: 'PATIENT',
+            resourceId: id,
+            details: { action: 'Transferência de Paciente', targetUser: targetUser.name, targetEmail: targetUser.email }
         });
 
         res.json({ message: 'Paciente transferido com sucesso', targetUser: targetUser.name });

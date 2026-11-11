@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { authService } from "@/services/authService";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key, Bell, MessageSquare } from "lucide-react";
+import { LogOut, ClipboardList, Users, Calendar, Settings, ExternalLink, Building2, UserCog, Key, Bell, MessageSquare, ShieldCheck } from "lucide-react";
 import { ClinicSelector } from "@/components/ClinicSelector";
 
 // Default apps if user has no specific access configured
@@ -79,74 +79,78 @@ export default function DashboardPage() {
     // Use user's app access or default apps, filtering out the portal (we're already in it)
     let apps: any[] = user?.appAccess?.length
         ? user.appAccess
-            .filter((access) => access.application.name !== 'portal') // Remove portal from listing
-            .map((access) => ({
-                ...access.application,
-                // Override URLs with environment variables
-                url: access.application.name === 'planner' ? plannerUrl : 
-                     access.application.name === 'disparos' ? disparosUrl : access.application.url,
-                role: access.role.name,
-            }))
-        : [...defaultApps];
+            .map((access) => {
+                const app = access.application;
+                if (app?.name?.toLowerCase() === "portal") return null;
 
-    // Ensure disparos app is present even if not in database yet (ONLY for Super Admins)
-    const hasDisparos = apps.some(app => app.name === 'disparos');
-    if (!hasDisparos && user?.isSuperAdmin) {
-        const disparosApp = defaultApps.find(a => a.name === 'disparos');
-        if (disparosApp) {
-            apps.push({ ...disparosApp, role: 'Admin' });
-        }
-    }
+                let appUrl = app?.url;
+                if (app?.name === "planner") {
+                    appUrl = plannerUrl;
+                } else if (app?.name === "disparos") {
+                    appUrl = disparosUrl;
+                }
 
-    // Double check: remove disparos from the list if the user is NOT a Super Admin
-    // (This handles cases where it might be in user.appAccess)
-    if (!user?.isSuperAdmin) {
-        apps = apps.filter(app => app.name !== 'disparos');
+                return {
+                    id: app?.id || "",
+                    name: app?.name || "",
+                    displayName: app?.displayName || app?.name || "Aplicação",
+                    description: (app as any)?.description || "",
+                    icon: app?.icon || "ClipboardList",
+                    url: appUrl,
+                    role: access.role?.name,
+                };
+            })
+            .filter(Boolean)
+        : defaultApps;
+
+    if (!apps || apps.length === 0) {
+        apps = defaultApps;
     }
 
     return (
         <div className="min-h-screen bg-sidebar">
             {/* Header */}
-            <header className="border-b border-sidebar-border bg-sidebar-accent/50 backdrop-blur-sm">
+            <header className="border-b border-sidebar-border bg-sidebar-accent/50 backdrop-blur-sm sticky top-0 z-10">
                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
-                                {user?.name?.charAt(0).toUpperCase() || "U"}
-                            </div>
-                            <div>
-                                <h2 className="text-sidebar-foreground font-semibold">{user?.name || "Usuário"}</h2>
-                                <p className="text-sidebar-foreground/60 text-sm">{user?.tenant?.name || "Portal"}</p>
-                            </div>
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+                            OP
                         </div>
-
-                        {/* Clinic Selector */}
-                        <div className="h-8 w-px bg-sidebar-border mx-2"></div>
-                        <ClinicSelector />
+                        <div>
+                            <h1 className="text-xl font-bold text-sidebar-foreground">Ortho AI Planner</h1>
+                            <p className="text-sidebar-foreground/60 text-sm">Portal Clínico</p>
+                        </div>
                     </div>
 
-                    <Button
-                        variant="ghost"
-                        className="text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Sair
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <ClinicSelector />
+
+                        <div className="flex items-center gap-3 pl-4 border-l border-sidebar-border">
+                            <div className="text-right">
+                                <p className="text-sm font-medium text-sidebar-foreground">{user?.name}</p>
+                                <p className="text-xs text-sidebar-foreground/60">{user?.email}</p>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleLogout}
+                                className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                            >
+                                <LogOut className="w-5 h-5" />
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="container mx-auto px-6 py-12">
-
-                {/* Admin Section */}
+            <main className="container mx-auto px-6 py-10">
+                {/* Admin Management Section */}
                 {user?.isSuperAdmin && (
                     <div className="mb-12">
-                        <div className="mb-8 border-b border-sidebar-border pb-4">
-                            <h1 className="text-3xl font-bold text-sidebar-foreground mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-                                Administração
-                            </h1>
-                            <p className="text-sidebar-foreground/60">Gerenciamento do sistema</p>
+                        <div className="flex items-center gap-2 mb-4">
+                            <Settings className="w-5 h-5 text-primary" />
+                            <h2 className="text-xl font-semibold text-sidebar-foreground">Gerenciamento do Sistema</h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <Card
@@ -190,7 +194,7 @@ export default function DashboardPage() {
                                 onClick={() => navigate('/admin/ai-keys')}
                             >
                                 <CardHeader>
-                                    <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-500 mb-4">
+                                    <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
                                         <Key className="w-6 h-6" />
                                     </div>
                                     <CardTitle className="text-sidebar-foreground">Chaves IA</CardTitle>
@@ -207,6 +211,18 @@ export default function DashboardPage() {
                                     </div>
                                     <CardTitle className="text-sidebar-foreground">Notificações</CardTitle>
                                     <CardDescription className="text-sidebar-foreground/60">Automações e Avisos</CardDescription>
+                                </CardHeader>
+                            </Card>
+                            <Card
+                                className="bg-sidebar-accent/30 border-sidebar-border hover:bg-sidebar-accent/50 hover:border-emerald-500/50 transition-all cursor-pointer group"
+                                onClick={() => navigate('/admin/audit-logs')}
+                            >
+                                <CardHeader>
+                                    <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
+                                        <ShieldCheck className="w-6 h-6" />
+                                    </div>
+                                    <CardTitle className="text-sidebar-foreground">Logs e Auditoria</CardTitle>
+                                    <CardDescription className="text-sidebar-foreground/60">Trilha de acesso e LGPD</CardDescription>
                                 </CardHeader>
                             </Card>
                         </div>
