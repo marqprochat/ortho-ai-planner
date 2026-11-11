@@ -230,7 +230,19 @@ export default function MessageTable({ messages, selectedIds, onToggleSelect, on
                                 <td className="px-3 py-2.5 font-mono text-xs text-foreground/80">
                                     {msg.telefone || <span className="text-red-400 italic">Sem telefone</span>}
                                 </td>
-                                <td className="px-3 py-2.5 font-medium">{msg.nomeCompleto}</td>
+                                <td className="px-3 py-2.5 font-medium">
+                                    <div className="flex items-center gap-2">
+                                        <span>{msg.nomeCompleto}</span>
+                                        {isFollowUp && msg.hasPatientCode === false && (
+                                            <span
+                                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                                                title="Paciente sem Número do Paciente no Planner (não verificado no EasyDental)"
+                                            >
+                                                Sem nº EasyDental
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
                                     {isAniversario ? formatSimpleDate(msg.data) : isLastOrFollowUp ? formatSimpleDate(msg.ultimaConsulta) : msg.data}
                                 </td>

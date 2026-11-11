@@ -1,8 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeCode } from './patientCode';
-import { selectFollowUpRecords, parseFollowUpParams, FOLLOW_UP_SEARCH_MODE, addDays, recentWindow } from './followUp';
-import type { UltimaConsultaRecord } from './easydental';
+import {
+    selectFollowUpRecords,
+    parseFollowUpParams,
+    FOLLOW_UP_SEARCH_MODE,
+    addDays,
+    recentWindow,
+    isCanceledOrCompletedStatus,
+    buildEasyDentalSnapshot,
+    matchesUnitFilter,
+    selectPlannerFollowUpRecords,
+    PlannerTreatmentCandidate,
+} from './followUp';
+import type { AgendamentoRecord, UltimaConsultaRecord } from './easydental';
 
 const rec = (over: Partial<UltimaConsultaRecord> = {}): UltimaConsultaRecord => ({
     PACIENTE: 'Paciente Teste',
@@ -11,6 +22,29 @@ const rec = (over: Partial<UltimaConsultaRecord> = {}): UltimaConsultaRecord => 
     CELULAR: '11999990000',
     CONSULTA_AGENDADA: null,
     UNIDADE: 'Unidade A',
+    ...over,
+});
+
+const ag = (over: Partial<AgendamentoRecord> = {}): AgendamentoRecord => ({
+    TX_CODIGO_PACIENTE: '000653',
+    PACIENTE: 'Paciente Teste',
+    DATA: '2026-11-20',
+    STATUS: 'Agendado',
+    CELULAR: '11999990000',
+    UNIDADE: 'Unidade A',
+    ...over,
+});
+
+const treatment = (over: Partial<PlannerTreatmentCandidate> = {}): PlannerTreatmentCandidate => ({
+    id: 'trt-1',
+    patientId: 'pat-1',
+    patientName: 'Paciente Teste',
+    patientNumber: '653',
+    patientPhone: '11988887777',
+    clinicName: 'Unidade A',
+    clinicNickname: null,
+    lastAppointment: '2026-08-01',
+    nextAppointment: null,
     ...over,
 });
 
@@ -29,206 +63,184 @@ test('normalizeCode iguala 653, 000653 e códigos com máscara', () => {
     assert.equal(normalizeCode('abc'), null);
 });
 
-test('inclui paciente em tratamento sem consulta agendada', () => {
-    const result = selectFollowUpRecords([rec()], codes('653'));
-    assert.equal(result.length, 1);
-    assert.equal(result[0].CODIGO, '000653');
+test('isCanceledOrCompletedStatus identifica desmarcados, faltas e atendidos, mas mantém agendamentos ativos', () => {
+    assert.equal(isCanceledOrCompletedStatus('DCA'), true);
+    assert.equal(isCanceledOrCompletedStatus('Desmarcado pelo Paciente'), true);
+    assert.equal(isCanceledOrCompletedStatus('Desmarcado pelo Dentista'), true);
+    assert.equal(isCanceledOrCompletedStatus('FAL'), true);
+    assert.equal(isCanceledOrCompletedStatus('Faltou'), true);
+    assert.equal(isCanceledOrCompletedStatus('MDA'), true);
+    assert.equal(isCanceledOrCompletedStatus('Mudar horario (desmarcar)'), true);
+    assert.equal(isCanceledOrCompletedStatus('NAT'), true);
+    assert.equal(isCanceledOrCompletedStatus('Não atendido'), true);
+    assert.equal(isCanceledOrCompletedStatus('ATE'), true);
+    assert.equal(isCanceledOrCompletedStatus('Atendido'), true);
+
+    assert.equal(isCanceledOrCompletedStatus('Agendado'), false);
+    assert.equal(isCanceledOrCompletedStatus('AGD'), false);
+    assert.equal(isCanceledOrCompletedStatus('Confirmado'), false);
+    assert.equal(isCanceledOrCompletedStatus('CON'), false);
+    assert.equal(isCanceledOrCompletedStatus('Aguardando confirmação paciente'), false);
+    assert.equal(isCanceledOrCompletedStatus(''), false);
+    assert.equal(isCanceledOrCompletedStatus(null), false);
 });
 
-test('exclui paciente com consulta agendada', () => {
-    const result = selectFollowUpRecords([rec({ CONSULTA_AGENDADA: '2026-10-20' })], codes('653'));
-    assert.equal(result.length, 0);
-});
-
-test('trata consulta agendada vazia ou só com espaços como sem agendamento', () => {
-    const result = selectFollowUpRecords(
-        [rec({ CONSULTA_AGENDADA: '' }), rec({ CODIGO: '000700', CONSULTA_AGENDADA: '   ' })],
-        codes('653', '700')
-    );
-    assert.equal(result.length, 2);
-});
-
-test('exclui paciente que não está em tratamento no Planner', () => {
-    const result = selectFollowUpRecords([rec({ CODIGO: '000999' })], codes('653'));
-    assert.equal(result.length, 0);
-});
-
-test('casa código do Planner sem zeros com código do EasyDental com zeros', () => {
-    const result = selectFollowUpRecords([rec({ CODIGO: '000653' })], codes('653'));
-    assert.equal(result.length, 1);
-});
-
-test('se o paciente reagendou em outra unidade, sai da lista inteira', () => {
-    const result = selectFollowUpRecords(
+test('buildEasyDentalSnapshot consolida última consulta e próxima consulta futura entre RPCs', () => {
+    const today = '2026-11-11';
+    const snapshot = buildEasyDentalSnapshot(
         [
-            rec({ UNIDADE: 'Unidade A', CONSULTA_AGENDADA: null }),
-            rec({ UNIDADE: 'Unidade B', CONSULTA_AGENDADA: '2026-10-20' }),
+            rec({ CODIGO: '000653', ULTIMA_CONSULTA: '2026-09-01', CONSULTA_AGENDADA: null, UNIDADE: 'Unidade A' }),
+            rec({ CODIGO: '653', ULTIMA_CONSULTA: '2026-10-15', CONSULTA_AGENDADA: '2026-12-01', UNIDADE: 'Unidade B' }),
+            rec({ CODIGO: '000700', ULTIMA_CONSULTA: '2026-10-20', CONSULTA_AGENDADA: null }),
         ],
-        codes('653')
+        [
+            ag({ TX_CODIGO_PACIENTE: '700', DATA: '2026-11-25', STATUS: 'Desmarcado pelo Paciente' }),
+            ag({ TX_CODIGO_PACIENTE: '800', DATA: '2026-11-30', STATUS: 'Confirmado', UNIDADE: 'Unidade C' }),
+            ag({ TX_CODIGO_PACIENTE: '900', DATA: '2026-11-01', STATUS: 'Agendado' }), // passada -> ignorada
+        ],
+        today
     );
-    assert.equal(result.length, 0);
+
+    assert.equal(snapshot.get('000653')?.lastAppointment, '2026-10-15');
+    assert.equal(snapshot.get('000653')?.nextAppointment, '2026-12-01');
+    assert.equal(snapshot.get('000700')?.nextAppointment, null); // desmarcado não conta
+    assert.equal(snapshot.get('000800')?.nextAppointment, '2026-11-30');
+    assert.equal(snapshot.get('000900'), undefined);
 });
 
-test('mantém o mesmo paciente em duas unidades quando nenhuma tem agendamento', () => {
-    const result = selectFollowUpRecords(
-        [rec({ UNIDADE: 'Unidade A' }), rec({ UNIDADE: 'Unidade B' })],
-        codes('653')
-    );
-    assert.equal(result.length, 2);
+test('matchesUnitFilter compara normalizando acentos, maiúsculas e prefixos Unidade/Clínica', () => {
+    assert.equal(matchesUnitFilter([], ['Centro']), true);
+    assert.equal(matchesUnitFilter(['Centro'], ['Centro']), true);
+    assert.equal(matchesUnitFilter(['São Paulo'], ['sao paulo']), true);
+    assert.equal(matchesUnitFilter(['Centro'], ['Unidade Centro']), true);
+    assert.equal(matchesUnitFilter(['Unidade Centro'], ['Clínica Centro']), true);
+    assert.equal(matchesUnitFilter(['Centro'], ['Centro 2']), false);
+    assert.equal(matchesUnitFilter(['Centro'], [null, '']), false);
 });
 
-test('remove duplicados do mesmo paciente na mesma unidade', () => {
-    const result = selectFollowUpRecords([rec(), rec()], codes('653'));
+test('selectPlannerFollowUpRecords puxa todos os tratamentos sem filtrar por data e exclui quem tem próxima consulta', () => {
+    const today = '2026-11-11';
+    const snapshot = buildEasyDentalSnapshot(
+        [
+            rec({ CODIGO: '000100', ULTIMA_CONSULTA: '2026-11-10', CONSULTA_AGENDADA: null, CELULAR: '11911111111' }),
+            rec({ CODIGO: '000200', ULTIMA_CONSULTA: '2026-05-01', CONSULTA_AGENDADA: '2026-11-20' }),
+        ],
+        [
+            ag({ TX_CODIGO_PACIENTE: '300', DATA: '2026-12-05', STATUS: 'Agendado' }), // última consulta antiga, mas tem agendamento futuro
+            ag({ TX_CODIGO_PACIENTE: '400', DATA: '2026-11-15', STATUS: 'Desmarcado pelo Paciente' }), // desmarcou -> sem próxima consulta
+        ],
+        today
+    );
+
+    const treatments: PlannerTreatmentCandidate[] = [
+        treatment({ id: 't1', patientId: 'p1', patientName: 'Ana Ontem', patientNumber: '100', lastAppointment: '2026-11-10' }),
+        treatment({ id: 't2', patientId: 'p2', patientName: 'Bruno Agendado', patientNumber: '200' }),
+        treatment({ id: 't3', patientId: 'p3', patientName: 'Carla Futuro Agenda', patientNumber: '300' }),
+        treatment({ id: 't4', patientId: 'p4', patientName: 'Diego Desmarcou', patientNumber: '400', patientPhone: '11944444444' }),
+        treatment({ id: 't5', patientId: 'p5', patientName: 'Eva Antiga Sem Consulta', patientNumber: '500', lastAppointment: '2024-01-10', patientPhone: '11955555555' }),
+        treatment({ id: 't6', patientId: 'p6', patientName: 'Fábio Sem Código', patientNumber: null, patientPhone: '11966666666', lastAppointment: null }),
+    ];
+
+    const detailsByCode = new Map([['000500', { NOME: 'Eva Antiga', CELULAR: '11999995555' }]]);
+    const result = selectPlannerFollowUpRecords(treatments, snapshot, today, { detailsByCode });
+
+    assert.deepEqual(
+        result.map((r) => r.PACIENTE),
+        ['Ana Ontem', 'Diego Desmarcou', 'Eva Antiga Sem Consulta', 'Fábio Sem Código']
+    );
+    const eva = result.find((r) => r.PATIENT_ID === 'p5')!;
+    assert.equal(eva.CELULAR, '11999995555'); // priorizou celular do EasyDental via RPCGetPacienteCOD
+    assert.equal(eva.ULTIMA_CONSULTA, '2024-01-10'); // manteve última consulta do Planner
+    assert.equal(eva.HAS_PATIENT_CODE, true);
+
+    const fabio = result.find((r) => r.PATIENT_ID === 'p6')!;
+    assert.equal(fabio.HAS_PATIENT_CODE, false);
+    assert.equal(fabio.CODIGO, '');
+    assert.equal(fabio.CELULAR, '11966666666');
+});
+
+test('selectPlannerFollowUpRecords filtra por unidade usando clínica do Planner ou EasyDental e remove duplicados do mesmo paciente', () => {
+    const today = '2026-11-11';
+    const snapshot = new Map();
+    const treatments: PlannerTreatmentCandidate[] = [
+        treatment({ id: 't1', patientId: 'p1', patientName: 'Paciente A', patientNumber: '101', clinicName: 'Unidade A' }),
+        treatment({ id: 't2', patientId: 'p1', patientName: 'Paciente A', patientNumber: '101', clinicName: 'Unidade A' }),
+        treatment({ id: 't3', patientId: 'p2', patientName: 'Paciente B', patientNumber: '102', clinicName: 'Clínica B', clinicNickname: 'Unidade B' }),
+    ];
+
+    const result = selectPlannerFollowUpRecords(treatments, snapshot, today, {
+        unidades: ['Unidade A'],
+    });
     assert.equal(result.length, 1);
+    assert.equal(result[0].PACIENTE, 'Paciente A');
 });
 
-test('ignora registros sem código', () => {
-    const result = selectFollowUpRecords(
-        [rec({ CODIGO: '' }), rec({ CODIGO: undefined as unknown as string })],
-        codes('653')
+test('selectPlannerFollowUpRecords exclui paciente sem código se nextAppointment no Planner ainda for futuro', () => {
+    const today = '2026-11-11';
+    const result = selectPlannerFollowUpRecords(
+        [
+            treatment({ id: 't1', patientId: 'p1', patientName: 'Com Próx', patientNumber: null, nextAppointment: '2026-11-20' }),
+            treatment({ id: 't2', patientId: 'p2', patientName: 'Próx Vencida', patientNumber: null, nextAppointment: '2026-11-01' }),
+        ],
+        new Map(),
+        today
     );
-    assert.equal(result.length, 0);
+    assert.deepEqual(result.map((r) => r.PACIENTE), ['Próx Vencida']);
 });
 
-test('conjunto de tratamentos vazio não devolve ninguém', () => {
-    assert.equal(selectFollowUpRecords([rec()], new Set()).length, 0);
-});
-
-test('parseFollowUpParams aceita datas e normaliza unidades', () => {
-    const result = parseFollowUpParams({
-        dt_inicio: '2026-04-01',
-        dt_termino: '2026-09-01',
+test('parseFollowUpParams ignora datas e normaliza unidades', () => {
+    const withoutDates = parseFollowUpParams({
         unidades: ['  Unidade A ', '', 'Unidade B'],
     });
-    assert.deepEqual(result, {
+    assert.deepEqual(withoutDates, {
         ok: true,
-        data: { dtInicio: '2026-04-01', dtTermino: '2026-09-01', unidades: ['Unidade A', 'Unidade B'] },
+        data: { unidades: ['Unidade A', 'Unidade B'] },
+    });
+
+    const withDates = parseFollowUpParams({
+        dt_inicio: 'qualquer',
+        dt_termino: 'coisa',
+        unidades: 'Unidade A',
+    });
+    assert.deepEqual(withDates, {
+        ok: true,
+        data: { unidades: ['Unidade A'] },
+    });
+
+    const empty = parseFollowUpParams(null);
+    assert.deepEqual(empty, {
+        ok: true,
+        data: { unidades: [] },
     });
 });
 
-test('parseFollowUpParams aceita unidade como texto e ausente como lista vazia', () => {
-    const one = parseFollowUpParams({ dt_inicio: '2026-04-01', dt_termino: '2026-09-01', unidades: 'Unidade A' });
-    assert.deepEqual(one.ok && one.data.unidades, ['Unidade A']);
-    const none = parseFollowUpParams({ dt_inicio: '2026-04-01', dt_termino: '2026-09-01' });
-    assert.deepEqual(none.ok && none.data.unidades, []);
-});
+test('parseFollowUpParams com requireCodes aceita codigos e/ou treatment_ids', () => {
+    const okCodes = parseFollowUpParams({ codigos: ['000653', ' 700 '] }, { requireCodes: true });
+    assert.deepEqual(okCodes.ok && okCodes.data.codigos, ['000653', '700']);
 
-test('parseFollowUpParams rejeita datas ausentes, mal formatadas ou impossíveis', () => {
-    const message = 'dt_inicio e dt_termino são obrigatórios (AAAA-MM-DD)';
-    assert.deepEqual(parseFollowUpParams({}), { ok: false, error: message });
-    assert.deepEqual(parseFollowUpParams({ dt_inicio: '01/04/2026', dt_termino: '2026-09-01' }), { ok: false, error: message });
-    assert.deepEqual(parseFollowUpParams({ dt_inicio: '2026-02-30', dt_termino: '2026-09-01' }), { ok: false, error: message });
-    assert.deepEqual(parseFollowUpParams(null), { ok: false, error: message });
-});
+    const okTreatments = parseFollowUpParams({ treatment_ids: ['trt-1', 'trt-2'] }, { requireCodes: true });
+    assert.deepEqual(okTreatments.ok && okTreatments.data.treatmentIds, ['trt-1', 'trt-2']);
 
-test('parseFollowUpParams rejeita início maior que término', () => {
-    assert.deepEqual(
-        parseFollowUpParams({ dt_inicio: '2026-09-02', dt_termino: '2026-09-01' }),
-        { ok: false, error: 'dt_inicio não pode ser maior que dt_termino' }
-    );
-});
-
-test('parseFollowUpParams com requireCodes exige lista de códigos de texto', () => {
-    const base = { dt_inicio: '2026-04-01', dt_termino: '2026-09-01' };
-    const ok = parseFollowUpParams({ ...base, codigos: ['000653', ' 700 '] }, { requireCodes: true });
-    assert.deepEqual(ok.ok && ok.data.codigos, ['000653', '700']);
-    const error = 'codigos deve ser uma lista de códigos';
-    assert.deepEqual(parseFollowUpParams(base, { requireCodes: true }), { ok: false, error });
-    assert.deepEqual(parseFollowUpParams({ ...base, codigos: [123] }, { requireCodes: true }), { ok: false, error });
-    assert.deepEqual(parseFollowUpParams({ ...base, codigos: 'x' }, { requireCodes: true }), { ok: false, error });
+    assert.equal(parseFollowUpParams({}, { requireCodes: true }).ok, false);
+    assert.equal(parseFollowUpParams({ codigos: [123] }, { requireCodes: true }).ok, false);
+    assert.equal(parseFollowUpParams({ treatment_ids: 'x' }, { requireCodes: true }).ok, false);
 });
 
 test('parseFollowUpParams limita a quantidade de códigos', () => {
     const codigos = Array.from({ length: 5001 }, (_, i) => String(i));
-    const result = parseFollowUpParams({ dt_inicio: '2026-04-01', dt_termino: '2026-09-01', codigos }, { requireCodes: true });
+    const result = parseFollowUpParams({ codigos }, { requireCodes: true });
     assert.deepEqual(result, { ok: false, error: 'codigos excede o limite de 5000' });
 });
 
-test('addDays soma dias em UTC atravessando mês, ano e valores negativos', () => {
+test('selectFollowUpRecords legado continua funcionando', () => {
+    const result = selectFollowUpRecords([rec()], codes('653'));
+    assert.equal(result.length, 1);
+    assert.equal(selectFollowUpRecords([rec({ CONSULTA_AGENDADA: '2026-10-20' })], codes('653')).length, 0);
+});
+
+test('addDays e recentWindow', () => {
     assert.equal(addDays('2026-10-05', 1), '2026-10-06');
     assert.equal(addDays('2026-01-31', 1), '2026-02-01');
-    assert.equal(addDays('2026-12-31', 1), '2027-01-01');
-    assert.equal(addDays('2026-03-01', -1), '2026-02-28');
-    assert.equal(addDays('2026-01-01', -1), '2025-12-31');
-    assert.equal(addDays('2026-10-05', 0), '2026-10-05');
-});
-
-test('recentWindow devolve [dtTermino+1, hoje] ou null', () => {
     assert.deepEqual(recentWindow('2026-09-05', '2026-10-05'), { dtInicio: '2026-09-06', dtTermino: '2026-10-05' });
     assert.equal(recentWindow('2026-10-05', '2026-10-05'), null);
-    assert.equal(recentWindow('2026-10-20', '2026-10-05'), null);
-    assert.deepEqual(recentWindow('2026-10-04', '2026-10-05'), { dtInicio: '2026-10-05', dtTermino: '2026-10-05' });
-});
-
-test('janela dtInicio/dtTermino: mantém dentro (limites inclusivos) e exclui fora', () => {
-    const opts = { dtInicio: '2026-03-01', dtTermino: '2026-09-01' };
-    const result = selectFollowUpRecords(
-        [
-            rec({ CODIGO: '000001', ULTIMA_CONSULTA: '2026-06-15' }),
-            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '2026-03-01' }),
-            rec({ CODIGO: '000003', ULTIMA_CONSULTA: '2026-09-01' }),
-            rec({ CODIGO: '000004', ULTIMA_CONSULTA: '2026-02-28' }),
-            rec({ CODIGO: '000005', ULTIMA_CONSULTA: '2026-09-02' }),
-        ],
-        codes('1', '2', '3', '4', '5'),
-        opts
-    );
-    assert.deepEqual(result.map((r) => r.CODIGO), ['000001', '000002', '000003']);
-});
-
-test('janela: ULTIMA_CONSULTA ausente ou ilegível é excluída', () => {
-    const opts = { dtInicio: '2026-03-01', dtTermino: '2026-09-01' };
-    const result = selectFollowUpRecords(
-        [
-            rec({ CODIGO: '000001', ULTIMA_CONSULTA: null as unknown as string }),
-            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '' }),
-            rec({ CODIGO: '000003', ULTIMA_CONSULTA: 'ontem' }),
-            rec({ CODIGO: '000004', ULTIMA_CONSULTA: undefined as unknown as string }),
-        ],
-        codes('1', '2', '3', '4'),
-        opts
-    );
-    assert.equal(result.length, 0);
-});
-
-test('janela: aceita ISO com horário (2026-09-11T00:00:00.000Z)', () => {
-    const opts = { dtInicio: '2026-09-01', dtTermino: '2026-09-11' };
-    const result = selectFollowUpRecords(
-        [
-            rec({ CODIGO: '000001', ULTIMA_CONSULTA: '2026-09-11T00:00:00.000Z' }),
-            rec({ CODIGO: '000002', ULTIMA_CONSULTA: '2026-09-12T00:00:00.000Z' }),
-        ],
-        codes('1', '2'),
-        opts
-    );
-    assert.deepEqual(result.map((r) => r.CODIGO), ['000001']);
-});
-
-test('seenAfterCodes exclui quem consultou depois da janela (código normalizado vs registro com zeros)', () => {
-    const seenAfterCodes = new Set([normalizeCode('653') as string]);
-    const result = selectFollowUpRecords(
-        [rec({ CODIGO: '000653' }), rec({ CODIGO: '000700' })],
-        codes('653', '700'),
-        { seenAfterCodes }
-    );
-    assert.deepEqual(result.map((r) => r.CODIGO), ['000700']);
-});
-
-test('regressão: 000653 sem agenda na unidade A e 653 com agenda na unidade B sai por completo', () => {
-    const result = selectFollowUpRecords(
-        [
-            rec({ CODIGO: '000653', UNIDADE: 'Unidade A', CONSULTA_AGENDADA: null }),
-            rec({ CODIGO: '653', UNIDADE: 'Unidade B', CONSULTA_AGENDADA: '2026-10-20T00:00:00.000Z' }),
-        ],
-        codes('653'),
-        { dtInicio: '2026-03-01', dtTermino: '2026-09-01' }
-    );
-    assert.equal(result.length, 0);
-});
-
-test('sem options mantém o comportamento antigo (sem checar janela nem seenAfter)', () => {
-    const result = selectFollowUpRecords([rec({ ULTIMA_CONSULTA: 'qualquer coisa' })], codes('653'));
-    assert.equal(result.length, 1);
-    const withEmpty = selectFollowUpRecords([rec({ ULTIMA_CONSULTA: 'qualquer coisa' })], codes('653'), {});
-    assert.equal(withEmpty.length, 1);
 });

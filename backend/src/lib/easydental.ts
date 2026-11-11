@@ -38,15 +38,38 @@ export interface UltimaConsultaRecord {
     UNIDADE: string;
 }
 
-// RPCGetUltimaConsulta em todas as unidades informadas (ou todas as ativas).
+export interface AgendamentoRecord {
+    ID_AGENDA_ITEM?: string | number;
+    TX_CODIGO_PACIENTE?: string | number;
+    cd_paciente?: string | number;
+    CODIGO?: string | number;
+    PACIENTE?: string;
+    nm_paciente?: string;
+    CELULAR?: string | null;
+    nr_celular?: string | null;
+    nr_fone?: string | null;
+    telefone?: string | null;
+    UNIDADE?: string;
+    TX_UNIDADE_ATENDIMENTO?: string;
+    nm_unidade?: string;
+    DATA?: string;
+    dt_agendamento?: string;
+    STATUS?: string;
+    ds_status?: string;
+    status_agendamento?: string;
+    status?: string;
+    [key: string]: any;
+}
+
+// Executa um RPC por unidade em todas as unidades informadas (ou todas as ativas).
 // Por padrao, a falha de uma unidade e registrada e ignorada. Com { strict: true }
 // qualquer falha e propagada (usado quando uma lista vazia por erro seria enganosa).
-export async function fetchUltimaConsulta(
-    dt_inicio: string,
-    dt_termino: string,
+async function fetchByUnits<T>(
+    method: string,
+    buildParams: (nm_unidade: string) => Record<string, any>,
     unidades?: string[],
     options: { strict?: boolean } = {}
-): Promise<UltimaConsultaRecord[]> {
+): Promise<T[]> {
     const targetUnits = unidades && unidades.length > 0 ? unidades : await listUnidades();
     if (targetUnits.length === 0) {
         if (options.strict) throw new Error('Nenhuma unidade de atendimento encontrada no EasyDental');
@@ -55,21 +78,49 @@ export async function fetchUltimaConsulta(
 
     const results = await Promise.all(
         targetUnits.map((nm_unidade) =>
-            rpcCall('RPCGetUltimaConsulta', { dt_inicio, dt_termino, nm_unidade })
+            rpcCall(method, buildParams(nm_unidade))
                 .then((data) => {
                     if (options.strict && data != null && !Array.isArray(data)) {
-                        throw new Error('Resposta inesperada do EasyDental para a unidade ' + nm_unidade);
+                        throw new Error(`Resposta inesperada do EasyDental (${method}) para a unidade ${nm_unidade}`);
                     }
                     return Array.isArray(data) ? data : data ? [data] : [];
                 })
                 .catch((err) => {
                     if (options.strict) throw err;
-                    console.error(`Error fetching ultima consulta for unit ${nm_unidade}:`, err.message);
+                    console.error(`Error fetching ${method} for unit ${nm_unidade}:`, err.message);
                     return [];
                 })
         )
     );
-    return results.flat() as UltimaConsultaRecord[];
+    return results.flat() as T[];
+}
+
+export async function fetchUltimaConsulta(
+    dt_inicio: string,
+    dt_termino: string,
+    unidades?: string[],
+    options: { strict?: boolean } = {}
+): Promise<UltimaConsultaRecord[]> {
+    return fetchByUnits<UltimaConsultaRecord>(
+        'RPCGetUltimaConsulta',
+        (nm_unidade) => ({ dt_inicio, dt_termino, nm_unidade }),
+        unidades,
+        options
+    );
+}
+
+export async function fetchFutureAgendamentos(
+    dt_inicio: string,
+    dt_termino: string,
+    unidades?: string[],
+    options: { strict?: boolean } = {}
+): Promise<AgendamentoRecord[]> {
+    return fetchByUnits<AgendamentoRecord>(
+        'RPCGetAgendamentos',
+        (nm_unidade) => ({ dt_inicio, dt_termino, nm_unidade }),
+        unidades,
+        options
+    );
 }
 
 // Helper: Formata CPF no padrão 000.000.000-00 exigido pela EasyDental

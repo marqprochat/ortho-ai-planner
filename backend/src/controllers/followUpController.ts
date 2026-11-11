@@ -14,8 +14,6 @@ export const searchFollowUpTreatments = async (req: AuthRequest, res: Response) 
     try {
         const data = await findTreatmentsWithoutReschedule({
             tenantId,
-            dtInicio: parsed.data.dtInicio,
-            dtTermino: parsed.data.dtTermino,
             unidades: parsed.data.unidades,
         });
         res.json({ success: true, data });
@@ -33,14 +31,13 @@ export const revalidateFollowUpTreatments = async (req: AuthRequest, res: Respon
     if (!parsed.ok) return res.status(400).json({ error: parsed.error });
 
     try {
-        const eligible = await revalidateFollowUp({
+        const result = await revalidateFollowUp({
             tenantId,
-            dtInicio: parsed.data.dtInicio,
-            dtTermino: parsed.data.dtTermino,
             unidades: parsed.data.unidades,
             codigos: parsed.data.codigos ?? [],
+            treatmentIds: parsed.data.treatmentIds ?? [],
         });
-        res.json({ success: true, eligible });
+        res.json({ success: true, ...result });
     } catch (error: any) {
         console.error('Error revalidating follow-up treatments:', error.message);
         res.status(500).json({ error: 'Falha ao confirmar a situação dos pacientes: ' + error.message });

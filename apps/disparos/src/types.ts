@@ -46,6 +46,8 @@ export interface MessageItem {
     txCodigoPaciente?: string;
     ultimaConsulta?: string;
     consultaAgendada?: string | null;
+    treatmentId?: string;
+    hasPatientCode?: boolean;
 }
 
 export interface Filters {

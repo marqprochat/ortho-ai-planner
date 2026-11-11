@@ -134,8 +134,6 @@ const FALLBACK_PRESETS: Record<string, { name: string; dayOffset: number; status
 };
 
 const FOLLOW_UP_MODE = 'tratamento-sem-reagendamento';
-// Janela da data da ultima consulta: inicio = dayOffset do modelo - 150 (ex.: -30 => de -180 a -30)
-const FOLLOW_UP_WINDOW_DAYS = 150;
 
 export default function App() {
     const [authenticated, setAuthenticated] = useState(false);
@@ -161,7 +159,7 @@ export default function App() {
     const [totalToProcess, setTotalToProcess] = useState(0);
     const abortRef = useRef(false);
     const revalidatingRef = useRef(false);
-    const [followUpSearch, setFollowUpSearch] = useState<{ dtInicio: string; dtTermino: string; unidades: string[] } | null>(null);
+    const [followUpSearch, setFollowUpSearch] = useState<{ unidades: string[] } | null>(null);
 
     const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
     const [templatesLoading, setTemplatesLoading] = useState(true);
@@ -174,11 +172,14 @@ export default function App() {
     const currentPreset = useMemo(() => {
         const dbTpl = messageTemplates.find(t => t.code === selectedModel);
         if (dbTpl) {
+            const hint = dbTpl.searchMode === FOLLOW_UP_MODE
+                ? 'Todos em tratamento (sem filtro de data)'
+                : `${dbTpl.dayOffset === 0 ? 'Hoje' : dbTpl.dayOffset > 0 ? `Amanhã (+${dbTpl.dayOffset}d)` : `Ontem (${dbTpl.dayOffset}d)`}${dbTpl.statusKeyword ? ` · Status: ${dbTpl.statusKeyword}` : ''}`;
             return {
                 label: dbTpl.name,
                 dayOffset: dbTpl.dayOffset,
                 statusKeyword: dbTpl.statusKeyword,
-                hint: `${dbTpl.dayOffset === 0 ? 'Hoje' : dbTpl.dayOffset > 0 ? `Amanhã (+${dbTpl.dayOffset}d)` : `Ontem (${dbTpl.dayOffset}d)`}${dbTpl.statusKeyword ? ` · Status: ${dbTpl.statusKeyword}` : ''}`
+                hint,
             };
         }
         const fb = FALLBACK_PRESETS[selectedModel];
@@ -304,7 +305,7 @@ export default function App() {
 
     // Fetch agendamentos
     const handleSearch = useCallback(async () => {
-        if (!filters.dtInicio || !filters.dtTermino) {
+        if (!isFollowUp && (!filters.dtInicio || !filters.dtTermino)) {
             toast.error('Informe as datas de início e término');
             return;
         }
@@ -363,8 +364,9 @@ export default function App() {
                 const errCount = msgs.filter(m => m.status === 'error').length;
                 toast.success(`${msgs.length} aniversariante(s) encontrado(s)${errCount > 0 ? ` (${errCount} sem telefone)` : ''}`);
             } else if (isUltimaConsulta || isFollowUp) {
-                const fetchRecords = isFollowUp ? api.getFollowUpTreatments : api.getUltimaConsulta;
-                const res = await fetchRecords(filters.dtInicio, filters.dtTermino, filters.unidades);
+                const res = isFollowUp
+                    ? await api.getFollowUpTreatments(filters.unidades)
+                    : await api.getUltimaConsulta(filters.dtInicio, filters.dtTermino, filters.unidades);
 
                 const records = res.success && Array.isArray(res.data) ? res.data : [];
                 setRawAgendamentos([]); // empty in this mode
@@ -383,13 +385,13 @@ export default function App() {
 
                     const fullName = rec.PACIENTE || '';
                     const code = rec.CODIGO?.toString() || '';
-                    const key = `${formattedPhone}-${code}`;
+                    const key = rec.TREATMENT_ID || (code ? `${formattedPhone}-${code}` : `${formattedPhone}-${fullName}-${i}`);
 
                     if (seen.has(key)) return;
                     seen.add(key);
 
                     msgs.push({
-                        id: `msg-${i}-${code}`,
+                        id: `msg-${i}-${rec.TREATMENT_ID || code || 'no-code'}`,
                         nome: getFirstName(fullName),
                         nomeCompleto: fullName,
                         telefone: formattedPhone,
@@ -399,13 +401,15 @@ export default function App() {
                         hora: rec.CONSULTA_AGENDADA || '',
                         ultimaConsulta: rec.ULTIMA_CONSULTA || '',
                         consultaAgendada: rec.CONSULTA_AGENDADA || null,
+                        treatmentId: rec.TREATMENT_ID,
+                        hasPatientCode: rec.HAS_PATIENT_CODE ?? Boolean(code),
                         status: hasPhone ? 'pending' : 'error',
                         errorMessage: hasPhone ? undefined : 'Sem telefone',
                     });
                 });
 
                 setMessages(msgs);
-                setFollowUpSearch(isFollowUp ? { dtInicio: filters.dtInicio, dtTermino: filters.dtTermino, unidades: [...filters.unidades] } : null);
+                setFollowUpSearch(isFollowUp ? { unidades: [...filters.unidades] } : null);
                 setSelectedIds(new Set(msgs.filter(m => m.status === 'pending').map(m => m.id)));
 
                 const errCount = msgs.filter(m => m.status === 'error').length;
@@ -493,17 +497,20 @@ export default function App() {
         // Antes de enviar, confirma ao vivo no EasyDental quem continua sem reagendar.
         // Se nao for possivel confirmar, NAO envia nada.
         if (followUpSearch) {
-            let eligible: Set<string>;
+            let eligibleCodes: Set<string>;
+            let eligibleTreatments: Set<string>;
             revalidatingRef.current = true;
             try {
+                const codigos = toSend.map(m => m.codPaciente).filter(Boolean);
+                const treatmentIds = toSend.map(m => m.treatmentId).filter((id): id is string => Boolean(id));
                 const res = await api.revalidateFollowUp(
-                    followUpSearch.dtInicio,
-                    followUpSearch.dtTermino,
                     followUpSearch.unidades,
-                    toSend.map(m => m.codPaciente)
+                    codigos,
+                    treatmentIds
                 );
                 if (!res.success || !Array.isArray(res.eligible)) throw new Error('Resposta inválida do servidor');
-                eligible = new Set(res.eligible);
+                eligibleCodes = new Set(res.eligible);
+                eligibleTreatments = new Set(res.eligibleTreatmentIds ?? []);
             } catch (err: any) {
                 toast.error('Não foi possível confirmar a situação dos pacientes no EasyDental. Nenhuma mensagem foi enviada. ' + err.message);
                 setShowSendModal(false);
@@ -512,7 +519,10 @@ export default function App() {
                 revalidatingRef.current = false;
             }
 
-            const skipped = toSend.filter(m => !eligible.has(m.codPaciente));
+            const isStillEligible = (m: MessageItem) =>
+                m.treatmentId ? eligibleTreatments.has(m.treatmentId) : eligibleCodes.has(m.codPaciente);
+
+            const skipped = toSend.filter(m => !isStillEligible(m));
             if (skipped.length > 0) {
                 const skippedIds = new Set(skipped.map(m => m.id));
                 setMessages(prev => prev.map(m =>
@@ -524,7 +534,7 @@ export default function App() {
                     return next;
                 });
                 toast.info(`${skipped.length} paciente(s) já reagendaram e foram retirados do envio`);
-                toSend = toSend.filter(m => eligible.has(m.codPaciente));
+                toSend = toSend.filter(isStillEligible);
             }
 
             if (toSend.length === 0) {
@@ -661,26 +671,26 @@ export default function App() {
         if (tpl) {
             const isFollowUpTpl = tpl.searchMode === FOLLOW_UP_MODE;
             const dateStr = dateOffset(tpl.dayOffset);
-            // Em "tratamento sem reagendamento" a janela e a data da ultima consulta: de (dayOffset - 150) ate dayOffset
-            const startStr = isFollowUpTpl ? dateOffset(tpl.dayOffset - FOLLOW_UP_WINDOW_DAYS) : dateStr;
-            setFilters(prev => ({ ...prev, dtInicio: startStr, dtTermino: dateStr, statusAgendamento: [] }));
-
             if (isFollowUpTpl) {
+                setFilters(prev => ({ ...prev, statusAgendamento: [] }));
                 setIsFollowUp(true);
                 setIsUltimaConsulta(false);
                 setIsAniversario(false);
                 setOnlyWithoutScheduled(false);
             } else if (tpl.searchMode === 'ultima-consulta') {
+                setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
                 setIsFollowUp(false);
                 setIsUltimaConsulta(true);
                 setIsAniversario(false);
                 setOnlyWithoutScheduled(false);
             } else if (tpl.searchMode === 'aniversario') {
+                setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
                 setIsFollowUp(false);
                 setIsUltimaConsulta(false);
                 setIsAniversario(true);
                 setOnlyWithoutScheduled(false);
             } else {
+                setFilters(prev => ({ ...prev, dtInicio: dateStr, dtTermino: dateStr, statusAgendamento: [] }));
                 setIsFollowUp(false);
                 setIsUltimaConsulta(false);
                 setIsAniversario(false);
@@ -925,23 +935,30 @@ export default function App() {
                             <div className="border-t border-border pt-4 flex flex-col gap-3">
                                 {/* Row 2: Date range + units + search */}
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    {/* Date Range */}
-                                    <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm">
-                                        <Calendar className="w-4 h-4 text-primary" />
-                                        <input
-                                            type="date"
-                                            className="bg-transparent text-sm outline-none text-foreground"
-                                            value={filters.dtInicio}
-                                            onChange={e => setFilters({ ...filters, dtInicio: e.target.value })}
-                                        />
-                                        <span className="text-muted-foreground text-xs font-medium">até</span>
-                                        <input
-                                            type="date"
-                                            className="bg-transparent text-sm outline-none text-foreground"
-                                            value={filters.dtTermino}
-                                            onChange={e => setFilters({ ...filters, dtTermino: e.target.value })}
-                                        />
-                                    </div>
+                                    {/* Date Range (ignored in follow-up mode) */}
+                                    {isFollowUp ? (
+                                        <div className="flex items-center gap-2 bg-emerald-50/70 border border-emerald-200 rounded-lg px-3 py-2 text-xs font-medium text-emerald-700 h-[38px]">
+                                            <Calendar className="w-4 h-4 text-emerald-600" />
+                                            <span>Todas as datas (todos em tratamento no Planner)</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 bg-background border border-border rounded-lg px-3 py-2 shadow-sm">
+                                            <Calendar className="w-4 h-4 text-primary" />
+                                            <input
+                                                type="date"
+                                                className="bg-transparent text-sm outline-none text-foreground"
+                                                value={filters.dtInicio}
+                                                onChange={e => setFilters({ ...filters, dtInicio: e.target.value })}
+                                            />
+                                            <span className="text-muted-foreground text-xs font-medium">até</span>
+                                            <input
+                                                type="date"
+                                                className="bg-transparent text-sm outline-none text-foreground"
+                                                value={filters.dtTermino}
+                                                onChange={e => setFilters({ ...filters, dtTermino: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
 
                                     {/* Unidades Dropdown */}
                                     <div className="relative group">
@@ -1065,8 +1082,6 @@ export default function App() {
                                                         setOnlyWithoutScheduled(false);
                                                         setFilters(prev => ({
                                                             ...prev,
-                                                            dtInicio: dateOffset(-180),
-                                                            dtTermino: dateOffset(-30),
                                                             statusAgendamento: []
                                                         }));
                                                     } else {

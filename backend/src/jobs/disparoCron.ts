@@ -150,11 +150,12 @@ async function sendViaBotConversa(payload: Record<string, string>): Promise<void
 }
 
 export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promise<void> {
-    const dtInicio = offsetDate(schedule.dtInicioOffset);
-    const dtTermino = offsetDate(schedule.dtTerminoOffset);
+    const isFollowUpMode = schedule.searchMode === FOLLOW_UP_SEARCH_MODE;
+    const dtInicio = isFollowUpMode ? 'Todas' : offsetDate(schedule.dtInicioOffset);
+    const dtTermino = isFollowUpMode ? 'Todas' : offsetDate(schedule.dtTerminoOffset);
     // Os dois modos usam registros no formato do RPCGetUltimaConsulta
     const usesUltimaConsultaFormat =
-        schedule.searchMode === 'ultima-consulta' || schedule.searchMode === FOLLOW_UP_SEARCH_MODE;
+        schedule.searchMode === 'ultima-consulta' || isFollowUpMode;
 
     console.log(`[DisparoCron] Running "${schedule.name}" (${schedule.id}) — ${dtInicio} to ${dtTermino}`);
 
@@ -268,8 +269,6 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             }
             agendamentos = await findTreatmentsWithoutReschedule({
                 tenantId,
-                dtInicio,
-                dtTermino,
                 unidades: schedule.unidades,
             });
         } else {
@@ -312,7 +311,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
 
         for (const ag of agendamentos) {
             const phone = extractPhone(ag);
-            const code = ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || '';
+            const code = ag.ID_AGENDA_ITEM?.toString() || ag.cd_paciente?.toString() || ag.CODIGO?.toString() || ag.PATIENT_ID?.toString() || '';
             
             let dataAg = '';
             let horaAg = '';
@@ -427,7 +426,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         dentista: extractProvider(ag),
                         motivo: ag.MOTIVO || ag.ds_motivo || ag.motivo || '',
                         status: extractStatus(ag),
-                        tx_codigo_paciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || '',
+                        tx_codigo_paciente: ag.TX_CODIGO_PACIENTE?.toString() || ag.cd_paciente?.toString() || ag.CODIGO?.toString() || '',
                         paciente: fullName,
                         celular: phone,
                         data: usesUltimaConsultaFormat ? (ag.ULTIMA_CONSULTA || '') : dataAg,
@@ -436,7 +435,7 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
 
                     // Aggregate all appointment IDs for the same phone: id_agenda_item, Id_agenda_item2, Id_agenda_item3...
                     group.items.forEach((item, idx) => {
-                        const idVal = item.ID_AGENDA_ITEM?.toString() || item.cd_paciente?.toString() || '';
+                        const idVal = item.ID_AGENDA_ITEM?.toString() || item.cd_paciente?.toString() || item.CODIGO?.toString() || '';
                         if (idx === 0) {
                             payload.id_agenda_item = idVal;
                         } else {

@@ -1,15 +1,25 @@
 import prisma from '../lib/prisma';
-import { fetchUltimaConsulta, UltimaConsultaRecord } from '../lib/easydental';
+import { fetchFutureAgendamentos, fetchUltimaConsulta, UltimaConsultaRecord } from '../lib/easydental';
 import { normalizeCode } from '../lib/patientCode';
+import {
+    addDays,
+    buildEasyDentalSnapshot,
+    EasyDentalPatientSnapshot,
+    PlannerTreatmentCandidate,
+    toIsoDateOnly,
+} from '../lib/followUp';
 
-// Janela padrao de busca: pacientes com ultima consulta nos ultimos 6 meses
-const DEFAULT_MONTHS_BACK = 6;
+// Janela padrao de busca de ultima consulta: ultimos 12 meses; e agendamentos futuros: proximos 365 dias
+const DEFAULT_MONTHS_BACK = 12;
+const DEFAULT_FUTURE_DAYS = 365;
 
 export interface SyncOptions {
     tenantId?: string;
     clinicId?: string;
     userId?: string; // restringe aos pacientes de um usuario (sem permissao de gerenciar tudo)
     monthsBack?: number;
+    futureDays?: number;
+    strict?: boolean;
 }
 
 export interface SyncResult {
@@ -20,52 +30,75 @@ export interface SyncResult {
     unmatched: number;    // tratamentos sem correspondencia
 }
 
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+export interface SyncWithSnapshotResult {
+    result: SyncResult;
+    treatments: PlannerTreatmentCandidate[];
+    snapshotByCode: Map<string, EasyDentalPatientSnapshot>;
+    todayIso: string;
+}
 
 // normalizeCode vive em lib/patientCode.ts; reexportado para quem ja o importa daqui.
 export { normalizeCode };
 
-const dateOnly = (value?: Date | string | null): string | null => {
-    if (!value) return null;
-    const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d.getTime())) return null;
-    return d.toISOString().slice(0, 10);
-};
+const toISODate = (d: Date) => d.toISOString().slice(0, 10);
 
-// Um mesmo paciente pode aparecer em mais de uma unidade: consolidamos
-// a ultima consulta mais recente e a proxima consulta mais proxima.
+const dateOnly = (value?: Date | string | null): string | null => toIsoDateOnly(value);
+
+// Mantido para compatibilidade caso algum modulo importe buildRecordMap.
 export const buildRecordMap = (records: UltimaConsultaRecord[]) => {
+    const todayIso = toISODate(new Date());
+    const snapshot = buildEasyDentalSnapshot(records, [], todayIso);
     const map = new Map<string, { last: string | null; next: string | null }>();
-
-    for (const rec of records) {
-        const code = normalizeCode(rec?.CODIGO);
-        if (!code) continue;
-
-        const last = dateOnly(rec.ULTIMA_CONSULTA);
-        const next = dateOnly(rec.CONSULTA_AGENDADA);
-        const current = map.get(code);
-
-        if (!current) {
-            map.set(code, { last, next });
-            continue;
-        }
-
-        if (last && (!current.last || last > current.last)) current.last = last;
-        if (next && (!current.next || next < current.next)) current.next = next;
+    for (const [code, entry] of snapshot.entries()) {
+        map.set(code, { last: entry.lastAppointment, next: entry.nextAppointment });
     }
-
     return map;
 };
 
-export async function syncTreatmentAppointments(options: SyncOptions = {}): Promise<SyncResult> {
-    const { tenantId, clinicId, userId, monthsBack = DEFAULT_MONTHS_BACK } = options;
+const patientSelect = {
+    id: true,
+    name: true,
+    patientNumber: true,
+    phone: true,
+    clinic: { select: { name: true, nickname: true } },
+};
 
-    const dtTermino = new Date();
-    const dtInicio = new Date();
-    dtInicio.setMonth(dtInicio.getMonth() - monthsBack);
+export async function syncTreatmentAppointmentsWithSnapshot(
+    options: SyncOptions = {}
+): Promise<SyncWithSnapshotResult> {
+    const {
+        tenantId,
+        clinicId,
+        userId,
+        monthsBack = DEFAULT_MONTHS_BACK,
+        futureDays = DEFAULT_FUTURE_DAYS,
+        strict = false,
+    } = options;
 
-    const records = await fetchUltimaConsulta(toISODate(dtInicio), toISODate(dtTermino));
-    const byCode = buildRecordMap(records);
+    const now = new Date();
+    const todayIso = toISODate(now);
+    const dtInicioDate = new Date(now);
+    dtInicioDate.setMonth(dtInicioDate.getMonth() - monthsBack);
+    const dtInicioIso = toISODate(dtInicioDate);
+    const futureEndIso = addDays(todayIso, futureDays);
+
+    let easyDentalComplete = true;
+    const [ultimaRecords, futureAgendamentos] = await Promise.all([
+        fetchUltimaConsulta(dtInicioIso, todayIso, undefined, { strict }).catch((err) => {
+            if (strict) throw err;
+            easyDentalComplete = false;
+            console.error('Error fetching ultima consulta during sync:', err.message);
+            return [];
+        }),
+        fetchFutureAgendamentos(todayIso, futureEndIso, undefined, { strict }).catch((err) => {
+            if (strict) throw err;
+            easyDentalComplete = false;
+            console.error('Error fetching future agendamentos during sync:', err.message);
+            return [];
+        }),
+    ]);
+
+    const snapshotByCode = buildEasyDentalSnapshot(ultimaRecords, futureAgendamentos, todayIso);
 
     const patientFilter = {
         ...(tenantId ? { tenantId } : {}),
@@ -73,7 +106,7 @@ export async function syncTreatmentAppointments(options: SyncOptions = {}): Prom
         ...(userId ? { userId } : {}),
     };
 
-    const treatments = await prisma.treatment.findMany({
+    const rawTreatments = await prisma.treatment.findMany({
         where: {
             status: 'EM_ANDAMENTO',
             OR: [
@@ -85,46 +118,82 @@ export async function syncTreatmentAppointments(options: SyncOptions = {}): Prom
             id: true,
             lastAppointment: true,
             nextAppointment: true,
-            patient: { select: { patientNumber: true } },
-            planning: { select: { patient: { select: { patientNumber: true } } } },
+            patient: { select: patientSelect },
+            planning: { select: { patient: { select: patientSelect } } },
         },
     });
 
     const result: SyncResult = {
-        fetched: records.length,
-        candidates: treatments.length,
+        fetched: ultimaRecords.length + futureAgendamentos.length,
+        candidates: rawTreatments.length,
         matched: 0,
         updated: 0,
         unmatched: 0,
     };
 
-    for (const treatment of treatments) {
+    const candidates: PlannerTreatmentCandidate[] = [];
+
+    for (const treatment of rawTreatments) {
         // Vinculo SOMENTE pelo "Numero do Paciente" digitado pelo usuario ao criar o paciente.
-        // Nao usamos externalId, id interno, telefone ou nome como fallback.
         const patient = treatment.patient || treatment.planning?.patient;
-        const code = normalizeCode(patient?.patientNumber);
-        const match = code ? byCode.get(code) : undefined;
+        if (!patient) continue;
 
-        if (!match) {
+        const code = normalizeCode(patient.patientNumber);
+        const match = code ? snapshotByCode.get(code) : undefined;
+
+        let effectiveLast = dateOnly(treatment.lastAppointment);
+        let effectiveNext = dateOnly(treatment.nextAppointment);
+
+        if (!code || !match) {
             result.unmatched++;
-            continue;
-        }
-        result.matched++;
+            // Se o paciente tem codigo valido e a consulta ao EasyDental foi completa sem erro,
+            // ausencia de consulta futura no EasyDental limpa nextAppointment obsoleto no Planner.
+            if (code && easyDentalComplete && treatment.nextAppointment !== null) {
+                await prisma.treatment.update({
+                    where: { id: treatment.id },
+                    data: { nextAppointment: null },
+                });
+                effectiveNext = null;
+                result.updated++;
+            }
+        } else {
+            result.matched++;
+            const data: { lastAppointment?: Date | null; nextAppointment?: Date | null } = {};
 
-        // EasyDental e a fonte da verdade: sem consulta agendada la, limpamos a proxima consulta.
-        const data: { lastAppointment?: Date | null; nextAppointment?: Date | null } = {};
-        if (match.last && match.last !== dateOnly(treatment.lastAppointment)) {
-            data.lastAppointment = new Date(`${match.last}T00:00:00.000Z`);
-        }
-        if (match.next !== dateOnly(treatment.nextAppointment)) {
-            data.nextAppointment = match.next ? new Date(`${match.next}T00:00:00.000Z`) : null;
+            if (match.lastAppointment && match.lastAppointment !== effectiveLast) {
+                data.lastAppointment = new Date(`${match.lastAppointment}T00:00:00.000Z`);
+                effectiveLast = match.lastAppointment;
+            }
+            if (match.nextAppointment !== effectiveNext) {
+                data.nextAppointment = match.nextAppointment
+                    ? new Date(`${match.nextAppointment}T00:00:00.000Z`)
+                    : null;
+                effectiveNext = match.nextAppointment;
+            }
+
+            if (Object.keys(data).length > 0) {
+                await prisma.treatment.update({ where: { id: treatment.id }, data });
+                result.updated++;
+            }
         }
 
-        if (Object.keys(data).length === 0) continue;
-
-        await prisma.treatment.update({ where: { id: treatment.id }, data });
-        result.updated++;
+        candidates.push({
+            id: treatment.id,
+            patientId: patient.id,
+            patientName: patient.name,
+            patientNumber: patient.patientNumber ?? null,
+            patientPhone: patient.phone ?? null,
+            clinicName: patient.clinic?.name ?? null,
+            clinicNickname: patient.clinic?.nickname ?? null,
+            lastAppointment: effectiveLast,
+            nextAppointment: effectiveNext,
+        });
     }
 
+    return { result, treatments: candidates, snapshotByCode, todayIso };
+}
+
+export async function syncTreatmentAppointments(options: SyncOptions = {}): Promise<SyncResult> {
+    const { result } = await syncTreatmentAppointmentsWithSnapshot(options);
     return result;
 }

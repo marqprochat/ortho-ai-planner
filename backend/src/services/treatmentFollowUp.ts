@@ -1,80 +1,105 @@
 import prisma from '../lib/prisma';
-import { fetchUltimaConsulta, UltimaConsultaRecord } from '../lib/easydental';
+import { getPacienteByCod } from '../lib/easydental';
 import { normalizeCode } from '../lib/patientCode';
-import { selectFollowUpRecords, recentWindow } from '../lib/followUp';
+import {
+    FollowUpRecord,
+    PatientEasyDentalDetails,
+    selectPlannerFollowUpRecords,
+} from '../lib/followUp';
+import { syncTreatmentAppointmentsWithSnapshot } from './appointmentSync';
 
 export interface FollowUpQuery {
     tenantId: string;
-    dtInicio: string;
-    dtTermino: string;
     unidades?: string[];
 }
 
-// Codigos (normalizados) dos pacientes com tratamento EM_ANDAMENTO no tenant.
-// Vinculo SOMENTE pelo "Numero do Paciente" (patientNumber), como no appointmentSync.
-const loadTreatmentCodes = async (tenantId: string): Promise<Set<string>> => {
-    const treatments = await prisma.treatment.findMany({
-        where: {
-            status: 'EM_ANDAMENTO',
-            OR: [
-                { patient: { tenantId } },
-                { planning: { patient: { tenantId } } },
-            ],
-        },
-        select: {
-            patient: { select: { patientNumber: true } },
-            planning: { select: { patient: { select: { patientNumber: true } } } },
-        },
-    });
+const DETAILS_CONCURRENCY = 5;
 
-    const codes = new Set<string>();
-    for (const treatment of treatments) {
-        const patient = treatment.patient || treatment.planning?.patient;
-        const code = normalizeCode(patient?.patientNumber);
-        if (code) codes.add(code);
+async function fetchPatientDetailsBatch(
+    codes: string[]
+): Promise<Map<string, PatientEasyDentalDetails>> {
+    const detailsByCode = new Map<string, PatientEasyDentalDetails>();
+    for (let i = 0; i < codes.length; i += DETAILS_CONCURRENCY) {
+        const batch = codes.slice(i, i + DETAILS_CONCURRENCY);
+        const results = await Promise.all(
+            batch.map(async (code) => {
+                try {
+                    const details = await getPacienteByCod(code);
+                    return { code, details };
+                } catch (err: any) {
+                    console.error(`Error fetching EasyDental details for code ${code}:`, err.message);
+                    return { code, details: null };
+                }
+            })
+        );
+        for (const { code, details } of results) {
+            if (details) detailsByCode.set(code, details);
+        }
     }
-    return codes;
-};
+    return detailsByCode;
+}
 
-// EasyDental ao vivo (modo estrito: erro de unidade nao vira lista vazia) x tratamentos do Planner.
-export const findTreatmentsWithoutReschedule = async (query: FollowUpQuery): Promise<UltimaConsultaRecord[]> => {
+// Sincroniza tratamentos EM_ANDAMENTO do Planner com o EasyDental ao vivo (modo estrito)
+// e retorna todos os pacientes em tratamento sem proxima consulta agendada.
+export const findTreatmentsWithoutReschedule = async (
+    query: FollowUpQuery
+): Promise<FollowUpRecord[]> => {
     // Um tenantId indefinido viraria "sem filtro" no Prisma: nunca prosseguir sem ele.
     if (!query.tenantId) throw new Error('tenantId é obrigatório');
 
-    // ULTIMA_CONSULTA e a ultima DENTRO da janela: quem foi atendido depois do fim dela (em qualquer unidade)
-    // nao tem consulta futura apenas por ter acabado de vir e nao deve ser listado.
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const recent = recentWindow(query.dtTermino, todayIso);
+    const { treatments, snapshotByCode, todayIso } = await syncTreatmentAppointmentsWithSnapshot({
+        tenantId: query.tenantId,
+        strict: true,
+    });
 
-    const [records, recentRecords, treatmentCodes] = await Promise.all([
-        fetchUltimaConsulta(query.dtInicio, query.dtTermino, query.unidades, { strict: true }),
-        recent
-            ? fetchUltimaConsulta(recent.dtInicio, recent.dtTermino, undefined, { strict: true })
-            : Promise.resolve([] as UltimaConsultaRecord[]),
-        loadTreatmentCodes(query.tenantId),
-    ]);
+    const initial = selectPlannerFollowUpRecords(treatments, snapshotByCode, todayIso, {
+        unidades: query.unidades,
+    });
 
-    const seenAfterCodes = new Set<string>();
-    for (const rec of recentRecords) {
-        const code = normalizeCode(rec?.CODIGO);
-        if (code) seenAfterCodes.add(code);
-    }
+    const codesNeedingDetails = initial
+        .filter((rec) => rec.HAS_PATIENT_CODE && !snapshotByCode.get(rec.CODIGO)?.celular)
+        .map((rec) => rec.CODIGO);
 
-    return selectFollowUpRecords(records, treatmentCodes, {
-        dtInicio: query.dtInicio,
-        dtTermino: query.dtTermino,
-        seenAfterCodes,
+    if (codesNeedingDetails.length === 0) return initial;
+
+    const detailsByCode = await fetchPatientDetailsBatch(codesNeedingDetails);
+    return selectPlannerFollowUpRecords(treatments, snapshotByCode, todayIso, {
+        unidades: query.unidades,
+        detailsByCode,
     });
 };
 
-// Refaz a busca ao vivo e devolve, dos `codigos` recebidos, os que continuam elegiveis.
-export const revalidateFollowUp = async (query: FollowUpQuery & { codigos: string[] }): Promise<string[]> => {
-    const eligible = await findTreatmentsWithoutReschedule(query);
-    const eligibleCodes = new Set(eligible.map((rec) => normalizeCode(rec.CODIGO)));
-    return query.codigos.filter((codigo) => {
-        const normalized = normalizeCode(codigo);
-        return normalized !== null && eligibleCodes.has(normalized);
+export interface RevalidateFollowUpResult {
+    eligible: string[];
+    eligibleTreatmentIds: string[];
+}
+
+// Refaz a sincronizacao/busca ao vivo e devolve os codigos e treatmentIds que continuam elegiveis.
+export const revalidateFollowUp = async (
+    query: FollowUpQuery & { codigos?: string[]; treatmentIds?: string[] }
+): Promise<RevalidateFollowUpResult> => {
+    const eligibleRecords = await findTreatmentsWithoutReschedule({
+        tenantId: query.tenantId,
+        unidades: query.unidades,
     });
+
+    const eligibleCodeSet = new Set(
+        eligibleRecords
+            .map((rec) => normalizeCode(rec.CODIGO))
+            .filter((c): c is string => c !== null)
+    );
+    const eligibleTreatmentSet = new Set(eligibleRecords.map((rec) => rec.TREATMENT_ID));
+
+    const eligible = (query.codigos ?? []).filter((codigo) => {
+        const normalized = normalizeCode(codigo);
+        return normalized !== null && eligibleCodeSet.has(normalized);
+    });
+
+    const eligibleTreatmentIds = (query.treatmentIds ?? []).filter((id) =>
+        eligibleTreatmentSet.has(id)
+    );
+
+    return { eligible, eligibleTreatmentIds };
 };
 
 // Tenant do usuario que criou um agendamento (cron nao tem usuario logado).

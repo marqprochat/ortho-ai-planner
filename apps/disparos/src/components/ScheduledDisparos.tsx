@@ -93,7 +93,9 @@ function LogsPanel({ scheduleId }: { scheduleId: string }) {
                                     {new Date(log.executedAt).toLocaleString('pt-BR')}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                    {log.dtInicio} → {log.dtTermino}
+                                    {log.dtInicio === 'Todas' && log.dtTermino === 'Todas'
+                                        ? 'Todas as datas'
+                                        : `${log.dtInicio} → ${log.dtTermino}`}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3 text-xs">
@@ -178,52 +180,53 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                 />
             </div>
 
-            {/* Offset de datas */}
-            <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">Período de consultas (relativo a hoje)</label>
-                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">De</span>
-                        <input
-                            type="number"
-                            className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
-                            value={form.dtInicioOffset}
-                            onChange={e => set({ dtInicioOffset: parseInt(e.target.value) || 0 })}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                            {form.dtInicioOffset < 0
-                                ? `dia(s) atrás`
-                                : form.dtInicioOffset === 0
-                                    ? 'hoje'
-                                    : 'dia(s) à frente'}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">até</span>
-                        <input
-                            type="number"
-                            className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
-                            value={form.dtTerminoOffset}
-                            onChange={e => set({ dtTerminoOffset: parseInt(e.target.value) || 0 })}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                            {form.dtTerminoOffset < 0
-                                ? `dia(s) atrás`
-                                : form.dtTerminoOffset === 0
-                                    ? 'hoje'
-                                    : 'dia(s) à frente'}
-                        </span>
-                    </div>
+            {/* Offset de datas (ignorado em tratamento-sem-reagendamento) */}
+            {form.searchMode === 'tratamento-sem-reagendamento' ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 text-xs text-emerald-800">
+                    <strong>Todas as datas:</strong> neste modo as datas são ignoradas. A cada execução o sistema sincroniza com o EasyDental e lista todos os pacientes em tratamento no Planner que ainda não têm próxima consulta agendada.
                 </div>
-                <p className="text-xs text-muted-foreground">
-                    Negativo = dias passados. Ex: <strong>-1 até -1</strong> = ontem · <strong>1 até 1</strong> = amanhã · <strong>-1 até 1</strong> = ontem, hoje e amanhã.
-                </p>
-                {form.searchMode === 'tratamento-sem-reagendamento' && (
+            ) : (
+                <div className="space-y-2">
+                    <label className="text-xs font-semibold text-foreground">Período de consultas (relativo a hoje)</label>
+                    <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">De</span>
+                            <input
+                                type="number"
+                                className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
+                                value={form.dtInicioOffset}
+                                onChange={e => set({ dtInicioOffset: parseInt(e.target.value) || 0 })}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {form.dtInicioOffset < 0
+                                    ? `dia(s) atrás`
+                                    : form.dtInicioOffset === 0
+                                        ? 'hoje'
+                                        : 'dia(s) à frente'}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">até</span>
+                            <input
+                                type="number"
+                                className="w-20 px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary text-center"
+                                value={form.dtTerminoOffset}
+                                onChange={e => set({ dtTerminoOffset: parseInt(e.target.value) || 0 })}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                                {form.dtTerminoOffset < 0
+                                    ? `dia(s) atrás`
+                                    : form.dtTerminoOffset === 0
+                                        ? 'hoje'
+                                        : 'dia(s) à frente'}
+                            </span>
+                        </div>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                        Neste modo o período é a <strong>data da última consulta</strong>. Ex: <strong>-180 até -30</strong> = pacientes em tratamento cuja última consulta foi entre 180 e 30 dias atrás e que ainda não reagendaram. A situação é confirmada ao vivo no EasyDental a cada execução.
+                        Negativo = dias passados. Ex: <strong>-1 até -1</strong> = ontem · <strong>1 até 1</strong> = amanhã · <strong>-1 até 1</strong> = ontem, hoje e amanhã.
                     </p>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Unidades */}
             {unidadeOptions.length > 0 && (
@@ -262,11 +265,6 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                                 agendas: [],
                                 periodos: [],
                                 motivo: '',
-                            }),
-                            // Neste modo o periodo e a data da ultima consulta: padrao de 180 a 30 dias atras
-                            ...(val === 'tratamento-sem-reagendamento' && {
-                                dtInicioOffset: -180,
-                                dtTerminoOffset: -30,
                             }),
                         });
                     }}
@@ -419,9 +417,11 @@ function ScheduleCard({ schedule, messageTemplates, onEdit, onDelete, onTrigger,
         if (n === 0) return 'hoje';
         return n > 0 ? `+${n}d` : `${n}d`;
     }
-    const offsetLabel = schedule.dtInicioOffset === schedule.dtTerminoOffset
-        ? fmtOffset(schedule.dtInicioOffset)
-        : `${fmtOffset(schedule.dtInicioOffset)} a ${fmtOffset(schedule.dtTerminoOffset)}`;
+    const offsetLabel = schedule.searchMode === 'tratamento-sem-reagendamento'
+        ? 'Todas as datas'
+        : schedule.dtInicioOffset === schedule.dtTerminoOffset
+            ? fmtOffset(schedule.dtInicioOffset)
+            : `${fmtOffset(schedule.dtInicioOffset)} a ${fmtOffset(schedule.dtTerminoOffset)}`;
 
     const modeloLabel = messageTemplates.find(t => t.code === schedule.modelo)?.name || 
                         MODELO_OPTIONS.find(o => o.value === schedule.modelo)?.label || 

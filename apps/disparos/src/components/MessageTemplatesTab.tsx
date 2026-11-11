@@ -254,11 +254,13 @@ export default function MessageTemplatesTab() {
                                     </span>
                                     <div className="flex items-center gap-2 font-medium text-foreground">
                                         <span>
-                                            {tpl.dayOffset === 0 
-                                                ? 'Hoje' 
-                                                : tpl.dayOffset > 0 
-                                                    ? `+${tpl.dayOffset}d` 
-                                                    : `${tpl.dayOffset}d`
+                                            {tpl.searchMode === 'tratamento-sem-reagendamento'
+                                                ? 'Todas as datas'
+                                                : tpl.dayOffset === 0
+                                                    ? 'Hoje'
+                                                    : tpl.dayOffset > 0
+                                                        ? `+${tpl.dayOffset}d`
+                                                        : `${tpl.dayOffset}d`
                                             }
                                         </span>
                                         {(!tpl.searchMode || tpl.searchMode === 'agendamento') && tpl.statusKeyword && (
@@ -382,13 +384,13 @@ export default function MessageTemplatesTab() {
 
                                     {/* Day Offset */}
                                     <div className="space-y-1">
-                                        <label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                        <label className={`text-[11px] font-semibold flex items-center gap-1 ${searchMode === 'tratamento-sem-reagendamento' ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                                             Deslocamento de Dias
                                             <span className="group relative">
                                                 <HelpCircle className="w-3 h-3 cursor-pointer opacity-70" />
                                                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-slate-900 text-white text-[10px] p-2 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity leading-tight z-50">
                                                     {searchMode === 'tratamento-sem-reagendamento'
-                                                        ? 'Dias desde a última consulta (negativo). Ex: -30 busca quem teve a última consulta há 30 dias ou mais, nos 150 dias anteriores a isso.'
+                                                        ? 'Ignorado neste modo: busca todos os pacientes em tratamento no Planner independente da data.'
                                                         : 'Dias relativos a hoje. Ex: 1 para amanhã, -1 para ontem, 0 para hoje.'}
                                                 </span>
                                             </span>
@@ -397,7 +399,8 @@ export default function MessageTemplatesTab() {
                                             type="number"
                                             value={dayOffset}
                                             onChange={e => setDayOffset(parseInt(e.target.value) || 0)}
-                                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary"
+                                            disabled={searchMode === 'tratamento-sem-reagendamento'}
+                                            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary disabled:opacity-50 disabled:bg-muted/30"
                                         />
                                     </div>
  

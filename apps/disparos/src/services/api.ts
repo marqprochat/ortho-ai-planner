@@ -120,17 +120,17 @@ export const api = {
             body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades }),
         }),
 
-    // Pacientes em tratamento (Planner) sem consulta reagendada (EasyDental ao vivo)
-    getFollowUpTreatments: (dtInicio: string, dtTermino: string, unidades: string[]) =>
+    // Pacientes em tratamento (Planner) sem consulta reagendada (EasyDental ao vivo, sem filtro de data)
+    getFollowUpTreatments: (unidades: string[]) =>
         request<{ success: boolean; data: any[] }>('/follow-up/treatments', {
             method: 'POST',
-            body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades }),
+            body: JSON.stringify({ unidades }),
         }),
 
-    revalidateFollowUp: (dtInicio: string, dtTermino: string, unidades: string[], codigos: string[]) =>
-        request<{ success: boolean; eligible: string[] }>('/follow-up/treatments/revalidate', {
+    revalidateFollowUp: (unidades: string[], codigos: string[], treatmentIds?: string[]) =>
+        request<{ success: boolean; eligible: string[]; eligibleTreatmentIds?: string[] }>('/follow-up/treatments/revalidate', {
             method: 'POST',
-            body: JSON.stringify({ dt_inicio: dtInicio, dt_termino: dtTermino, unidades, codigos }),
+            body: JSON.stringify({ unidades, codigos, treatment_ids: treatmentIds }),
         }),
 
     // Message Templates
