@@ -217,7 +217,7 @@ const Dashboard = () => {
                           >
                             <td className="p-4 font-medium text-sm text-muted-foreground">{t.planning?.patient?.patientNumber || t.patient?.patientNumber || '-'}</td>
                             <td className="p-4 text-sm font-medium">{t.planning?.patient?.name || t.patient?.name || '-'}</td>
-                            <td className="p-4 text-sm text-muted-foreground">{t.planning?.patient?.user?.name || t.patient?.user?.name || t.doctorName || '-'}</td>
+                            <td className="p-4 text-sm text-muted-foreground">{t.doctorName || t.planning?.patient?.user?.name || t.patient?.user?.name || '-'}</td>
                             <td className="p-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${t.status === 'CONCLUIDO'
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'

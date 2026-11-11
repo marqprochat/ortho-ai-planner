@@ -26,7 +26,7 @@ const PlanoDeTratamento = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [planningId, setPlanningId] = useState<string | null>((location.state as any)?.planningId || null);
 
-  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos, frequenciaRetorno } = (location.state || {}) as {
+  const { messages, selectedOption, selectedModel, objetivoTratamento, patientId, patientName, isDentistPlan, aparelhos, frequenciaRetorno, dentistId } = (location.state || {}) as {
     messages: Message[];
     selectedOption: string;
     selectedModel: string;
@@ -36,6 +36,7 @@ const PlanoDeTratamento = () => {
     isDentistPlan?: boolean;
     aparelhos?: string;
     frequenciaRetorno?: string;
+    dentistId?: string | null;
     planningId?: string;
   };
 
@@ -160,6 +161,7 @@ Seja claro, objetivo e use uma linguagem profissional.`;
                 patientId,
                 title: `Planejamento - ${patientName || 'Paciente'}`,
                 originalReport: selectedOption,
+                dentistId: dentistId || null,
               });
               currentPlanningId = planning.id;
               setPlanningId(planning.id);
@@ -170,6 +172,7 @@ Seja claro, objetivo e use uma linguagem profissional.`;
               await patientService.updatePlanning(currentPlanningId, {
                 status: 'COMPLETED',
                 aiResponse,
+                ...(dentistId ? { dentistId } : {}),
               });
               toast.success("Planejamento salvo com sucesso!");
             }

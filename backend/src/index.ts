@@ -27,6 +27,7 @@ import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
 import { listMessageTemplates, getMessageTemplate, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate } from './controllers/messageTemplateController';
 import { searchFollowUpTreatments, revalidateFollowUpTreatments } from './controllers/followUpController';
+import { listDentists, createDentist, updateDentist, deleteDentist } from './controllers/dentistController';
 
 // Import Middleware
 import { authMiddleware, requireAppAccess, requirePermission, requireSuperAdmin } from './middleware/authMiddleware';
@@ -104,6 +105,12 @@ app.get('/api/clinics', authMiddleware, getClinics);
 app.post('/api/clinics', authMiddleware, createClinic);
 app.put('/api/clinics/:id', authMiddleware, updateClinic);
 app.delete('/api/clinics/:id', authMiddleware, deleteClinic);
+
+// Dentist Routes (por clínica)
+app.get('/api/dentists', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), listDentists);
+app.post('/api/dentists', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), createDentist);
+app.put('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), updateDentist);
+app.delete('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), deleteDentist);
 
 // User Management Routes
 app.get('/api/users', authMiddleware, getUsers);

@@ -20,6 +20,8 @@ import Sidebar from "@/components/Sidebar";
 import { patientService } from "@/services/patientService";
 import { useAuth } from "@/context/AuthContext";
 import { useClinic } from "@/context/ClinicContext";
+import { DentistSelect } from "@/components/DentistSelect";
+import type { Dentist } from "@/services/dentistService";
 
 interface ContractData {
     // Logo
@@ -96,6 +98,7 @@ const TermoDeCompromisso = () => {
     const [contractData, setContractData] = useState<ContractData>(initialContractData);
     const [editableContract, setEditableContract] = useState("");
     const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [dentistId, setDentistId] = useState("");
     const { currentClinic } = useClinic();
 
     // Get patientId from navigation state
@@ -122,6 +125,7 @@ const TermoDeCompromisso = () => {
         }
 
         if (parsed) {
+            setDentistId(parsed.dentistId || "");
             setContractData(prev => ({
                 ...prev,
                 nomePaciente: parsed.nomePaciente || prev.nomePaciente,
@@ -206,6 +210,13 @@ const TermoDeCompromisso = () => {
             ...prev,
             logoPreview: ""
         }));
+    };
+
+    const handleSelectDentist = (dentist: Dentist | null) => {
+        setDentistId(dentist?.id ?? "");
+        if (dentist) {
+            setContractData(prev => ({ ...prev, nomeDentista: dentist.name, croDentista: dentist.cro }));
+        }
     };
 
     const handleInputChange = (field: keyof ContractData, value: string) => {
@@ -801,6 +812,10 @@ ${cidade}, ${dataContrato}.`;
                                     />
                                 </div>
                                 <Separator />
+                                <div className="space-y-2">
+                                    <Label htmlFor="dentistId">Dentista cadastrado</Label>
+                                    <DentistSelect id="dentistId" value={dentistId} onChange={handleSelectDentist} fallbackLabel={contractData.nomeDentista} />
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="nomeDentista">Nome do Dentista</Label>

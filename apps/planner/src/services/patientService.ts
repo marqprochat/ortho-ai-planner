@@ -82,6 +82,8 @@ lastAppointment?: string;
 nextAppointment?: string;
 notes?: string;
 doctorName?: string;
+dentistId?: string | null;
+dentistCro?: string | null;
 createdAt: string;
 updatedAt: string;
 }
@@ -99,6 +101,15 @@ const getAuthHeaders = () => {
     }
 
     return headers;
+};
+
+const errorFrom = async (response: Response, fallback: string): Promise<Error> => {
+    try {
+        const body = await response.json();
+        return new Error(body?.error || fallback);
+    } catch {
+        return new Error(fallback);
+    }
 };
 
 export const patientService = {
@@ -251,7 +262,7 @@ export const patientService = {
         }
     },
 
-    async createPlanning(data: { patientId: string; title: string; originalReport?: string; status?: string; structuredPlan?: any }): Promise<Planning> {
+    async createPlanning(data: { patientId: string; title: string; originalReport?: string; status?: string; structuredPlan?: any; dentistId?: string | null }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings`, {
             method: 'POST',
             headers: getAuthHeaders(),
@@ -259,13 +270,13 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao criar planejamento');
+            throw await errorFrom(response, 'Erro ao criar planejamento');
         }
 
         return response.json();
     },
 
-    async updatePlanning(id: string, data: { status?: string; aiResponse?: string; structuredPlan?: any }): Promise<Planning> {
+    async updatePlanning(id: string, data: { status?: string; aiResponse?: string; structuredPlan?: any; dentistId?: string | null }): Promise<Planning> {
         const response = await fetch(`${API_URL}/plannings/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(),
@@ -273,7 +284,7 @@ export const patientService = {
         });
 
         if (!response.ok) {
-            throw new Error('Erro ao atualizar planejamento');
+            throw await errorFrom(response, 'Erro ao atualizar planejamento');
         }
 
         return response.json();
@@ -380,7 +391,7 @@ export const patientService = {
         return response.json();
     },
 
-async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+async createTreatment(data: { patientId?: string; planningId?: string; startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string | null; dentistId?: string | null }): Promise<Treatment> {
 const response = await fetch(`${API_URL}/treatments`, {
 method: 'POST',
 headers: getAuthHeaders(),
@@ -388,7 +399,7 @@ body: JSON.stringify(data),
 });
 
 if (!response.ok) {
-throw new Error('Erro ao criar tratamento');
+throw await errorFrom(response, 'Erro ao criar tratamento');
 }
 
 return response.json();
@@ -408,7 +419,7 @@ throw new Error(err.error || 'Erro ao sincronizar consultas');
 return response.json();
 },
 
-async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string }): Promise<Treatment> {
+async updateTreatment(id: string, data: { startDate?: string; deadline?: string; endDate?: string; lastAppointment?: string; nextAppointment?: string; notes?: string; status?: string; doctorName?: string | null; dentistId?: string | null }): Promise<Treatment> {
 const response = await fetch(`${API_URL}/treatments/${id}`, {
 method: 'PUT',
 headers: getAuthHeaders(),
@@ -416,7 +427,7 @@ body: JSON.stringify(data),
 });
 
 if (!response.ok) {
-throw new Error('Erro ao atualizar tratamento');
+throw await errorFrom(response, 'Erro ao atualizar tratamento');
 }
 
 return response.json();
