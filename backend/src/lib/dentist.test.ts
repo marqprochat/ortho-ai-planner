@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeCro, parseDentistInput } from './dentist';
+import { buildAccessibleClinicWhere, normalizeCro, parseDentistInput } from './dentist';
 
 test('normalizeCro remove espaços extras e coloca em maiúsculas', () => {
     assert.equal(normalizeCro('  sp   12345 '), 'SP 12345');
@@ -33,4 +33,24 @@ test('parseDentistInput exige CRO', () => {
 
 test('parseDentistInput rejeita corpo inválido', () => {
     assert.deepEqual(parseDentistInput(null), { ok: false, error: 'Nome é obrigatório' });
+});
+
+test('buildAccessibleClinicWhere libera clínica do tenant para super admin', () => {
+    assert.deepEqual(
+        buildAccessibleClinicWhere({ clinicId: 'c1', userId: 'u1', tenantId: 't1', isSuperAdmin: true }),
+        { id: 'c1', tenantId: 't1' }
+    );
+});
+
+test('buildAccessibleClinicWhere valida vínculo UserClinic para usuário comum mesmo sem tenantId coincidente', () => {
+    assert.deepEqual(
+        buildAccessibleClinicWhere({ clinicId: 'c1', userId: 'u2', tenantId: 't-other', isSuperAdmin: false }),
+        { id: 'c1', userClinics: { some: { userId: 'u2' } } }
+    );
+});
+
+test('buildAccessibleClinicWhere retorna null sem clinicId ou userId', () => {
+    assert.equal(buildAccessibleClinicWhere({ userId: 'u1', tenantId: 't1' }), null);
+    assert.equal(buildAccessibleClinicWhere({ clinicId: 'c1', tenantId: 't1' }), null);
+    assert.equal(buildAccessibleClinicWhere({ clinicId: 'c1', userId: 'u1', isSuperAdmin: true }), null);
 });

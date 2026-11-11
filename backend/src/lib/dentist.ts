@@ -27,3 +27,26 @@ export const parseDentistInput = (body: unknown): DentistInputResult => {
 
     return { ok: true, data: { name, cro, easyDentalId } };
 };
+
+export interface ClinicAccessParams {
+    clinicId?: string;
+    userId?: string;
+    tenantId?: string;
+    isSuperAdmin?: boolean;
+}
+
+/**
+ * Builds the Prisma `where` clause to verify that a user has access to the selected clinic.
+ * Super admins can access any clinic in their tenant; other users must be linked via UserClinic.
+ */
+export const buildAccessibleClinicWhere = ({ clinicId, userId, tenantId, isSuperAdmin }: ClinicAccessParams) => {
+    if (!clinicId || !userId) return null;
+    if (isSuperAdmin) {
+        if (!tenantId) return null;
+        return { id: clinicId, tenantId };
+    }
+    return {
+        id: clinicId,
+        userClinics: { some: { userId } }
+    };
+};

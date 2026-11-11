@@ -19,10 +19,15 @@ export function DentistSelect({ value, onChange, id, fallbackLabel, disabled }: 
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        if (!selectedClinicId) {
+            setDentists([]);
+            setIsLoading(false);
+            return;
+        }
         let cancelled = false;
         setIsLoading(true);
         dentistService
-            .list()
+            .list(false, selectedClinicId)
             .then((data) => { if (!cancelled) setDentists(data); })
             .catch(() => { if (!cancelled) setDentists([]); })
             .finally(() => { if (!cancelled) setIsLoading(false); });

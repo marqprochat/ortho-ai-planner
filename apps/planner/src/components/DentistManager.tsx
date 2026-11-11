@@ -14,14 +14,12 @@ import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useHasPermission } from "@/hooks/useHasPermission";
 import { dentistService, Dentist } from "@/services/dentistService";
 import { StandardizeDentistDialog } from "@/components/StandardizeDentistDialog";
 
 const emptyForm = { easyDentalId: "", name: "", cro: "" };
 
 export function DentistManager({ clinicId }: { clinicId: string }) {
-    const canManage = useHasPermission("manage", "clinic");
     const [dentists, setDentists] = useState<Dentist[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -32,9 +30,10 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
     const [toStandardize, setToStandardize] = useState<Dentist | null>(null);
 
     const load = async () => {
+        if (!clinicId) return;
         try {
             setIsLoading(true);
-            setDentists(await dentistService.list(true));
+            setDentists(await dentistService.list(true, clinicId));
         } catch (error: any) {
             toast.error(error.message || "Erro ao carregar dentistas");
         } finally {
@@ -64,10 +63,10 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
         setIsSaving(true);
         try {
             if (editing) {
-                await dentistService.update(editing.id, { ...form, isActive: editing.isActive });
+                await dentistService.update(editing.id, { ...form, isActive: editing.isActive }, clinicId);
                 toast.success("Dentista atualizado!");
             } else {
-                await dentistService.create(form);
+                await dentistService.create(form, clinicId);
                 toast.success("Dentista cadastrado!");
             }
             setIsDialogOpen(false);
@@ -86,7 +85,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                 name: dentist.name,
                 cro: dentist.cro,
                 isActive: !dentist.isActive,
-            });
+            }, clinicId);
             await load();
         } catch (error: any) {
             toast.error(error.message || "Erro ao atualizar dentista");
@@ -96,7 +95,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
     const handleDelete = async () => {
         if (!toDelete) return;
         try {
-            const result = await dentistService.remove(toDelete.id);
+            const result = await dentistService.remove(toDelete.id, clinicId);
             toast.success(result.deactivated
                 ? "Dentista possui registros vinculados e foi desativado."
                 : "Dentista excluído!");
@@ -116,11 +115,9 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                         Dentistas da clínica, usados para preencher o CRO em planejamentos, tratamentos e termos
                     </CardDescription>
                 </div>
-                {canManage && (
-                    <Button type="button" onClick={openNew}>
-                        <Plus className="mr-2 h-4 w-4" /> Novo dentista
-                    </Button>
-                )}
+                <Button type="button" onClick={openNew}>
+                    <Plus className="mr-2 h-4 w-4" /> Novo dentista
+                </Button>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
@@ -135,7 +132,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                                 <TableHead>CRO</TableHead>
                                 <TableHead>ID EasyDental</TableHead>
                                 <TableHead>Status</TableHead>
-                                {canManage && <TableHead className="text-right">Ações</TableHead>}
+                                <TableHead className="text-right">Ações</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -149,29 +146,27 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                                             {d.isActive ? "Ativo" : "Inativo"}
                                         </Badge>
                                     </TableCell>
-                                    {canManage && (
-                                        <TableCell className="text-right space-x-1">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setToStandardize(d)}
-                                                title="Buscar registros semelhantes e forçar padrão deste dentista"
-                                            >
-                                                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                                                Forçar padrão
-                                            </Button>
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(d)} aria-label="Editar">
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button type="button" variant="outline" size="sm" onClick={() => handleToggleActive(d)}>
-                                                {d.isActive ? "Desativar" : "Ativar"}
-                                            </Button>
-                                            <Button type="button" variant="ghost" size="icon" onClick={() => setToDelete(d)} aria-label="Excluir">
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        </TableCell>
-                                    )}
+                                    <TableCell className="text-right space-x-1">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setToStandardize(d)}
+                                            title="Buscar registros semelhantes e forçar padrão deste dentista"
+                                        >
+                                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                                            Forçar padrão
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(d)} aria-label="Editar">
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => handleToggleActive(d)}>
+                                            {d.isActive ? "Desativar" : "Ativar"}
+                                        </Button>
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => setToDelete(d)} aria-label="Excluir">
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -226,6 +221,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
 
             <StandardizeDentistDialog
                 dentist={toStandardize}
+                clinicId={clinicId}
                 open={!!toStandardize}
                 onOpenChange={(open) => !open && setToStandardize(null)}
                 onApplied={load}

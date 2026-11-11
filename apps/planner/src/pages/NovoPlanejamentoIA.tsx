@@ -12,7 +12,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
-import { useAuth } from "@/context/AuthContext";
 import { patientService, Patient } from "@/services/patientService";
 import { PatientSelector } from "@/components/PatientSelector";
 import { DentistSelect } from "@/components/DentistSelect";
@@ -75,7 +74,6 @@ const initialFormData = {
 const NovoPlanejamentoIA = () => {
 
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [view, setView] = useState<'form' | 'chat'>('form');
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
 
@@ -102,8 +100,6 @@ const NovoPlanejamentoIA = () => {
     }
     return {
       ...initialFormData,
-      nomeOrtodontista: user?.name || "",
-      croOrtodontista: user?.cro || "",
       dataPlanejamento: getTodayValue(),
     };
   });
@@ -153,7 +149,7 @@ const NovoPlanejamentoIA = () => {
   const handleSelectDentist = (dentist: Dentist | null) => {
     setFormData(prev => dentist
       ? { ...prev, dentistId: dentist.id, nomeOrtodontista: dentist.name, croOrtodontista: dentist.cro }
-      : { ...prev, dentistId: "" });
+      : { ...prev, dentistId: "", nomeOrtodontista: "", croOrtodontista: "" });
   };
 
   // Reset form when "isNew" state is passed from navigation
@@ -162,8 +158,6 @@ const NovoPlanejamentoIA = () => {
       localStorage.removeItem("planejamentoFormData");
       setFormData({
         ...initialFormData,
-        nomeOrtodontista: user?.name || "",
-        croOrtodontista: user?.cro || "",
       });
       setPatientId(null);
       setPlanningId(null);
@@ -173,18 +167,7 @@ const NovoPlanejamentoIA = () => {
       // Clear state to avoid repeated resets
       navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, navigate, user]);
-
-  // Efeitos do Formulário
-  useEffect(() => {
-    if (user && !formData.nomeOrtodontista) {
-      setFormData(prev => ({
-        ...prev,
-        nomeOrtodontista: user.name,
-        croOrtodontista: user.cro || prev.croOrtodontista
-      }));
-    }
-  }, [user]);
+  }, [location.state, navigate]);
 
   useEffect(() => {
     localStorage.setItem("planejamentoFormData", JSON.stringify(formData));
@@ -241,8 +224,6 @@ const NovoPlanejamentoIA = () => {
     localStorage.removeItem("planejamentoFormData");
     setFormData({
       ...initialFormData,
-      nomeOrtodontista: user?.name || "",
-      croOrtodontista: user?.cro || "",
     });
     setPatientId(null);
     setPlanningId(null);

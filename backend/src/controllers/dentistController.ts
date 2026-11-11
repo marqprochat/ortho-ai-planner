@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { parseDentistInput } from '../lib/dentist';
+import { buildAccessibleClinicWhere, parseDentistInput } from '../lib/dentist';
 import { getAuditMetadataFromRequest, logAudit } from '../services/auditService';
 import {
     applyDentistStandardization,
@@ -10,11 +10,16 @@ import {
 
 const DUPLICATE_CRO_ERROR = 'Já existe um dentista com este CRO nesta clínica';
 
-// A clínica vem do header x-clinic-id e precisa pertencer ao tenant do usuário.
+// A clínica vem do header x-clinic-id; Super Admin acessa clínicas do tenant e demais usuários apenas clínicas vinculadas em UserClinic.
 const resolveClinic = async (req: AuthRequest) => {
-    const { clinicId, tenantId } = req;
-    if (!clinicId || !tenantId) return null;
-    return prisma.clinic.findFirst({ where: { id: clinicId, tenantId } });
+    const where = buildAccessibleClinicWhere({
+        clinicId: req.clinicId,
+        userId: req.userId,
+        tenantId: req.tenantId,
+        isSuperAdmin: Boolean(req.user?.isSuperAdmin),
+    });
+    if (!where) return null;
+    return prisma.clinic.findFirst({ where });
 };
 
 const isUniqueViolation = (error: unknown) => (error as { code?: string })?.code === 'P2002';

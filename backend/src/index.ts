@@ -106,13 +106,13 @@ app.post('/api/clinics', authMiddleware, createClinic);
 app.put('/api/clinics/:id', authMiddleware, updateClinic);
 app.delete('/api/clinics/:id', authMiddleware, deleteClinic);
 
-// Dentist Routes (por clínica)
-app.get('/api/dentists', authMiddleware, requireAppAccess('planner'), requirePermission('read', 'planning'), listDentists);
-app.post('/api/dentists', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), createDentist);
-app.put('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), updateDentist);
-app.delete('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), deleteDentist);
-app.post('/api/dentists/:id/standardize/preview', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), previewStandardizeDentist);
-app.post('/api/dentists/:id/standardize/apply', authMiddleware, requireAppAccess('planner'), requirePermission('manage', 'clinic'), applyStandardizeDentist);
+// Dentist Routes (por clínica — visível e gerenciável por qualquer usuário com acesso à clínica)
+app.get('/api/dentists', authMiddleware, requireAppAccess('planner'), listDentists);
+app.post('/api/dentists', authMiddleware, requireAppAccess('planner'), createDentist);
+app.put('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), updateDentist);
+app.delete('/api/dentists/:id', authMiddleware, requireAppAccess('planner'), deleteDentist);
+app.post('/api/dentists/:id/standardize/preview', authMiddleware, requireAppAccess('planner'), previewStandardizeDentist);
+app.post('/api/dentists/:id/standardize/apply', authMiddleware, requireAppAccess('planner'), applyStandardizeDentist);
 
 // User Management Routes
 app.get('/api/users', authMiddleware, getUsers);

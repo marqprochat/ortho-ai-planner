@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import jsPDF from 'jspdf';
 import Sidebar from "@/components/Sidebar";
 import { patientService } from "@/services/patientService";
-import { useAuth } from "@/context/AuthContext";
 import { useClinic } from "@/context/ClinicContext";
 import { DentistSelect } from "@/components/DentistSelect";
 import type { Dentist } from "@/services/dentistService";
@@ -89,7 +88,6 @@ const initialContractData: ContractData = {
 
 const TermoDeCompromisso = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
     const location = useLocation();
     const [view, setView] = useState<'form' | 'preview'>('form');
     const [isEditing, setIsEditing] = useState(false);
@@ -158,21 +156,7 @@ const TermoDeCompromisso = () => {
             ...prev,
             dataContrato: dataFormatada,
         }));
-        setContractData(prev => ({
-            ...prev,
-            dataContrato: dataFormatada,
-        }));
     }, [patientName]);
-
-    useEffect(() => {
-        if (user) {
-            setContractData(prev => ({
-                ...prev,
-                nomeDentista: prev.nomeDentista || user.name,
-                croDentista: prev.croDentista || user.cro || ""
-            }));
-        }
-    }, [user]);
 
     // Auto-fill from Clinic Context
     useEffect(() => {
@@ -216,6 +200,8 @@ const TermoDeCompromisso = () => {
         setDentistId(dentist?.id ?? "");
         if (dentist) {
             setContractData(prev => ({ ...prev, nomeDentista: dentist.name, croDentista: dentist.cro }));
+        } else {
+            setContractData(prev => ({ ...prev, nomeDentista: "", croDentista: "" }));
         }
     };
 

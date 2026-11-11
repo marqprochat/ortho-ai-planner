@@ -24,6 +24,7 @@ import {
 
 interface StandardizeDentistDialogProps {
     dentist: Dentist | null;
+    clinicId?: string;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onApplied?: () => void;
@@ -39,6 +40,7 @@ const itemKey = (item: Pick<StandardizationCandidateItem, "type" | "id">) => `${
 
 export function StandardizeDentistDialog({
     dentist,
+    clinicId,
     open,
     onOpenChange,
     onApplied,
@@ -60,7 +62,7 @@ export function StandardizeDentistDialog({
             setTypeFilter("all");
             setSearch("");
             try {
-                const data = await dentistService.previewStandardization(dentist.id);
+                const data = await dentistService.previewStandardization(dentist.id, clinicId);
                 if (cancelled) return;
                 setPreview(data);
                 setSelectedKeys(new Set(data.items.map(itemKey)));
@@ -131,7 +133,7 @@ export function StandardizeDentistDialog({
                 planningIds: selectedItems.filter((i) => i.type === "planning").map((i) => i.id),
                 contractIds: selectedItems.filter((i) => i.type === "contract").map((i) => i.id),
             };
-            const res = await dentistService.applyStandardization(dentist.id, selection);
+            const res = await dentistService.applyStandardization(dentist.id, selection, clinicId);
             toast.success(
                 `Padrão aplicado em ${res.updated.total} registro(s): ` +
                 `${res.updated.treatments} tratamento(s), ${res.updated.plannings} planejamento(s), ${res.updated.contracts} contrato(s).`

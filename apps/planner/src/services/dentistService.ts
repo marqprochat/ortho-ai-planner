@@ -62,17 +62,17 @@ export interface StandardizationApplyResult {
     };
 }
 
-const getAuthHeaders = () => {
+const getAuthHeaders = (clinicId?: string | null) => {
     const token = getCookie('token');
-    const selectedClinicId = localStorage.getItem('selectedClinicId');
+    const resolvedClinicId = clinicId || localStorage.getItem('selectedClinicId');
 
     const headers: Record<string, string> = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
     };
 
-    if (selectedClinicId) {
-        headers['x-clinic-id'] = selectedClinicId;
+    if (resolvedClinicId) {
+        headers['x-clinic-id'] = resolvedClinicId;
     }
 
     return headers;
@@ -88,56 +88,60 @@ const failure = async (response: Response, fallback: string): Promise<Error> => 
 };
 
 export const dentistService = {
-    async list(includeInactive = false): Promise<Dentist[]> {
+    async list(includeInactive = false, clinicId?: string | null): Promise<Dentist[]> {
         const response = await fetch(`${API_URL}/dentists${includeInactive ? '?includeInactive=true' : ''}`, {
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
         });
         if (!response.ok) throw await failure(response, 'Erro ao buscar dentistas');
         return response.json();
     },
 
-    async create(data: DentistInput): Promise<Dentist> {
+    async create(data: DentistInput, clinicId?: string | null): Promise<Dentist> {
         const response = await fetch(`${API_URL}/dentists`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
             body: JSON.stringify(data),
         });
         if (!response.ok) throw await failure(response, 'Erro ao criar dentista');
         return response.json();
     },
 
-    async update(id: string, data: DentistInput): Promise<Dentist> {
+    async update(id: string, data: DentistInput, clinicId?: string | null): Promise<Dentist> {
         const response = await fetch(`${API_URL}/dentists/${id}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
             body: JSON.stringify(data),
         });
         if (!response.ok) throw await failure(response, 'Erro ao atualizar dentista');
         return response.json();
     },
 
-    async remove(id: string): Promise<{ deleted?: boolean; deactivated?: boolean }> {
+    async remove(id: string, clinicId?: string | null): Promise<{ deleted?: boolean; deactivated?: boolean }> {
         const response = await fetch(`${API_URL}/dentists/${id}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
         });
         if (!response.ok) throw await failure(response, 'Erro ao excluir dentista');
         return response.json();
     },
 
-    async previewStandardization(id: string): Promise<StandardizationPreviewResult> {
+    async previewStandardization(id: string, clinicId?: string | null): Promise<StandardizationPreviewResult> {
         const response = await fetch(`${API_URL}/dentists/${id}/standardize/preview`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
         });
         if (!response.ok) throw await failure(response, 'Erro ao buscar registros semelhantes');
         return response.json();
     },
 
-    async applyStandardization(id: string, selection: StandardizationSelection): Promise<StandardizationApplyResult> {
+    async applyStandardization(
+        id: string,
+        selection: StandardizationSelection,
+        clinicId?: string | null
+    ): Promise<StandardizationApplyResult> {
         const response = await fetch(`${API_URL}/dentists/${id}/standardize/apply`, {
             method: 'POST',
-            headers: getAuthHeaders(),
+            headers: getAuthHeaders(clinicId),
             body: JSON.stringify(selection),
         });
         if (!response.ok) throw await failure(response, 'Erro ao padronizar registros');
