@@ -304,7 +304,13 @@ export default function ClinicSettings() {
                                                         <FormLabel>Unidade EasyDental</FormLabel>
                                                         <Select
                                                             value={field.value || NONE}
-                                                            onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
+                                                            onValueChange={(v) => {
+                                                                // Dentro de <form>, o Radix Select dispara "" quando o valor
+                                                                // carregado chega antes das opções; isso apagava o vínculo.
+                                                                // "Não vinculada" usa NONE, então "" nunca é escolha do usuário.
+                                                                if (v === "") return;
+                                                                field.onChange(v === NONE ? "" : v);
+                                                            }}
                                                         >
                                                             <FormControl>
                                                                 <SelectTrigger>
