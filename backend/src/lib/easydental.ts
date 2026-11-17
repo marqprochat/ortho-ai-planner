@@ -1,3 +1,5 @@
+import { buildDateWindows, extractUnitsFromKpi, normalizeName } from './dentistRegistration';
+
 const API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1/rpc';
 const API_KEY = process.env.EASYDENTAL_API_KEY || '';
 const CLIENT_ID = process.env.EASYDENTAL_CLIENT_ID || '';
@@ -301,3 +303,24 @@ export async function createEasyDentalPatient(input: CreateEasyDentalPatientInpu
     return { id_paciente, codigo_paciente };
 }
 
+
+// Unidades em que o prestador teve produção (RPCGetKPIPrd) nos últimos `days` dias.
+// O RPC aceita no máximo 35 dias por chamada e filtra pelo nome exato do prestador.
+export async function fetchPrestadorUnits(prestadorName: string, days = 90): Promise<string[]> {
+    const windows = buildDateWindows(new Date(), days);
+    const results = await Promise.allSettled(
+        windows.map((w) => rpcCall('RPCGetKPIPrd', { ...w, nm_unidade: '', nm_prestador: prestadorName }))
+    );
+    if (results.every((r) => r.status === 'rejected')) {
+        throw new Error('Não foi possível consultar a produção do prestador no EasyDental');
+    }
+    const units = new Map<string, string>();
+    for (const r of results) {
+        if (r.status !== 'fulfilled') continue;
+        for (const unit of extractUnitsFromKpi(r.value, prestadorName)) {
+            const key = normalizeName(unit);
+            if (!units.has(key)) units.set(key, unit);
+        }
+    }
+    return [...units.values()];
+}

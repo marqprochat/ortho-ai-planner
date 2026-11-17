@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DentistManager } from "@/components/DentistManager";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { dentistService } from "@/services/dentistService";
 import { toast } from "sonner";
 import Sidebar from "@/components/Sidebar";
 import { useClinic } from "@/context/ClinicContext";
@@ -36,6 +38,7 @@ const clinicSchema = z.object({
     city: z.string().optional(),
     state: z.string().optional().or(z.literal("")),
     logoUrl: z.string().optional(),
+    easyDentalUnitName: z.string().optional(),
 });
 
 type ClinicFormValues = z.infer<typeof clinicSchema>;
@@ -44,6 +47,13 @@ export default function ClinicSettings() {
     const { currentClinic, refreshClinics } = useClinic();
     const [isLoading, setIsLoading] = useState(false);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [easyDentalUnits, setEasyDentalUnits] = useState<string[]>([]);
+
+    useEffect(() => {
+        dentistService.listEasyDentalUnits()
+            .then(setEasyDentalUnits)
+            .catch(() => setEasyDentalUnits([]));
+    }, []);
 
     const form = useForm<ClinicFormValues>({
         resolver: zodResolver(clinicSchema),
@@ -60,6 +70,7 @@ export default function ClinicSettings() {
             city: "",
             state: "",
             logoUrl: "",
+            easyDentalUnitName: "",
         },
     });
 
@@ -78,6 +89,7 @@ export default function ClinicSettings() {
                 city: currentClinic.city || "",
                 state: currentClinic.state || "",
                 logoUrl: currentClinic.logoUrl || "",
+                easyDentalUnitName: currentClinic.easyDentalUnitName || "",
             });
             setLogoPreview(currentClinic.logoUrl || null);
         }
@@ -278,6 +290,41 @@ export default function ClinicSettings() {
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="easyDentalUnitName"
+                                            render={({ field }) => {
+                                                const NONE = "__none__";
+                                                const options = field.value && !easyDentalUnits.includes(field.value)
+                                                    ? [field.value, ...easyDentalUnits]
+                                                    : easyDentalUnits;
+                                                return (
+                                                    <FormItem>
+                                                        <FormLabel>Unidade EasyDental</FormLabel>
+                                                        <Select
+                                                            value={field.value || NONE}
+                                                            onValueChange={(v) => field.onChange(v === NONE ? "" : v)}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Selecione a unidade" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                <SelectItem value={NONE}>Não vinculada</SelectItem>
+                                                                {options.map((unit) => (
+                                                                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Usada no cadastro de dentistas pelo CPF para saber a qual unidade do EasyDental esta clínica corresponde.
+                                                        </p>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                );
+                                            }}
                                         />
                                     </div>
                                 </CardContent>
