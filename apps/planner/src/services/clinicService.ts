@@ -18,6 +18,7 @@ export interface Clinic {
     district?: string | null;
     city?: string | null;
     state?: string | null;
+    easyDentalUnitName?: string | null;
 }
 
 export const clinicService = {

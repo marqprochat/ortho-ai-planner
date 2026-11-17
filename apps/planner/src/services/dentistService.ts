@@ -6,9 +6,40 @@ export interface Dentist {
     id: string;
     clinicId: string;
     easyDentalId: string | null;
+    cpf?: string | null;
     name: string;
     cro: string;
     isActive: boolean;
+}
+
+export type RegistrationStatus = 'will_register' | 'already_registered' | 'no_access' | 'no_clinic';
+
+export interface RegistrationRow {
+    unitName: string | null;
+    clinicId: string | null;
+    clinicName: string | null;
+    status: RegistrationStatus;
+    source: 'unit' | 'current_clinic';
+    existingDentist?: { id: string; name: string; cro: string; isActive: boolean };
+}
+
+export interface DentistCpfLookup {
+    prestador: { id: string | null; name: string; cpf: string };
+    suggestedCro: string | null;
+    units: string[];
+    rows: RegistrationRow[];
+    canRegisterAll: boolean;
+    warning: string | null;
+}
+
+export interface DentistCpfRegisterResult {
+    prestador: { name: string };
+    results: {
+        clinicId: string;
+        clinicName: string;
+        result: 'created' | 'already_registered' | 'cro_conflict';
+        dentistId?: string;
+    }[];
 }
 
 export interface DentistInput {
@@ -145,6 +176,35 @@ export const dentistService = {
             body: JSON.stringify(selection),
         });
         if (!response.ok) throw await failure(response, 'Erro ao padronizar registros');
+        return response.json();
+    },
+
+    async listEasyDentalUnits(): Promise<string[]> {
+        const response = await fetch(`${API_URL}/dentists/easydental-units`, { headers: getAuthHeaders() });
+        if (!response.ok) throw await failure(response, 'Erro ao buscar unidades do EasyDental');
+        return response.json();
+    },
+
+    async lookupByCpf(cpf: string, clinicId?: string | null): Promise<DentistCpfLookup> {
+        const response = await fetch(`${API_URL}/dentists/lookup-cpf`, {
+            method: 'POST',
+            headers: getAuthHeaders(clinicId),
+            body: JSON.stringify({ cpf }),
+        });
+        if (!response.ok) throw await failure(response, 'Erro ao buscar prestador');
+        return response.json();
+    },
+
+    async registerByCpf(
+        data: { cpf: string; cro: string; clinicIds: string[] },
+        clinicId?: string | null
+    ): Promise<DentistCpfRegisterResult> {
+        const response = await fetch(`${API_URL}/dentists/register-cpf`, {
+            method: 'POST',
+            headers: getAuthHeaders(clinicId),
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw await failure(response, 'Erro ao cadastrar dentista');
         return response.json();
     },
 };

@@ -94,8 +94,14 @@ export const updateClinic = async (req: AuthRequest, res: Response) => {
             complement,
             district,
             city,
-            state
+            state,
+            easyDentalUnitName
         } = req.body;
+
+        // Vínculo com a unidade do EasyDental: texto vazio remove; ausente mantém.
+        const unitName = typeof easyDentalUnitName === 'string'
+            ? easyDentalUnitName.trim() || null
+            : easyDentalUnitName === null ? null : undefined;
 
         const clinic = await prisma.clinic.update({
             where: { id },
@@ -112,7 +118,8 @@ export const updateClinic = async (req: AuthRequest, res: Response) => {
                 complement,
                 district,
                 city,
-                state
+                state,
+                easyDentalUnitName: unitName
             }
         });
         res.json(clinic);

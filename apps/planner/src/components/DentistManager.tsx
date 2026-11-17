@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { dentistService, Dentist } from "@/services/dentistService";
 import { StandardizeDentistDialog } from "@/components/StandardizeDentistDialog";
+import { RegisterDentistByCpfDialog } from "@/components/RegisterDentistByCpfDialog";
 
 const emptyForm = { easyDentalId: "", name: "", cro: "" };
 
@@ -28,6 +29,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
     const [form, setForm] = useState(emptyForm);
     const [toDelete, setToDelete] = useState<Dentist | null>(null);
     const [toStandardize, setToStandardize] = useState<Dentist | null>(null);
+    const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
     const load = async () => {
         if (!clinicId) return;
@@ -43,11 +45,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
 
     useEffect(() => { load(); }, [clinicId]);
 
-    const openNew = () => {
-        setEditing(null);
-        setForm(emptyForm);
-        setIsDialogOpen(true);
-    };
+    const openNew = () => setIsRegisterOpen(true);
 
     const openEdit = (dentist: Dentist) => {
         setEditing(dentist);
@@ -62,13 +60,9 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
         }
         setIsSaving(true);
         try {
-            if (editing) {
-                await dentistService.update(editing.id, { ...form, isActive: editing.isActive }, clinicId);
-                toast.success("Dentista atualizado!");
-            } else {
-                await dentistService.create(form, clinicId);
-                toast.success("Dentista cadastrado!");
-            }
+            if (!editing) return;
+            await dentistService.update(editing.id, { ...form, isActive: editing.isActive }, clinicId);
+            toast.success("Dentista atualizado!");
             setIsDialogOpen(false);
             await load();
         } catch (error: any) {
@@ -130,6 +124,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                             <TableRow>
                                 <TableHead>Nome</TableHead>
                                 <TableHead>CRO</TableHead>
+                                <TableHead>CPF</TableHead>
                                 <TableHead>ID EasyDental</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Ações</TableHead>
@@ -140,6 +135,7 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                                 <TableRow key={d.id}>
                                     <TableCell className="font-medium">{d.name}</TableCell>
                                     <TableCell>{d.cro}</TableCell>
+                                    <TableCell>{d.cpf || "-"}</TableCell>
                                     <TableCell>{d.easyDentalId || "-"}</TableCell>
                                     <TableCell>
                                         <Badge variant={d.isActive ? "default" : "secondary"}>
@@ -177,10 +173,16 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{editing ? "Editar dentista" : "Novo dentista"}</DialogTitle>
+                        <DialogTitle>Editar dentista</DialogTitle>
                         <DialogDescription>Informe o nome e o CRO. O ID do EasyDental é opcional.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
+                        {editing?.cpf && (
+                            <div className="space-y-2">
+                                <Label>CPF</Label>
+                                <Input value={editing.cpf} readOnly className="bg-muted" />
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="dentistName">Nome *</Label>
                             <Input id="dentistName" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -218,6 +220,13 @@ export function DentistManager({ clinicId }: { clinicId: string }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <RegisterDentistByCpfDialog
+                clinicId={clinicId}
+                open={isRegisterOpen}
+                onOpenChange={setIsRegisterOpen}
+                onRegistered={load}
+            />
 
             <StandardizeDentistDialog
                 dentist={toStandardize}

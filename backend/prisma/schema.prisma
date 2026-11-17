@@ -41,6 +41,8 @@ model Clinic {
   state       String?
   // [DEPRECATED] Old address field, kept for backward compatibility if needed, or migration target
   address     String?
+  // Nome da unidade de atendimento correspondente no EasyDental (TX_UNIDADE_ATENDIMENTO)
+  easyDentalUnitName String?
   tenantId    String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -355,6 +357,7 @@ model Dentist {
   id           String      @id @default(uuid())
   clinicId     String
   easyDentalId String?
+  cpf          String?
   name         String
   cro          String
   isActive     Boolean     @default(true)
@@ -365,4 +368,5 @@ model Dentist {
   treatments   Treatment[]
 
   @@unique([clinicId, cro])
+  @@index([cpf])
 }
