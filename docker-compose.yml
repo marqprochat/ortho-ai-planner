@@ -83,5 +83,21 @@ services:
     depends_on:
       - backend
 
+  mcp:
+    build:
+      context: .
+      dockerfile: ./mcp-server/Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-ortho}:${DB_PASSWORD:-secret}@database:5432/${DB_NAME:-portalclinicas}
+      MCP_PORT: 3001
+      MCP_TRANSPORT: sse
+      MCP_API_KEY: ${MCP_API_KEY:-}
+    ports:
+      - "5176:3001"
+    depends_on:
+      database:
+        condition: service_healthy
+
 volumes:
   db_data:
