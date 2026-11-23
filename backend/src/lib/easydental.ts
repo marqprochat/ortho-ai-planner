@@ -1,4 +1,4 @@
-import { buildDateWindows, extractUnitsFromKpi, normalizeName } from './dentistRegistration';
+import { buildDateWindows, extractUnitsFromKpi, normalizeName, normalizePrestador } from './dentistRegistration';
 
 const API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1/rpc';
 const API_KEY = process.env.EASYDENTAL_API_KEY || '';
@@ -139,20 +139,19 @@ export function cleanDigits(val?: string | null): string {
     return String(val).replace(/\D/g, '');
 }
 
-// RPCGetPrestadorCPF - Busca prestador pelo CPF
+// RPCGetPrestadorCPF - Busca prestador pelo CPF (a API só encontra no formato 000.000.000-00).
+// A API responde { id_prestador, nm_prestador }; normalizamos para { ID_PRESTADOR, NOME }.
 export async function findPrestadorByCPF(cpf: string): Promise<{ ID_PRESTADOR?: string | number; NOME?: string } | null> {
     const formatted = formatCPF(cpf);
     try {
         const data = await rpcCall('RPCGetPrestadorCPF', { cpf: formatted });
-        if (Array.isArray(data) && data.length > 0) {
-            return data[0];
-        }
+        const found = Array.isArray(data) ? data.map(normalizePrestador).find(Boolean) : null;
+        if (found) return found;
         const raw = cleanDigits(cpf);
         if (raw !== formatted) {
             const dataRaw = await rpcCall('RPCGetPrestadorCPF', { cpf: raw });
-            if (Array.isArray(dataRaw) && dataRaw.length > 0) {
-                return dataRaw[0];
-            }
+            const foundRaw = Array.isArray(dataRaw) ? dataRaw.map(normalizePrestador).find(Boolean) : null;
+            if (foundRaw) return foundRaw;
         }
     } catch (err: any) {
         console.error('Erro ao buscar prestador por CPF:', err.message);

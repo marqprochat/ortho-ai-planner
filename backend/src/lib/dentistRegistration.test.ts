@@ -7,6 +7,7 @@ import {
     formatCpfDigits,
     isValidCpf,
     normalizeName,
+    normalizePrestador,
     summarizePlan,
     ExistingDentistRef,
     PlanInput,
@@ -120,6 +121,37 @@ test('unidades sem clínica vinculada também recebem a clínica selecionada com
 test('unidades repetidas não geram linhas duplicadas', () => {
     const rows = buildRegistrationPlan(baseInput({ units: ['Campinas', 'campinas', ' Campinas'] }));
     assert.equal(rows.length, 1);
+});
+
+test('normalizePrestador aceita as chaves em minúsculas devolvidas pela API', () => {
+    assert.deepEqual(
+        normalizePrestador({ id_prestador: 6534, nm_prestador: 'Beatriz Helena de Toledo' }),
+        { ID_PRESTADOR: 6534, NOME: 'Beatriz Helena de Toledo' }
+    );
+    assert.deepEqual(normalizePrestador({ ID_PRESTADOR: '7', NOME: 'Ana' }), { ID_PRESTADOR: '7', NOME: 'Ana' });
+    assert.equal(normalizePrestador({}), null);
+    assert.equal(normalizePrestador(null), null);
+});
+
+test('plano com as unidades reais da prestadora e todas as clínicas vinculadas', () => {
+    const units = ['Campinas', 'Paulínia', 'Hortolândia', 'Guanabara', 'Sumaré', 'Rosolen', 'Piracicaba',
+        'Paineiras', 'Valinhos', 'Nova Odessa', 'Pedreira', 'Ouro Verde ', 'Americana'];
+    const allClinics = units.map((u, i) => ({ id: `c${i}`, name: `Dental Kids ${u.trim()}`, nickname: null, easyDentalUnitName: u.trim() }));
+    const rows = buildRegistrationPlan({
+        units: ['Americana', 'Hortolândia', 'Piracicaba'],
+        clinics: allClinics,
+        accessibleClinicIds: new Set(allClinics.map((c) => c.id)),
+        existing: [],
+        cpf: '423.122.848-55',
+        easyDentalId: '6534',
+        prestadorName: 'Beatriz Helena de Toledo',
+        currentClinicId: 'c0',
+    });
+    assert.deepEqual(rows.map((r) => [r.clinicName, r.status, r.source]), [
+        ['Dental Kids Americana', 'will_register', 'unit'],
+        ['Dental Kids Hortolândia', 'will_register', 'unit'],
+        ['Dental Kids Piracicaba', 'will_register', 'unit'],
+    ]);
 });
 
 test('buildDateWindows quebra o período em janelas de até 30 dias', () => {

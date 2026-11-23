@@ -69,7 +69,21 @@ export const normalizeName = (value: unknown): string =>
         ? value.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, ' ').toLowerCase()
         : '';
 
-export const clinicLabel = (clinic: RegistrationClinic): string => clinic.nickname?.trim() || clinic.name;
+// Linha do RPCGetPrestadorCPF: a API devolve { id_prestador, nm_prestador }; aceita também maiúsculas.
+export const normalizePrestador = (row: unknown): { ID_PRESTADOR?: string | number; NOME?: string } | null => {
+    if (!row || typeof row !== 'object') return null;
+    const r = row as Record<string, unknown>;
+    const pick = (...keys: string[]) => keys.map((k) => r[k]).find((v) => v !== undefined && v !== null && v !== '');
+    const id = pick('ID_PRESTADOR', 'id_prestador');
+    const name = pick('NOME', 'nm_prestador', 'NM_PRESTADOR', 'nome');
+    if (id === undefined && name === undefined) return null;
+    return {
+        ID_PRESTADOR: typeof id === 'number' || typeof id === 'string' ? id : undefined,
+        NOME: typeof name === 'string' ? name : undefined,
+    };
+};
+
+export const clinicLabel =(clinic: RegistrationClinic): string => clinic.nickname?.trim() || clinic.name;
 
 // O dentista já existe na clínica se bater CPF, ID do EasyDental ou o nome padronizado.
 export const findExistingInClinic = (
