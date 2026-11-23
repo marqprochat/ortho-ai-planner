@@ -214,6 +214,8 @@ export interface PlannerTreatmentCandidate {
     patientPhone: string | null;
     clinicName: string | null;
     clinicNickname: string | null;
+    // Unidade EasyDental vinculada a clinica (Clinic.easyDentalUnitName); casa com o nome da unidade no Easy.
+    clinicEasyDentalUnitName?: string | null;
     lastAppointment: string | null;
     nextAppointment: string | null;
 }
@@ -258,7 +260,14 @@ export const selectPlannerFollowUpRecords = (
         // Se existe proxima consulta agendada (>= hoje), nao entra na listagem.
         if (nextDate && nextDate >= todayIso) continue;
 
-        if (!matchesUnitFilter(unidades, [treatment.clinicName, treatment.clinicNickname, snapshot?.unidade])) {
+        if (
+            !matchesUnitFilter(unidades, [
+                treatment.clinicEasyDentalUnitName,
+                treatment.clinicName,
+                treatment.clinicNickname,
+                snapshot?.unidade,
+            ])
+        ) {
             continue;
         }
 

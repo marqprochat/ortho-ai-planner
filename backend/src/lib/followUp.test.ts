@@ -175,6 +175,38 @@ test('selectPlannerFollowUpRecords filtra por unidade usando clínica do Planner
     assert.equal(result[0].PACIENTE, 'Paciente A');
 });
 
+test('selectPlannerFollowUpRecords usa a Unidade EasyDental vinculada à clínica para paciente novo sem consulta no Easy', () => {
+    const today = '2026-11-23';
+    const treatments: PlannerTreatmentCandidate[] = [
+        treatment({
+            id: 't1',
+            patientId: 'p1',
+            patientName: 'Paciente Novo',
+            patientNumber: '9001',
+            clinicName: 'Dental Kids Ouro Verde',
+            clinicNickname: null,
+            clinicEasyDentalUnitName: 'Ouro Verde',
+            lastAppointment: null,
+        }),
+        treatment({
+            id: 't2',
+            patientId: 'p2',
+            patientName: 'Outra Unidade',
+            patientNumber: '9002',
+            clinicName: 'Dental Kids Pedreira',
+            clinicNickname: null,
+            clinicEasyDentalUnitName: 'Pedreira',
+            lastAppointment: null,
+        }),
+    ];
+
+    // Nome no EasyDental vem com espaco final ("Ouro Verde ").
+    const result = selectPlannerFollowUpRecords(treatments, new Map(), today, {
+        unidades: ['Ouro Verde '],
+    });
+    assert.deepEqual(result.map((r) => r.PACIENTE), ['Paciente Novo']);
+});
+
 test('selectPlannerFollowUpRecords exclui paciente sem código se nextAppointment no Planner ainda for futuro', () => {
     const today = '2026-11-11';
     const result = selectPlannerFollowUpRecords(
