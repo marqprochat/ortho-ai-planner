@@ -60,7 +60,7 @@ const patientSelect = {
     name: true,
     patientNumber: true,
     phone: true,
-    clinic: { select: { name: true, nickname: true } },
+    clinic: { select: { name: true, nickname: true, easyDentalUnitName: true } },
 };
 
 export async function syncTreatmentAppointmentsWithSnapshot(
@@ -185,6 +185,7 @@ export async function syncTreatmentAppointmentsWithSnapshot(
             patientPhone: patient.phone ?? null,
             clinicName: patient.clinic?.name ?? null,
             clinicNickname: patient.clinic?.nickname ?? null,
+            clinicEasyDentalUnitName: patient.clinic?.easyDentalUnitName ?? null,
             lastAppointment: effectiveLast,
             nextAppointment: effectiveNext,
         });
