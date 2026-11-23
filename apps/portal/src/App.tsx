@@ -10,6 +10,7 @@ import RoleManagement from "./pages/admin/RoleManagement";
 import AiKeyManagement from "./pages/admin/AiKeyManagement";
 import NotificationConfig from "./pages/admin/NotificationConfig";
 import AuditLogManagement from "./pages/admin/AuditLogManagement";
+import SyncMonitor from "./pages/admin/SyncMonitor";
 import { Toaster } from "sonner";
 
 // Protected route wrapper
@@ -116,6 +117,14 @@ function AppRoutes() {
                 element={
                     <ProtectedRoute>
                         <AuditLogManagement />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/admin/sync"
+                element={
+                    <ProtectedRoute>
+                        <SyncMonitor />
                     </ProtectedRoute>
                 }
             />

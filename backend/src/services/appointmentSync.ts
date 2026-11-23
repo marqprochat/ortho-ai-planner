@@ -28,6 +28,7 @@ export interface SyncResult {
     matched: number;      // tratamentos com codigo correspondente na API
     updated: number;      // tratamentos efetivamente alterados
     unmatched: number;    // tratamentos sem correspondencia
+    easyDentalComplete: boolean; // false se alguma consulta ao EasyDental falhou (dados parciais)
 }
 
 export interface SyncWithSnapshotResult {
@@ -129,6 +130,7 @@ export async function syncTreatmentAppointmentsWithSnapshot(
         matched: 0,
         updated: 0,
         unmatched: 0,
+        easyDentalComplete,
     };
 
     const candidates: PlannerTreatmentCandidate[] = [];

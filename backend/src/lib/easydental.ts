@@ -4,22 +4,45 @@ const API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1
 const API_KEY = process.env.EASYDENTAL_API_KEY || '';
 const CLIENT_ID = process.env.EASYDENTAL_CLIENT_ID || '';
 
+// A API roda no Render (plano que hiberna): a 1a chamada apos inatividade pode demorar
+// e falhar com 502/503. Consultas (RPCGet*) sao idempotentes, entao tem timeout e retentativas;
+// escritas (RPCPut*) nunca sao repetidas para nao duplicar cadastros.
+const RPC_TIMEOUT_MS = 60_000;
+const RPC_GET_RETRIES = 3;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function rpcCall(method: string, params: Record<string, any> = {}) {
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': API_KEY,
-        },
-        body: JSON.stringify({ clientId: CLIENT_ID, method, params }),
-    });
+    const attempts = method.startsWith('RPCGet') ? RPC_GET_RETRIES : 1;
+    let lastError: Error = new Error(`RPC ${method} failed`);
 
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`RPC ${method} failed (${response.status}): ${text}`);
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': API_KEY,
+                },
+                body: JSON.stringify({ clientId: CLIENT_ID, method, params }),
+                signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                const err: any = new Error(`RPC ${method} failed (${response.status}): ${text}`);
+                // 4xx (exceto 408/429) nao melhora tentando de novo
+                if (response.status < 500 && response.status !== 408 && response.status !== 429) err.noRetry = true;
+                throw err;
+            }
+
+            return await response.json();
+        } catch (err: any) {
+            lastError = err?.name === 'TimeoutError' ? new Error(`RPC ${method} excedeu ${RPC_TIMEOUT_MS / 1000}s`) : err;
+            if (err?.noRetry || attempt === attempts) break;
+            await sleep(5_000 * attempt);
+        }
     }
-
-    return response.json();
+    throw lastError;
 }
 
 // Nomes das unidades de atendimento ativas

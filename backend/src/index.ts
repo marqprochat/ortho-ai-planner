@@ -19,6 +19,7 @@ import { generateCompletion } from './controllers/aiController';
 import { getPatientsReport, getPlanningsReport, getContractsReport, getTreatmentsReport } from './controllers/reportController';
 import { broadcastGlobal, getMyNotifications, markAsRead, getAutomationConfigs, updateAutomationConfig } from './controllers/NotificationController';
 import { getAuditLogs, getAuditStats } from './controllers/auditLogController';
+import { listSyncRuns, triggerSyncRun } from './controllers/syncRunController';
 import { initCronJobs } from './jobs/notificationCron';
 import { initDisparoCron } from './jobs/disparoCron';
 import { initAppointmentSyncCron } from './jobs/appointmentSyncCron';
@@ -148,6 +149,10 @@ app.put('/api/admin/notifications/config/:type', authMiddleware, requireSuperAdm
 // Audit Log Routes (Super Admin)
 app.get('/api/admin/audit-logs', authMiddleware, requireSuperAdmin, getAuditLogs);
 app.get('/api/admin/audit-logs/stats', authMiddleware, requireSuperAdmin, getAuditStats);
+
+// EasyDental Sync Monitor (Super Admin)
+app.get('/api/admin/sync-runs', authMiddleware, requireSuperAdmin, listSyncRuns);
+app.post('/api/admin/sync-runs/trigger', authMiddleware, requireSuperAdmin, triggerSyncRun);
 
 // Legacy routes (for older frontend builds)
 app.get('/api/admin/ai-keys', authMiddleware, requireSuperAdmin, listKeys);

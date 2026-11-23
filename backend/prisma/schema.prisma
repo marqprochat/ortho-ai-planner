@@ -370,3 +370,22 @@ model Dentist {
   @@unique([clinicId, cro])
   @@index([cpf])
 }
+
+// Historico de execucoes da sincronizacao de consultas com o EasyDental
+model SyncRun {
+  id                  String    @id @default(uuid())
+  trigger             String    // "cron" | "catchup" | "manual"
+  status              String    // "running" | "completed" | "partial" | "failed"
+  startedAt           DateTime  @default(now())
+  finishedAt          DateTime?
+  durationMs          Int?
+  fetched             Int       @default(0)
+  candidates          Int       @default(0)
+  matched             Int       @default(0)
+  updated             Int       @default(0)
+  unmatched           Int       @default(0)
+  easyDentalComplete  Boolean   @default(true)
+  errorMessage        String?
+
+  @@index([startedAt])
+}
