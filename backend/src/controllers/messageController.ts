@@ -1,20 +1,59 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { CANAL_WAHA, getTemplateText, normalizeCanal, renderTemplate, sendText } from '../services/waha';
 
 const BOTCONVERSA_URL = process.env.BOTCONVERSA_WEBHOOK_URL || '';
 const DEFAULT_DELAY = parseInt(process.env.MESSAGE_DELAY_MS || '1000', 10);
 const MAX_CONCURRENT = parseInt(process.env.MESSAGE_CONCURRENT_LIMIT || '5', 10);
 
-// Enviar uma única mensagem para o BotConversa
+// Enviar uma única mensagem pelo BotConversa (webhook) ou por uma sessão do Waha
 export const sendMessage = async (req: Request, res: Response) => {
     try {
-        const { nome, telefone, unidade, modelo, data_agendamento, dentista, motivo, status, id_agenda_item, Id_agenda_item, tx_codigo_paciente, paciente, celular, data, inicio, ...rest } = req.body;
+        const { canal: canalRaw, wahaSession, nome, telefone, unidade, modelo, data_agendamento, dentista, motivo, status, id_agenda_item, Id_agenda_item, tx_codigo_paciente, paciente, celular, data, inicio, ...rest } = req.body;
 
         if (!telefone) {
             return res.status(400).json({
                 status: 'error',
                 error: 'Telefone não informado',
             });
+        }
+
+        const canal = normalizeCanal(canalRaw);
+
+        if (canal === CANAL_WAHA) {
+            const vars = {
+                ...rest,
+                nome: nome || '', telefone, unidade: unidade || '', modelo: modelo || '',
+                data_agendamento: data_agendamento || '', dentista: dentista || '', motivo: motivo || '',
+                status: status || '', tx_codigo_paciente: tx_codigo_paciente || '', paciente: paciente || nome || '',
+                celular: celular || '', data: data || '', inicio: inicio || '',
+            };
+            let errMsg: string | null = null;
+            try {
+                const text = renderTemplate(await getTemplateText(modelo || ''), vars);
+                await sendText(String(wahaSession || ''), telefone, text);
+            } catch (err: any) {
+                errMsg = `Waha: ${err.message}`;
+            }
+            try {
+                await prisma.disparoIndividualLog.create({
+                    data: {
+                        type: 'manual',
+                        paciente: paciente || nome || '',
+                        telefone,
+                        unidade: unidade || 'Sem Unidade',
+                        modelo: modelo || '',
+                        canal,
+                        wahaSession: wahaSession ? String(wahaSession) : null,
+                        status: errMsg ? 'error' : 'sent',
+                        errorMessage: errMsg,
+                    },
+                });
+            } catch (dbErr: any) {
+                console.error('Error logging manual Waha message to database:', dbErr.message);
+            }
+            if (errMsg) return res.status(502).json({ status: 'error', error: errMsg });
+            return res.json({ status: 'sent' });
         }
 
         if (!BOTCONVERSA_URL) {

@@ -27,7 +27,7 @@ export const getMessageTemplate = async (req: Request, res: Response) => {
 
 export const createMessageTemplate = async (req: Request, res: Response) => {
     try {
-        const { name, category, code, dayOffset, statusKeyword, searchMode } = req.body;
+        const { name, category, code, dayOffset, statusKeyword, searchMode, wahaText } = req.body;
 
         if (!name || !category || !code) {
             return res.status(400).json({ error: 'name, category e code são obrigatórios' });
@@ -46,6 +46,7 @@ export const createMessageTemplate = async (req: Request, res: Response) => {
                 dayOffset: dayOffset !== undefined ? parseInt(dayOffset, 10) : 0,
                 statusKeyword: statusKeyword || '',
                 searchMode: searchMode || 'agendamento',
+                wahaText: wahaText || '',
             },
         });
 
@@ -61,7 +62,7 @@ export const createMessageTemplate = async (req: Request, res: Response) => {
 export const updateMessageTemplate = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { name, category, code, dayOffset, statusKeyword, searchMode } = req.body;
+        const { name, category, code, dayOffset, statusKeyword, searchMode, wahaText } = req.body;
 
         // Validate category if provided
         if (category !== undefined && category !== 'utilidade' && category !== 'marketing') {
@@ -77,6 +78,7 @@ export const updateMessageTemplate = async (req: Request, res: Response) => {
                 ...(dayOffset !== undefined && { dayOffset: parseInt(dayOffset, 10) }),
                 ...(statusKeyword !== undefined && { statusKeyword }),
                 ...(searchMode !== undefined && { searchMode }),
+                ...(wahaText !== undefined && { wahaText }),
             },
         });
 

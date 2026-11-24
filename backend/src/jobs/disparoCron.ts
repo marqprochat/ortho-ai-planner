@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import prisma from '../lib/prisma';
 import type { ScheduledDisparo } from '@prisma/client';
 import { FOLLOW_UP_SEARCH_MODE } from '../lib/followUp';
+import { CANAL_WAHA, getTemplateText, getWahaSettings, normalizeCanal, renderTemplate, sendText } from '../services/waha';
 import { findTreatmentsWithoutReschedule, resolveTenantByUserId } from '../services/treatmentFollowUp';
 
 const EASYDENTAL_API_URL = process.env.EASYDENTAL_API_URL || 'https://prsrb.onrender.com/v1/rpc';
@@ -167,6 +168,9 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             dtTermino,
         },
     });
+
+    const canal = normalizeCanal(schedule.canal);
+    const wahaSession = canal === CANAL_WAHA ? (schedule.wahaSession || '') : null;
 
     let totalFetched = 0;
     let totalSent = 0;
@@ -393,6 +397,16 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
             };
         });
 
+        // Envio pelo Waha: valida sessão/texto uma vez antes do loop
+        let wahaText = '';
+        let wahaSettings: Awaited<ReturnType<typeof getWahaSettings>> | null = null;
+        if (canal === CANAL_WAHA) {
+            if (!wahaSession) throw new Error('Agendamento configurado para Waha sem sessão selecionada');
+            wahaText = await getTemplateText(schedule.modelo);
+            if (!wahaText.trim()) throw new Error(`Modelo ${schedule.modelo} sem texto para envio pelo Waha (preencha em Mensagens)`);
+            wahaSettings = await getWahaSettings();
+        }
+
         // Send in batches with delay
         for (let i = 0; i < messageGroups.length; i += schedule.concurrentLimit) {
             const batch = messageGroups.slice(i, i + schedule.concurrentLimit);
@@ -444,6 +458,9 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                         }
                     });
 
+                    if (canal === CANAL_WAHA) {
+                        return sendText(wahaSession!, phone, renderTemplate(wahaText, payload), wahaSettings!);
+                    }
                     return sendViaBotConversa(payload);
                 })
             );
@@ -465,6 +482,8 @@ export async function executeScheduledDisparo(schedule: ScheduledDisparo): Promi
                     telefone: phone,
                     unidade: extractUnit(item) || unitName,
                     modelo: schedule.modelo,
+                    canal,
+                    wahaSession,
                     status: success ? 'sent' : 'error',
                     errorMessage: errMsg,
                 }));

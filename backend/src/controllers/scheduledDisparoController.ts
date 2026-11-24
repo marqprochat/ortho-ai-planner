@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
+import { normalizeCanal } from '../services/waha';
 import { executeScheduledDisparo, reloadTask, unregisterTask } from '../jobs/disparoCron';
 
 export const listScheduledDisparos = async (_req: Request, res: Response) => {
@@ -42,7 +43,7 @@ export const createScheduledDisparo = async (req: Request, res: Response) => {
             name, description, cronExpression, isActive,
             unidades, agendas, statusAgendamento, periodos, motivo,
             dtInicioOffset, dtTerminoOffset, modelo, delayMs, concurrentLimit,
-            searchMode,
+            searchMode, canal, wahaSession,
         } = req.body;
 
         if (!name || !cronExpression) {
@@ -66,6 +67,8 @@ export const createScheduledDisparo = async (req: Request, res: Response) => {
                 delayMs: delayMs ?? 1000,
                 concurrentLimit: concurrentLimit ?? 5,
                 searchMode: searchMode || 'agendamento',
+                canal: normalizeCanal(canal),
+                wahaSession: normalizeCanal(canal) === 'waha' ? (wahaSession || null) : null,
                 createdBy: user?.id || 'system',
             },
         });
@@ -84,7 +87,7 @@ export const updateScheduledDisparo = async (req: Request, res: Response) => {
             name, description, cronExpression, isActive,
             unidades, agendas, statusAgendamento, periodos, motivo,
             dtInicioOffset, dtTerminoOffset, modelo, delayMs, concurrentLimit,
-            searchMode,
+            searchMode, canal, wahaSession,
         } = req.body;
 
         const schedule = await prisma.scheduledDisparo.update({
@@ -105,6 +108,8 @@ export const updateScheduledDisparo = async (req: Request, res: Response) => {
                 ...(delayMs !== undefined && { delayMs }),
                 ...(concurrentLimit !== undefined && { concurrentLimit }),
                 ...(searchMode !== undefined && { searchMode }),
+                ...(canal !== undefined && { canal: normalizeCanal(canal) }),
+                ...(wahaSession !== undefined && { wahaSession: wahaSession || null }),
             },
         });
 

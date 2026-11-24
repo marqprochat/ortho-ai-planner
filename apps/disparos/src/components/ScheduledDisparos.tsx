@@ -5,8 +5,9 @@ import {
     CheckCircle, XCircle, Loader2, Calendar, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { api } from '../services/api';
-import type { ScheduledDisparo, ScheduledDisparoLog, ScheduledDisparoFormData, MessageTemplate } from '../types';
+import type { ScheduledDisparo, ScheduledDisparoLog, ScheduledDisparoFormData, MessageTemplate, Canal } from '../types';
 import CronBuilder, { cronToHuman } from './CronBuilder';
+import ChannelSelector from './ChannelSelector';
 
 
 const MODELO_OPTIONS = [
@@ -46,6 +47,8 @@ const DEFAULT_FORM: ScheduledDisparoFormData = {
     delayMs: 1000,
     concurrentLimit: 5,
     searchMode: 'agendamento',
+    canal: 'botconversa',
+    wahaSession: '',
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -140,6 +143,10 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
     const [form, setForm] = useState<ScheduledDisparoFormData>(initial);
 
     const set = (patch: Partial<ScheduledDisparoFormData>) => setForm(prev => ({ ...prev, ...patch }));
+    const handleChannelChange = useCallback(
+        (canal: Canal, wahaSession: string) => setForm(prev => ({ ...prev, canal, wahaSession })),
+        [],
+    );
 
     const toggleArray = (field: keyof Pick<ScheduledDisparoFormData, 'unidades' | 'agendas' | 'statusAgendamento' | 'periodos'>, value: string) => {
         const arr = form[field] as string[];
@@ -147,7 +154,14 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
     };
 
     return (
-        <form onSubmit={e => { e.preventDefault(); onSubmit(form); }} className="space-y-5">
+        <form onSubmit={e => {
+            e.preventDefault();
+            if (form.canal === 'waha' && !form.wahaSession) {
+                toast.error('Selecione a conexão do Waha');
+                return;
+            }
+            onSubmit(form);
+        }} className="space-y-5">
             {/* Nome + Descrição */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -351,6 +365,18 @@ function ScheduleForm({ initial, unidadeOptions, messageTemplates, onSubmit, onC
                 </select>
             </div>
 
+            {/* Canal de envio */}
+            <ChannelSelector
+                canal={form.canal || 'botconversa'}
+                wahaSession={form.wahaSession || ''}
+                onChange={handleChannelChange}
+            />
+            {form.canal === 'waha' && !messageTemplates.find(t => t.code === form.modelo)?.wahaText?.trim() && (
+                <p className="text-xs text-amber-600 -mt-3">
+                    ⚠ O template escolhido não tem texto para o Waha — preencha na aba Mensagens antes de ativar.
+                </p>
+            )}
+
             {/* Rate limiting */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -465,6 +491,9 @@ function ScheduleCard({ schedule, messageTemplates, onEdit, onDelete, onTrigger,
                             {offsetLabel}
                         </span>
                         <span>{modeloLabel}</span>
+                        <span className="font-medium">
+                            {schedule.canal === 'waha' ? `Waha · ${schedule.wahaSession || 'sem conexão'}` : 'Botconversa'}
+                        </span>
                         {schedule.unidades.length > 0 && (
                             <span>{schedule.unidades.length} unidade(s)</span>
                         )}
@@ -660,6 +689,8 @@ export default function ScheduledDisparos({ unidadeOptions }: Props) {
             modelo: editTarget.modelo,
             delayMs: editTarget.delayMs,
             concurrentLimit: editTarget.concurrentLimit,
+            canal: editTarget.canal || 'botconversa',
+            wahaSession: editTarget.wahaSession || '',
         }
         : DEFAULT_FORM;
 

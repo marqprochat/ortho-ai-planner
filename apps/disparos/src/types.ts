@@ -96,6 +96,8 @@ export interface ScheduledDisparo {
     delayMs: number;
     concurrentLimit: number;
     searchMode?: string;
+    canal?: Canal;
+    wahaSession?: string | null;
     createdBy: string;
     createdAt: string;
     updatedAt: string;
@@ -112,7 +114,22 @@ export interface MessageTemplate {
     dayOffset: number;
     statusKeyword: string;
     searchMode?: string;
+    wahaText?: string;
     createdAt?: string;
     updatedAt?: string;
 }
 
+
+export type Canal = 'botconversa' | 'waha';
+
+export interface WahaConfig {
+    baseUrl: string;
+    hasApiKey: boolean;
+    apiKeyMasked: string;
+}
+
+export interface WahaSession {
+    name: string;
+    status: 'STOPPED' | 'STARTING' | 'SCAN_QR_CODE' | 'WORKING' | 'FAILED' | string;
+    me?: { id?: string; pushName?: string } | null;
+}

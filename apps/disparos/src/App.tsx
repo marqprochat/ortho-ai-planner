@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Toaster, toast } from 'sonner';
-import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock, BarChart3, Settings2 } from 'lucide-react';
+import { Search, Send, Wifi, WifiOff, LogOut, Calendar, Building2, Clock, Lock, BarChart3, Settings2, Settings } from 'lucide-react';
 import { api, login, getMe } from './services/api';
 import FilterPanel from './components/FilterPanel';
 import MessageTable from './components/MessageTable';
@@ -9,9 +9,11 @@ import ScheduledDisparos from './components/ScheduledDisparos';
 import DisparoReports from './components/DisparoReports';
 import MessageTemplatesTab from './components/MessageTemplatesTab';
 import DentalConnectIcon from './components/DentalConnectIcon';
-import type { Filters, Agendamento, MessageItem, SendConfig, MessageTemplate } from './types';
+import ChannelSelector from './components/ChannelSelector';
+import WahaSettingsTab from './components/WahaSettingsTab';
+import type { Filters, Agendamento, MessageItem, SendConfig, MessageTemplate, Canal } from './types';
 
-type Tab = 'manual' | 'agendados' | 'relatorios' | 'mensagens';
+type Tab = 'manual' | 'agendados' | 'relatorios' | 'mensagens' | 'configuracoes';
 
 function getFirstName(fullName: string): string {
     return (fullName || '').trim().split(/\s+/)[0] || '';
@@ -168,6 +170,14 @@ export default function App() {
     const [isAniversario, setIsAniversario] = useState(false);
     const [isFollowUp, setIsFollowUp] = useState(false);
     const [onlyWithoutScheduled, setOnlyWithoutScheduled] = useState(false);
+
+    // Canal de envio: webhook do Botconversa ou uma conexão (sessão) do Waha
+    const [canal, setCanal] = useState<Canal>('botconversa');
+    const [wahaSession, setWahaSession] = useState('');
+    const handleChannelChange = useCallback((c: Canal, session: string) => {
+        setCanal(c);
+        setWahaSession(session);
+    }, []);
 
     const currentPreset = useMemo(() => {
         const dbTpl = messageTemplates.find(t => t.code === selectedModel);
@@ -544,6 +554,20 @@ export default function App() {
             }
         }
 
+        if (canal === 'waha') {
+            if (!wahaSession) {
+                toast.error('Selecione a conexão do Waha para enviar');
+                setShowSendModal(false);
+                return;
+            }
+            const tpl = messageTemplates.find(t => t.code === selectedModel);
+            if (!tpl?.wahaText?.trim()) {
+                toast.error('Este modelo não tem texto para envio pelo Waha. Preencha em Mensagens.');
+                setShowSendModal(false);
+                return;
+            }
+        }
+
         // Group messages by normalized phone number (or unique id if no phone)
         const groupsMap = new Map<string, MessageItem[]>();
         toSend.forEach(m => {
@@ -591,6 +615,8 @@ export default function App() {
                     const formattedDate = (isUltimaConsulta || isAniversario || isFollowUp) ? '' : formatAgendamento(msg.data, msg.hora);
 
                     const extraData: Record<string, any> = {
+                        canal,
+                        wahaSession: canal === 'waha' ? wahaSession : undefined,
                         dentista: msg.dentista || '',
                         motivo: msg.motivo || '',
                         status: msg.statusAgendamento || '',
@@ -646,7 +672,7 @@ export default function App() {
         setCurrentSendName('');
         setIsSending(false);
         toast.success('Envio concluído!');
-    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, isFollowUp, followUpSearch]);
+    }, [filteredMessages, selectedIds, sendConfig, selectedModel, isUltimaConsulta, isAniversario, isFollowUp, followUpSearch, canal, wahaSession, messageTemplates]);
 
     // Select/deselect
     const toggleSelect = (id: string) => {
@@ -844,6 +870,13 @@ export default function App() {
                                 <Settings2 className="w-3.5 h-3.5" />
                                 Mensagens
                             </button>
+                            <button
+                                onClick={() => setActiveTab('configuracoes')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'configuracoes' ? 'bg-white shadow text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                                Configurações
+                            </button>
                         </div>
 
                         <div className="flex items-center gap-1.5 text-xs text-emerald-600">
@@ -872,6 +905,11 @@ export default function App() {
                 {/* Mensagens Tab */}
                 {activeTab === 'mensagens' && (
                     <MessageTemplatesTab />
+                )}
+
+                {/* Configurações Tab (integração Waha) */}
+                {activeTab === 'configuracoes' && (
+                    <WahaSettingsTab />
                 )}
 
                 {/* Manual Tab */}
@@ -924,6 +962,14 @@ export default function App() {
                                         Padrão: {currentPreset.hint}
                                     </div>
                                 )}
+                                <div className="ml-auto">
+                                    <ChannelSelector
+                                        canal={canal}
+                                        wahaSession={wahaSession}
+                                        onChange={handleChannelChange}
+                                        disabled={isSending}
+                                    />
+                                </div>
                                 {isFollowUp && (
                                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-4 animate-fade-in">
                                         <Clock className="w-3.5 h-3.5" />

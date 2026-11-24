@@ -21,7 +21,7 @@ const TreatmentsReport = () => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [status, setStatus] = useState(searchParams.get("status") || "ALL");
+    const [status, setStatus] = useState(searchParams.get("status") || "EM_ANDAMENTO");
     const [dateRange, setDateRange] = useState({ start: "", end: "" });
     const [syncing, setSyncing] = useState(false);
 
