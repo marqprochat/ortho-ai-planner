@@ -27,6 +27,7 @@ import { getUnidadesAtendimento, getAgendamentos, getKPIPrd, getPrestadorCPF, ge
 import { sendMessage, getMessageConfig } from './controllers/messageController';
 import { listScheduledDisparos, getScheduledDisparo, createScheduledDisparo, updateScheduledDisparo, deleteScheduledDisparo, triggerScheduledDisparo, getScheduledDisparoLogs, getDisparoReports } from './controllers/scheduledDisparoController';
 import { listMessageTemplates, getMessageTemplate, createMessageTemplate, updateMessageTemplate, deleteMessageTemplate } from './controllers/messageTemplateController';
+import { getWahaConfig, updateWahaConfig, testWahaConnection, listWahaSessions, createWahaSession, wahaSessionAction, deleteWahaSession, getWahaSessionQr } from './controllers/wahaController';
 import { searchFollowUpTreatments, revalidateFollowUpTreatments } from './controllers/followUpController';
 import { listDentists, createDentist, updateDentist, deleteDentist, previewStandardizeDentist, applyStandardizeDentist, listEasyDentalUnits, lookupDentistByCpf, registerDentistByCpf } from './controllers/dentistController';
 
@@ -177,6 +178,16 @@ app.post('/api/follow-up/treatments/revalidate', authMiddleware, requireAppAcces
 // Message Dispatch Routes (BotConversa)
 app.post('/api/messages/send', authMiddleware, requireAppAccess('disparos'), sendMessage);
 app.get('/api/messages/config', authMiddleware, requireAppAccess('disparos'), getMessageConfig);
+
+// Integração Waha (conexões WhatsApp diretas)
+app.get('/api/waha/config', authMiddleware, requireAppAccess('disparos'), getWahaConfig);
+app.put('/api/waha/config', authMiddleware, requireAppAccess('disparos'), updateWahaConfig);
+app.post('/api/waha/test', authMiddleware, requireAppAccess('disparos'), testWahaConnection);
+app.get('/api/waha/sessions', authMiddleware, requireAppAccess('disparos'), listWahaSessions);
+app.post('/api/waha/sessions', authMiddleware, requireAppAccess('disparos'), createWahaSession);
+app.get('/api/waha/sessions/:name/qr', authMiddleware, requireAppAccess('disparos'), getWahaSessionQr);
+app.post('/api/waha/sessions/:name/:action', authMiddleware, requireAppAccess('disparos'), wahaSessionAction);
+app.delete('/api/waha/sessions/:name', authMiddleware, requireAppAccess('disparos'), deleteWahaSession);
 
 // Scheduled Disparos Routes
 app.get('/api/scheduled-disparos/reports', authMiddleware, requireAppAccess('disparos'), getDisparoReports);

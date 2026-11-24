@@ -31,6 +31,7 @@ export default function MessageTemplatesTab() {
     const [dayOffset, setDayOffset] = useState(0);
     const [statusKeyword, setStatusKeyword] = useState('');
     const [searchMode, setSearchMode] = useState('agendamento');
+    const [wahaText, setWahaText] = useState('');
 
     const fetchTemplates = async () => {
         setLoading(true);
@@ -63,6 +64,7 @@ export default function MessageTemplatesTab() {
         setDayOffset(0);
         setStatusKeyword('');
         setSearchMode('agendamento');
+        setWahaText('');
         setIsModalOpen(true);
     };
 
@@ -74,6 +76,7 @@ export default function MessageTemplatesTab() {
         setDayOffset(tpl.dayOffset);
         setStatusKeyword(tpl.statusKeyword);
         setSearchMode(tpl.searchMode || 'agendamento');
+        setWahaText(tpl.wahaText || '');
         setIsModalOpen(true);
     };
 
@@ -92,7 +95,8 @@ export default function MessageTemplatesTab() {
                 code,
                 dayOffset,
                 statusKeyword,
-                searchMode
+                searchMode,
+                wahaText
             };
 
             if (editTarget) {
@@ -351,7 +355,24 @@ export default function MessageTemplatesTab() {
                                     placeholder="Ex: 22180"
                                     className="w-full px-3.5 py-2.5 text-sm border border-border rounded-xl bg-background outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-mono"
                                 />
-                                              {/* Advanced configurations */}
+                            </div>
+
+                            {/* Texto para envio direto pelo Waha */}
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-muted-foreground">Texto da mensagem (envio pelo Waha)</label>
+                                <textarea
+                                    rows={5}
+                                    value={wahaText}
+                                    onChange={e => setWahaText(e.target.value)}
+                                    placeholder={'Olá {{nome}}! Lembramos sua consulta {{data_agendamento}} na unidade {{unidade}} com {{dentista}}.'}
+                                    className="w-full px-3.5 py-2.5 text-sm border border-border rounded-xl bg-background outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-y"
+                                />
+                                <p className="text-[11px] text-muted-foreground leading-snug">
+                                    Usado só no envio por uma conexão Waha (o Botconversa continua usando o código acima).
+                                    Variáveis: {'{{nome}} {{paciente}} {{data_agendamento}} {{data}} {{inicio}} {{unidade}} {{dentista}} {{motivo}} {{status}} {{tx_codigo_paciente}}'}
+                                </p>
+
+                            {/* Advanced configurations */}
                             <div className="border-t border-border pt-4 mt-2 space-y-3">
                                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                     <Settings2 className="w-3.5 h-3.5" />

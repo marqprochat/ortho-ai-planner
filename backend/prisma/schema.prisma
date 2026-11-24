@@ -278,6 +278,8 @@ model ScheduledDisparo {
   delayMs           Int                  @default(1000)
   concurrentLimit   Int                  @default(5)
   searchMode        String               @default("agendamento") // "agendamento" | "ultima-consulta" | "aniversario"
+  canal             String               @default("botconversa") // "botconversa" | "waha"
+  wahaSession       String?              // nome da sessão Waha usada quando canal = "waha"
   createdBy         String
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
@@ -292,6 +294,7 @@ model MessageTemplate {
   dayOffset     Int      @default(0)
   statusKeyword String   @default("")
   searchMode    String   @default("agendamento") // "agendamento" | "ultima-consulta" | "aniversario"
+  wahaText      String   @default("") // texto enviado pelo Waha (aceita variáveis {{nome}}, {{data_agendamento}}...)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -322,6 +325,8 @@ model DisparoIndividualLog {
   telefone      String
   unidade       String
   modelo        String
+  canal         String               @default("botconversa") // "botconversa" | "waha"
+  wahaSession   String?
   status        String               // "sent" | "error"
   errorMessage  String?
   executedAt    DateTime             @default(now())
@@ -388,4 +393,12 @@ model SyncRun {
   errorMessage        String?
 
   @@index([startedAt])
+}
+
+// Integração direta com o Waha (WhatsApp HTTP API) — registro único "default"
+model WahaConfig {
+  id        String   @id @default("default")
+  baseUrl   String   @default("")
+  apiKey    String   @default("")
+  updatedAt DateTime @updatedAt
 }

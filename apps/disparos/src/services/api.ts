@@ -1,4 +1,4 @@
-import type { MessageTemplate } from '../types';
+import type { MessageTemplate, WahaConfig, WahaSession } from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
 const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
@@ -141,4 +141,19 @@ export const api = {
         request<MessageTemplate>(`/message-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteMessageTemplate: (id: string) =>
         request<{ success: boolean }>(`/message-templates/${id}`, { method: 'DELETE' }),
+
+    // Integração Waha
+    getWahaConfig: () => request<WahaConfig>('/waha/config'),
+    updateWahaConfig: (data: { baseUrl: string; apiKey?: string }) =>
+        request<WahaConfig>('/waha/config', { method: 'PUT', body: JSON.stringify(data) }),
+    testWaha: () => request<{ ok: boolean; sessions: number }>('/waha/test', { method: 'POST' }),
+    listWahaSessions: () => request<WahaSession[]>('/waha/sessions'),
+    createWahaSession: (name: string) =>
+        request<{ ok: boolean }>('/waha/sessions', { method: 'POST', body: JSON.stringify({ name }) }),
+    wahaSessionAction: (name: string, action: 'start' | 'stop' | 'restart' | 'logout') =>
+        request<{ ok: boolean }>(`/waha/sessions/${encodeURIComponent(name)}/${action}`, { method: 'POST' }),
+    deleteWahaSession: (name: string) =>
+        request<{ ok: boolean }>(`/waha/sessions/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+    getWahaSessionQr: (name: string) =>
+        request<{ qr: string }>(`/waha/sessions/${encodeURIComponent(name)}/qr`),
 };
