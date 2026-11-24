@@ -34,11 +34,14 @@ const Dashboard = () => {
         setPendingContracts(contractsData.filter(c => !c.isSigned).length);
 
         const active = treatmentsData.filter(t => t.status === 'EM_ANDAMENTO');
-        setActiveTreatments(active.length);
+        // Conta pacientes distintos (um paciente pode ter mais de um tratamento em andamento)
+        const patientKey = (t: any) => t.planning?.patient?.id || t.patient?.id || t.patientId || t.id;
+        const countPatients = (list: any[]) => new Set(list.map(patientKey)).size;
+        setActiveTreatments(countPatients(active));
 
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        setNewTreatments(active.filter(t => new Date(t.createdAt) > thirtyDaysAgo).length);
+        setNewTreatments(countPatients(active.filter(t => new Date(t.createdAt) > thirtyDaysAgo)));
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
