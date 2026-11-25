@@ -248,6 +248,50 @@ const NovoPlanejamentoIA = () => {
     setFormData({ ...formData, telefone: value });
   };
 
+  const isValidCpfLength = (value?: string | null) => !!value && value.replace(/\D/g, "").length === 11;
+
+  // Quando o CPF não foi digitado, tenta recuperar o que já está cadastrado para o paciente:
+  // 1) paciente selecionado, 2) paciente do Planner com o mesmo nome/número, 3) EasyDental pelo número.
+  const resolvePatientCpf = async (): Promise<string | null> => {
+    if (isValidCpfLength(formData.cpf)) return formData.cpf;
+
+    const apply = (cpf?: string | null) => {
+      if (!isValidCpfLength(cpf)) return null;
+      setFormData(prev => ({ ...prev, cpf: cpf as string }));
+      toast.info("CPF preenchido automaticamente com o cadastro existente do paciente.");
+      return cpf as string;
+    };
+
+    try {
+      if (patientId) {
+        const found = apply((await patientService.getPatient(patientId)).cpf);
+        if (found) return found;
+      }
+
+      const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+      const number = (formData.numeroPaciente || "").trim();
+      const name = normalize(formData.nomePaciente || "");
+      const patients = await patientService.getPatients();
+      const local = patients.find(p =>
+        isValidCpfLength(p.cpf) &&
+        ((number && (p.patientNumber === number || p.externalId === number)) || (name && normalize(p.name) === name))
+      );
+      if (local) {
+        const found = apply(local.cpf);
+        if (found) return found;
+      }
+
+      if (number) {
+        const result = await patientService.searchEasyDental({ codigo: number });
+        const found = apply(result.plannerPatient?.cpf) || apply(result.easyDental?.cpf);
+        if (found) return found;
+      }
+    } catch (error) {
+      console.error("Erro ao buscar CPF já cadastrado:", error);
+    }
+    return null;
+  };
+
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
     if (value.length > 11) value = value.substring(0, 11);
@@ -285,8 +329,9 @@ const NovoPlanejamentoIA = () => {
       return;
     }
 
-    if (!formData.cpf || formData.cpf.replace(/\D/g, "").length !== 11) {
-      toast.error("Por favor, informe um CPF válido para o paciente");
+    const resolvedCpf = await resolvePatientCpf();
+    if (!resolvedCpf) {
+      toast.error("Não encontramos CPF já cadastrado para este paciente. Informe um CPF válido.");
       return;
     }
 
@@ -307,7 +352,7 @@ const NovoPlanejamentoIA = () => {
       // Save or find patient first
       const patientResult = await patientService.findOrCreatePatient({
         name: formData.nomePaciente,
-        cpf: formData.cpf || undefined,
+        cpf: resolvedCpf,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
         patientNumber: formData.numeroPaciente || undefined,
@@ -543,8 +588,9 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
       return;
     }
 
-    if (!formData.cpf || formData.cpf.replace(/\D/g, "").length !== 11) {
-      toast.error("Por favor, informe um CPF válido para o paciente");
+    const resolvedCpf = await resolvePatientCpf();
+    if (!resolvedCpf) {
+      toast.error("Não encontramos CPF já cadastrado para este paciente. Informe um CPF válido.");
       return;
     }
 
@@ -554,7 +600,7 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
       // 1. Find or Create Patient
       const patientResult = await patientService.findOrCreatePatient({
         name: formData.nomePaciente,
-        cpf: formData.cpf || undefined,
+        cpf: resolvedCpf,
         phone: formData.telefone || undefined,
         birthDate: formData.dataNascimento || undefined,
         patientNumber: formData.numeroPaciente || undefined,
@@ -956,10 +1002,9 @@ Mantenha todas as respostas CONCISAS e OBJETIVAS.`;
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2"><Label htmlFor="nomePaciente">Nome do paciente *</Label><Input id="nomePaciente" required value={formData.nomePaciente} onChange={(e) => setFormData({ ...formData, nomePaciente: e.target.value })} /></div>
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF do paciente *</Label>
+                  <Label htmlFor="cpf">CPF do paciente</Label>
                   <Input
                     id="cpf"
-                    required
                     placeholder="000.000.000-00"
                     maxLength={14}
                     value={formData.cpf || ""}
